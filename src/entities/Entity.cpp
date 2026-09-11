@@ -33,10 +33,11 @@ void Entity::render(float scale, Vector2 offset) const {
     float fWidth = (float)currentAnim->getFrameWidth() * scale;
     float fHeight = (float)currentAnim->getFrameHeight() * scale;
 
-    // Căn giữa nhân vật theo ô lưới 32px và đặt bàn chân đứng ngay ngắn trên mặt cỏ của ô đất (pos.y * TILE_SIZE)
+    // QUY ƯỚC MỚI: pos = ô WALKABLE (mặt cỏ / bệ đá) mà thực thể đang đứng.
+    // Chân (đáy sprite) chạm mép dưới ô đó: pos.y * TILE_SIZE - fHeight + TILE_SIZE.
     Vector2 screenPos = {
         (float)(pos.x * Constants::TILE_SIZE) + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
-        (float)(pos.y * Constants::TILE_SIZE) - fHeight + 4.0f + offset.y
+        (float)(pos.y * Constants::TILE_SIZE) - fHeight + (float)Constants::TILE_SIZE + offset.y
     };
 
     currentAnim->draw(screenPos, scale);

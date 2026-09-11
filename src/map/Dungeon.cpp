@@ -12,7 +12,7 @@
 
 Dungeon::Dungeon(int width, int height)
     : width(width), height(height), floorLevel(1),
-      playerStartPos(3, 13), stairsPos(25, 7),
+      playerStartPos(4, 17), stairsPos(25, 7),
       hasBossFlag(false), bossDefeated(false) {
     grid.resize(height, std::vector<Tile>(width, Tile(TileType::EMPTY)));
 }
@@ -424,7 +424,9 @@ void Dungeon::renderMonsters(Vector2 offset) const {
 
             Position p = monster->getPosition();
             float barX = offset.x + (float)(p.x * Constants::TILE_SIZE);
-            float barY = offset.y + (float)(p.y * Constants::TILE_SIZE) - 62.0f;
+            // Thanh máu nổi ngay trên đầu sprite (đỉnh sprite - 8px)
+            float barY = offset.y + (float)((monster->isFlying() ? p.y : p.y + 1) * Constants::TILE_SIZE)
+                       - 1.8f * 32.0f - 8.0f;
             float hpPercent = (float)monster->getHp() / (float)monster->getMaxHp();
 
             DrawRectangle((int)barX, (int)barY, Constants::TILE_SIZE, 4, RED);

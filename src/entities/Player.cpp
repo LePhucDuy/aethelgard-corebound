@@ -129,16 +129,18 @@ void Player::render(float scale, Vector2 offset) const {
     const Animation* anim = (it != anims.end()) ? it->second.get() : currentAnim;
     if (!anim) return;
 
-    // CHUẨN HÓA ANCHOR giống Entity::render cho Monster:
-    // - Căn giữa ngang theo chiều rộng frame trong ô lưới 32px
-    // - Bàn chân đặt ngay trên mặt cỏ của ô đứng (pos.y * TILE_SIZE), bất kể
-    //   frame cao/thấp (idle 64x80, run 80x80, attack 96x80) => không còn nhảy vị trí
+    // CHUẨN HÓA ANCHOR: mọi state dùng chung chiều cao tham chiếu REF_H = 80 (cao nhất
+    // trong các sheet: idle/run/attack cao 80, jump/dead chỉ cao 64). Đáy sprite luôn
+    // neo tại mép dưới ô đang đứng: (pos.y + 1) * TILE_SIZE.
+    // -> Fix bug "nhảy tại chỗ bị lún thấp hơn": trước đây mỗi frame tự neo theo
+    // fHeight riêng nên jump (64px) vẽ thấp hơn idle (80px) đúng 16px * scale ~ 29px.
+    constexpr float REF_FRAME_H = 80.0f;
     float fWidth = (float)anim->getFrameWidth() * scale;
-    float fHeight = (float)anim->getFrameHeight() * scale;
+    float refHeight = REF_FRAME_H * scale;
 
     Vector2 screenPos = {
         (float)(pos.x * Constants::TILE_SIZE) + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
-        (float)(pos.y * Constants::TILE_SIZE) - fHeight + 4.0f + offset.y
+        (float)((pos.y + 1) * Constants::TILE_SIZE) - refHeight + offset.y
     };
 
     anim->draw(screenPos, scale);

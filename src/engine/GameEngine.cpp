@@ -11,7 +11,7 @@
 #include <algorithm>
 
 GameEngine::GameEngine(int spawnX, int spawnY)
-    : player("Hiep Si Aethelgard", Position(4, 15), 100, 16, 5),
+    : player("Hiep Si Aethelgard", Position(4, 17), 100, 16, 5),
       dungeon(Constants::DUNGEON_WIDTH, Constants::DUNGEON_HEIGHT),
       state(GameState::RUNNING),
       moveTimer(0.0f),
@@ -23,7 +23,7 @@ GameEngine::GameEngine(int spawnX, int spawnY)
       monstersDefeated(0),
       spawnOverrideX(spawnX),
       spawnOverrideY(spawnY) {
-    camera.target = Vector2{ 0.0f, 20.0f * (float)Constants::TILE_SIZE };
+    camera.target = Vector2{ 0.0f, 12.5f * (float)Constants::TILE_SIZE };
     camera.offset = Vector2{ (float)Constants::SCREEN_WIDTH / 2.0f, (float)Constants::SCREEN_HEIGHT - 145.0f };
     camera.rotation = 0.0f;
     camera.zoom = 1.15f;
@@ -284,6 +284,8 @@ void GameEngine::handleInput() {
             }
             return;
         }
+        // Đang giữ phím ngang nhưng chưa đến hạn di chuyển tiếp theo -> dừng lại, không rơu xuống xử lý dọc
+        return;
     }
 
     // =========================================================================
@@ -437,42 +439,45 @@ void GameEngine::update(float deltaTime) {
 
     camera.zoom = idealZoom + userZoomOffset;
 
-    // 1. Camera Offset:
-    // Trục X căn giữa màn hình theo chiều ngang
-    // Trục Y GHIM CHÍNH XÁC tại viewBottom (đỉnh khung nhật ký chiến đấu)
-    camera.offset = Vector2{ (float)GetScreenWidth() / 2.0f, viewBottom };
-
-    // 2. Camera Target:
-    // Trục X bám theo người chơi trên suốt 75 ô ngang của tầng ngục
+    // 1. Camera Target X: bám theo người chơi trên suốt 75 ô ngang của tầng ngục
+    float screenW = (float)GetScreenWidth();
+    float worldWidth = (float)(Constants::DUNGEON_WIDTH * Constants::TILE_SIZE);
     float targetX = (float)(player.getPosition().x * Constants::TILE_SIZE + Constants::TILE_SIZE / 2);
 
     // Kẹp chặt camera target X để màn hình không bao giờ trôi ra ngoài biên trái (x < 0) hoặc biên phải
-    float halfViewWidth = ((float)GetScreenWidth() / 2.0f) / camera.zoom;
-    float worldWidth = (float)(Constants::DUNGEON_WIDTH * Constants::TILE_SIZE);
-    if (worldWidth > halfViewWidth * 2.0f) {
-        if (targetX < halfViewWidth) targetX = halfViewWidth;
-        if (targetX > worldWidth - halfViewWidth) targetX = worldWidth - halfViewWidth;
+    float halfViewW = (screenW / 2.0f) / camera.zoom;
+    if (worldWidth > halfViewW * 2.0f) {
+        if (targetX < halfViewW) targetX = halfViewW;
+        if (targetX > worldWidth - halfViewW) targetX = worldWidth - halfViewW;
     }
-
-    // Trục Y:
-    // Mặt đất dưới cùng là y = 18, khối đất dày xuống y = 19 (đáy = 20 * TILE_SIZE = 640px)
-    float groundBottomY = 20.0f * (float)Constants::TILE_SIZE;
-    float targetY = groundBottomY;
-
-    // Khi người chơi leo lên các tầng cao (y <= 9) và mức zoom lớn khiến nhân vật chạm trần màn hình:
-    float playerWorldY = (float)(player.getPosition().y * Constants::TILE_SIZE);
-    float playerScreenY = (playerWorldY - targetY) * camera.zoom + viewBottom;
-    if (playerScreenY < viewTop + 75.0f) {
-        targetY = playerWorldY - (viewTop + 75.0f - viewBottom) / camera.zoom;
-    }
-
-    // Luôn đảm bảo targetY không bao giờ lớn hơn groundBottomY
-    // Đảm bảo toán học: Đáy mặt đất KHÔNG BAO GIỜ trôi lên trên viewBottom -> 0 pixel vùng trống bên dưới!
-    if (targetY > groundBottomY) {
-        targetY = groundBottomY;
+    // Hai mốc Y quan trọng: đỉnh tầng cao nhất (y=6) và đáy mặt đất (y=19).
+    float topWorldY = 6.0f * (float)Constants::TILE_SIZE;
+    float groundBottomY = 19.0f * (float)Constants::TILE_SIZE;
+    // Deadzone dọc: player di chuyển trong vùng này thì camera Y đứng yên
+    // (không giật); chỉ pan khi player vượt biên trên/dưới của deadzone.
+    float halfViewH = (activeHeight / 2.0f) / camera.zoom;
+    float desiredTargetY = (float)(player.getPosition().y * Constants::TILE_SIZE);
+    float prevTargetY = camera.target.y;
+    if (prevTargetY < topWorldY) prevTargetY = (topWorldY + groundBottomY) / 2.0f;
+    if (prevTargetY > groundBottomY) prevTargetY = (topWorldY + groundBottomY) / 2.0f;
+    const float DEADZONE_HALF = 2.0f * (float)Constants::TILE_SIZE; // +/-2 ô
+    float dy = desiredTargetY - prevTargetY;
+    float targetY = prevTargetY;
+    if (dy < -DEADZONE_HALF) targetY = desiredTargetY + DEADZONE_HALF;
+    else if (dy > DEADZONE_HALF) targetY = desiredTargetY - DEADZONE_HALF;
+    // Kẹp: nửa khung nhìn không được vượt quá [topWorldY, groundBottomY + TILE]
+    // để luôn còn đất trong khung hình, hết vùng đen bên dưới.
+    float minTargetY = topWorldY + halfViewH;
+    float maxTargetY = groundBottomY + (float)Constants::TILE_SIZE - halfViewH;
+    if (minTargetY > maxTargetY) targetY = (topWorldY + groundBottomY) / 2.0f;
+    else {
+        if (targetY < minTargetY) targetY = minTargetY;
+        if (targetY > maxTargetY) targetY = maxTargetY;
     }
 
     camera.target = Vector2{ targetX, targetY };
+    // Offset Y đặt giữa vùng nhìn (không ghim đáy) để bám Y mượt cả lên/xuống.
+    camera.offset = Vector2{ screenW / 2.0f, viewTop + activeHeight / 2.0f };
 }
 
 void GameEngine::renderHUD() const {

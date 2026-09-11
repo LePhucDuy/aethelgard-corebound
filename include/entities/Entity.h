@@ -81,6 +81,7 @@ public:
     // Quản lý animation
     void setAnimation(std::unique_ptr<Animation> anim);
     Animation* getAnimation() { return currentAnim; }
+    const Animation* getAnimation() const { return currentAnim; }
 
     // Nạp chồng toán tử in thông tin thực thể
     friend std::ostream& operator<<(std::ostream& os, const Entity& entity) {

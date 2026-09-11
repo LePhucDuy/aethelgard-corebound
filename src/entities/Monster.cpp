@@ -47,9 +47,12 @@ void Monster::render(float scale, Vector2 offset) const {
     float fWidth = (float)currentAnim->getFrameWidth() * scale;
     float fHeight = (float)currentAnim->getFrameHeight() * scale;
 
+    // pos = ô WALKABLE của quái bộ (mặt cỏ), ô EMPTY của ong bay.
+    // Quái bộ: chân đặt ở mép dưới ô đang đứng (neo gốc + TILE_SIZE).
+    // Ong bay: giữ nguyên neo cũ (bay lơ lửng trên không là đúng).
     Vector2 screenPos = {
         (float)(pos.x * Constants::TILE_SIZE) + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
-        (float)(pos.y * Constants::TILE_SIZE) - fHeight + 4.0f + offset.y
+        (float)((flying ? pos.y : pos.y + 1) * Constants::TILE_SIZE) - fHeight + offset.y
     };
 
     Color tint = WHITE;
@@ -92,7 +95,9 @@ void Monster::faceTowards(const Position& target) {
 }
 
 bool Monster::isGrounded(Dungeon& dungeon, const Position& p) const {
-    // Ô dưới chân là vật chắn (không walkable) => có sàn đỡ vững chắc
+    // Ô dưới chân phải là vật rắn (WALL/FLOOR gạch đỡ, STAIRS): tức là không thể đi xuyên
+    // qua được. EMPTY là không khí -> không có sàn đỡ.
+    if (!dungeon.isValidPos(Position(p.x, p.y + 1))) return true; // Đáy map: coi như có đất
     return !dungeon.isWalkable(Position(p.x, p.y + 1));
 }
 
