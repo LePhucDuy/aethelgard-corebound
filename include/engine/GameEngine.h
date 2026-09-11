@@ -37,13 +37,23 @@ private:
     float attackTimer;
     float userZoomOffset;
 
+    // Kịch bản màn chơi
+    int currentZone;               // Khu vực hiện tại (-1: chưa vào khu nào)
+    std::string bannerText;        // Banner thông báo khu mới
+    float bannerTimer;             // Thời gian còn hiển thị banner
+    int monstersDefeated;          // Số quái đã hạ (thống kê chiến thắng)
+
+    // Ghi đè vị trí xuất phát (tuỳ chọn, phục vụ debug/test từng khu: --spawn X Y)
+    int spawnOverrideX;
+    int spawnOverrideY;
+
     void handleInput();
     void processMonsterTurn();
     void renderHUD() const;
     void drawText(const char* text, float posX, float posY, float fontSize, Color color) const;
 
 public:
-    GameEngine();
+    GameEngine(int spawnX = -1, int spawnY = -1);
     ~GameEngine();
 
     // Khởi tạo các tài nguyên (Textures, Animations, Floor 1)

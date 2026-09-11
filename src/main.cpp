@@ -7,12 +7,20 @@ int main(int argc, char* argv[]) {
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
     std::string screenshotPath = "";
-    if (argc >= 3 && std::string(argv[1]) == "--screenshot") {
-        screenshotPath = argv[2];
+    int spawnX = -1, spawnY = -1; // Tuỳ chọn debug: --spawn X Y (nhảy thẳng tới khu bất kỳ)
+
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--screenshot" && i + 1 < argc) {
+            screenshotPath = argv[++i];
+        } else if (arg == "--spawn" && i + 2 < argc) {
+            spawnX = std::atoi(argv[++i]);
+            spawnY = std::atoi(argv[++i]);
+        }
     }
 
     // Khởi chạy vòng lặp trò chơi Aethelgard: Corebound
-    GameEngine engine;
+    GameEngine engine(spawnX, spawnY);
     engine.run(screenshotPath);
 
     return 0;

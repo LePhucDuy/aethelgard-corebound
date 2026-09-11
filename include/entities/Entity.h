@@ -2,6 +2,7 @@
 #define ENTITY_H
 
 #include <string>
+#include <vector>
 #include <memory>
 #include <iostream>
 #include "core/Position.h"
@@ -9,6 +10,7 @@
 
 // Forward declaration của Dungeon để tránh phụ thuộc vòng tròn (Circular Dependency)
 class Dungeon;
+class Player;
 
 /**
  * @brief Lớp trừu tượng Entity (Abstract Base Class 1)
@@ -53,7 +55,8 @@ public:
     virtual ~Entity() = default;
 
     // Phương thức thuần ảo (Pure Virtual Function) -> Biến Entity thành Abstract Class
-    virtual void act(Dungeon& dungeon) = 0;
+    // Mỗi lượt: Entity nhận sân khấu (Dungeon), đối thủ (Player) và nhật ký chiến đấu
+    virtual void act(Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) = 0;
 
     // Cập nhật frame và vẽ thực thể lên màn hình
     virtual void update(float deltaTime);

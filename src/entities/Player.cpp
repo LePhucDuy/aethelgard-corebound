@@ -124,17 +124,24 @@ void Player::update(float deltaTime) {
 }
 
 void Player::render(float scale, Vector2 offset) const {
+    // Lấy animation theo trạng thái hiện tại (idle/run/attack/jump/dead)
+    auto it = anims.find(currentState);
+    const Animation* anim = (it != anims.end()) ? it->second.get() : currentAnim.get();
+    if (!anim) return;
+
+    // CHUẨN HÓA ANCHOR giống Entity::render cho Monster:
+    // - Căn giữa ngang theo chiều rộng frame trong ô lưới 32px
+    // - Bàn chân đặt ngay trên mặt cỏ của ô đứng (pos.y * TILE_SIZE), bất kể
+    //   frame cao/thấp (idle 64x80, run 80x80, attack 96x80) => không còn nhảy vị trí
+    float fWidth = (float)anim->getFrameWidth() * scale;
+    float fHeight = (float)anim->getFrameHeight() * scale;
+
     Vector2 screenPos = {
-        offset.x + (float)(pos.x * Constants::TILE_SIZE),
-        offset.y + (float)(pos.y * Constants::TILE_SIZE)
+        (float)(pos.x * Constants::TILE_SIZE) + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
+        (float)(pos.y * Constants::TILE_SIZE) - fHeight + 4.0f + offset.y
     };
 
-    auto it = anims.find(currentState);
-    if (it != anims.end() && it->second) {
-        it->second->draw(screenPos, scale);
-    } else if (currentAnim) {
-        currentAnim->draw(screenPos, scale);
-    }
+    anim->draw(screenPos, scale);
 }
 
 bool Player::moveBy(int dx, int dy, Dungeon& dungeon) {
@@ -161,8 +168,10 @@ bool Player::moveBy(int dx, int dy, Dungeon& dungeon) {
     return true;
 }
 
-void Player::act(Dungeon& dungeon) {
-    (void)dungeon;
+void Player::act(Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) {
+    // Player được điều khiển trực tiếp qua handleInput() của GameEngine,
+    // nên phương thức act() theo lượt của Entity là không dùng (giữ rỗng).
+    (void)dungeon; (void)player; (void)combatLog;
 }
 
 void Player::resetStats(const Position& startPos) {

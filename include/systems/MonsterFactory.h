@@ -14,7 +14,8 @@
 enum class MonsterType {
     BOAR,
     SMALL_BEE,
-    SNAIL
+    SNAIL,
+    BOAR_KING      // Boss canh Cong Cua tren Dinh Den Tho
     // Sau này thêm quái mới chỉ cần thêm 1 dòng ở đây
 };
 

@@ -16,7 +16,7 @@ public:
     ~SmallBee() override = default;
 
     // Override phương thức thuần ảo từ Monster & Entity (Polymorphism)
-    void act(Dungeon& dungeon) override;
+    void act(Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) override;
     void onDeath(Player& player) override;
 
     // Override takeDamage để thể hiện khả năng né đòn của loài ong

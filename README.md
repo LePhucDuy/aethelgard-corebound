@@ -84,10 +84,13 @@ Windows và link đúng flag `-lraylib -lopengl32 -lgdi32 -lwinmm`.
 | `F11` hoặc `Alt` + `Enter` | Bật / tắt toàn màn hình |
 | `F12` | Chụp màn hình → `screenshot.png` |
 
-Chạy ở chế độ chụp ảnh màn hình rồi tự thoát (tiện cho CI/screenshot):
+Chạy ở chế độ chụp ảnh màn hình rồi tự thoát (tiện cho CI/screenshot), kèm tuỳ chọn
+`--spawn X Y` để dịch chuyển thẳng tới khu bất kỳ (debug/kiểm thử từng khu):
 
 ```bash
-./bin/aethelgard --screenshot output.png
+./bin/aethelgard --screenshot output.png            # chụp màn hình khu hiện tại
+./bin/aethelgard --spawn 24 12                      # vào thẳng Khu B - Rừng Ép Khắc
+./bin/aethelgard --spawn 60 6 --screenshot boss.png # chụp khu Boss Đền Thờ
 ```
 
 ---

@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <memory>
+#include <string>
 #include "map/Tile.h"
 #include "entities/Monster.h"
 #include "items/Item.h"
@@ -10,6 +11,9 @@
 
 // Forward declaration
 class Player;
+
+// Loại quái (định nghĩa đầy đủ trong systems/MonsterFactory.h)
+enum class MonsterType;
 
 /**
  * @brief Lớp Dungeon đại diện cho một tầng hầm ngục hoàn chỉnh.
@@ -39,6 +43,10 @@ private:
     std::vector<std::unique_ptr<Monster>> monsters;
     std::vector<std::unique_ptr<Item>> groundItems;
 
+    // Trạng thái kịch bản màn chơi
+    bool hasBossFlag;
+    bool bossDefeated;
+
     void carveRoom(int x, int y, int w, int h);
     void carveCorridor(int x1, int y1, int x2, int y2);
 
@@ -59,6 +67,27 @@ public:
     std::unique_ptr<Item> takeItemAt(const Position& pos);
 
     void removeDeadMonsters(Player& player);
+
+    // ===== Kịch bản màn chơi: phân khu, spawn có kiểm tra, boss gate =====
+
+    // Tên khu vực theo tọa độ x (4 khu: Trại - Rừng - Vách Đá - Đền Thờ)
+    const char* getZoneName(int x) const;
+
+    // Loại ô tại vị trí (EMPTY không khí / FLOOR cỏ / WALL đất / STAIRS_DOWN)
+    TileType getTileType(const Position& pos) const;
+
+    // Sinh quái tại vị trí mong muốn; tự dời sang ô hợp lệ gần nhất nếu ô gốc không
+    // đi được (chống lỗi quái spawn chui vào lòng đất). Ong bay chấp nhận ô EMPTY.
+    bool spawnMonster(MonsterType type, const Position& desiredPos);
+
+    // Boss gate: có boss đang canh cổng / đã hạ boss chưa
+    bool hasBoss() const { return hasBossFlag; }
+    bool isBossDefeated() const { return bossDefeated; }
+    void setBossDefeated(bool defeated) { bossDefeated = defeated; }
+    Monster* getBossMonster() const;
+
+    // Gọi sau khi dọn xác quái: trả về true đúng 1 lần khi phát hiện boss đã bị tiêu diệt
+    bool checkBossDefeated();
 
     // Cập nhật và vẽ
     void update(float deltaTime);

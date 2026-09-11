@@ -1,4 +1,5 @@
 #include "systems/MonsterFactory.h"
+#include "entities/BoarKing.h"
 #include <cstdlib>
 
 std::unique_ptr<Monster> MonsterFactory::create(MonsterType type, const Position& pos) {
@@ -9,6 +10,8 @@ std::unique_ptr<Monster> MonsterFactory::create(MonsterType type, const Position
             return std::make_unique<SmallBee>(pos);
         case MonsterType::SNAIL:
             return std::make_unique<Snail>(pos);
+        case MonsterType::BOAR_KING:
+            return std::make_unique<BoarKing>(pos);
         default:
             return std::make_unique<Boar>(pos);
     }

@@ -41,7 +41,7 @@ public:
     ~Player() override = default;
 
     // Cài đặt phương thức thuần ảo từ lớp cha Entity (Polymorphism)
-    void act(Dungeon& dungeon) override;
+    void act(Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) override;
 
     // Cập nhật hoạt họa và render
     void update(float deltaTime) override;

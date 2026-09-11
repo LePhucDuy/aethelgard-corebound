@@ -1,6 +1,7 @@
 #include "map/Dungeon.h"
 #include "graphics/TextureManager.h"
 #include "systems/MonsterFactory.h"
+#include "entities/BoarKing.h"
 #include "items/Weapon.h"
 #include "items/Potion.h"
 #include "core/Constants.h"
@@ -11,7 +12,8 @@
 
 Dungeon::Dungeon(int width, int height)
     : width(width), height(height), floorLevel(1),
-      playerStartPos(3, 13), stairsPos(25, 7) {
+      playerStartPos(3, 13), stairsPos(25, 7),
+      hasBossFlag(false), bossDefeated(false) {
     grid.resize(height, std::vector<Tile>(width, Tile(TileType::EMPTY)));
 }
 
@@ -27,6 +29,8 @@ void Dungeon::generate(int floor) {
     floorLevel = floor;
     monsters.clear();
     groundItems.clear();
+    hasBossFlag = false;
+    bossDefeated = false;
 
     // 1. Khởi tạo toàn bộ không gian là trời trống (EMPTY)
     for (int y = 0; y < height; ++y) {
@@ -151,25 +155,25 @@ void Dungeon::generate(int floor) {
     grid[stairsPos.y][stairsPos.x].setCustom(TileType::STAIRS_DOWN, Rectangle{ 128.0f, 16.0f, 16.0f, 16.0f }, true);
 
     // =========================================================================
-    // 3. PHÂN BỔ QUÁI VẬT TRÊN BẢN ĐỒ DÀI
+    // 3. PHÂN BỔ QUÁI VẬT THEO KỊCH BẢN 4 KHU (spawn có kiểm tra ô hợp lệ)
     // =========================================================================
-    // Heo Rừng tuần tra mặt đất
-    monsters.push_back(MonsterFactory::create(MonsterType::BOAR, Position(10, 18)));
-    monsters.push_back(MonsterFactory::create(MonsterType::BOAR, Position(24, 18)));
-    monsters.push_back(MonsterFactory::create(MonsterType::BOAR, Position(45, 18)));
-    monsters.push_back(MonsterFactory::create(MonsterType::BOAR, Position(65, 18)));
 
-    // Ốc sên giáp trên các tầng bệ
-    monsters.push_back(MonsterFactory::create(MonsterType::SNAIL, Position(11, 15)));
-    monsters.push_back(MonsterFactory::create(MonsterType::SNAIL, Position(27, 12)));
-    monsters.push_back(MonsterFactory::create(MonsterType::SNAIL, Position(46, 9)));
-    monsters.push_back(MonsterFactory::create(MonsterType::SNAIL, Position(63, 6)));
+    // KHU A - TRẠI KHỞI ĐẦU (x0-16, y15): ốc sên hiền chỉ phản đòn — mục tiêu tập đánh
+    spawnMonster(MonsterType::SNAIL, Position(11, 15));
 
-    // Ong sát thủ bay trên không trung
-    monsters.push_back(MonsterFactory::create(MonsterType::SMALL_BEE, Position(18, 11)));
-    monsters.push_back(MonsterFactory::create(MonsterType::SMALL_BEE, Position(37, 8)));
-    monsters.push_back(MonsterFactory::create(MonsterType::SMALL_BEE, Position(55, 5)));
-    monsters.push_back(MonsterFactory::create(MonsterType::SMALL_BEE, Position(68, 4)));
+    // KHU B - RỪNG ÉP KHẮC (x19-35, y12): 2 heo rừng tuần tra + 1 ong trên không
+    spawnMonster(MonsterType::BOAR, Position(23, 12));
+    spawnMonster(MonsterType::BOAR, Position(31, 12));
+    spawnMonster(MonsterType::SMALL_BEE, Position(26, 10));
+
+    // KHU C - VÁCH ĐÁ HUYỀN BÍ (x38-54, y9): 2 ốc sên chặn lối + 1 ong
+    spawnMonster(MonsterType::SNAIL, Position(44, 9));
+    spawnMonster(MonsterType::SNAIL, Position(50, 9));
+    spawnMonster(MonsterType::SMALL_BEE, Position(46, 7));
+
+    // KHU D - ĐỈNH ĐỀN THỜ (x57-72, y6): BOSS canh Cổng Cửa + 1 ong hộ vệ
+    spawnMonster(MonsterType::BOAR_KING, Position(64, 6));
+    spawnMonster(MonsterType::SMALL_BEE, Position(68, 4));
 
     // =========================================================================
     // 4. SINH VẬT PHẨM TRÊN BẢN ĐỒ
@@ -251,6 +255,82 @@ void Dungeon::update(float deltaTime) {
     }
 }
 
+// ===== Kịch bản màn chơi =====
+
+const char* Dungeon::getZoneName(int x) const {
+    if (x < 19) return "TRAI KHOI DAU";
+    if (x < 38) return "RUNG EP KHAC";
+    if (x < 57) return "VACH DA HUYEN BI";
+    return "DINH DEN THO";
+}
+
+TileType Dungeon::getTileType(const Position& pos) const {
+    if (!isValidPos(pos)) return TileType::EMPTY;
+    return grid[pos.y][pos.x].getType();
+}
+
+bool Dungeon::spawnMonster(MonsterType type, const Position& desiredPos) {
+    // Ong bay chỉ chấp nhận ô không khí (EMPTY); quái bộ cần ô đi được có sàn đỡ
+    auto isValidSpawn = [&](const Position& p) {
+        if (!isValidPos(p)) return false;
+        if (getMonsterAt(p) != nullptr) return false;
+        if (type == MonsterType::SMALL_BEE) return getTileType(p) == TileType::EMPTY;
+        return isWalkable(p);
+    };
+
+    Position spawn = desiredPos;
+    if (!isValidSpawn(spawn)) {
+        // Tìm ô hợp lệ gần nhất theo vòng xoắn bán kính 1..4
+        bool found = false;
+        for (int r = 1; r <= 4 && !found; ++r) {
+            for (int dy = -r; dy <= r && !found; ++dy) {
+                for (int dx = -r; dx <= r && !found; ++dx) {
+                    Position cand(desiredPos.x + dx, desiredPos.y + dy);
+                    if (isValidSpawn(cand)) {
+                        spawn = cand;
+                        found = true;
+                    }
+                }
+            }
+        }
+        if (!found) {
+            std::cerr << "[Dungeon][WARN] Khong tim du o spawn hop le cho quai tai "
+                      << desiredPos << " - bo qua!" << std::endl;
+            return false;
+        }
+        std::cerr << "[Dungeon][WARN] Di chuyen spawn quai tu " << desiredPos
+                  << " sang " << spawn << " (o goc khong hop le)" << std::endl;
+    }
+
+    monsters.push_back(MonsterFactory::create(type, spawn));
+
+    // Đánh dấu boss để kích hoạt boss gate
+    if (type == MonsterType::BOAR_KING) {
+        hasBossFlag = true;
+        bossDefeated = false;
+    }
+    return true;
+}
+
+Monster* Dungeon::getBossMonster() const {
+    for (const auto& monster : monsters) {
+        if (monster && dynamic_cast<BoarKing*>(monster.get()) != nullptr) {
+            return monster.get();
+        }
+    }
+    return nullptr;
+}
+
+bool Dungeon::checkBossDefeated() {
+    // hasBossFlag chỉ bật khi boss đã sinh; getBossMonster() == nullptr
+    // nghĩa là boss đã bị xóa khỏi danh sách (đã chết)
+    if (hasBossFlag && !bossDefeated && getBossMonster() == nullptr) {
+        bossDefeated = true;
+        return true;
+    }
+    return false;
+}
+
 void Dungeon::renderBackground(Vector2 offset) const {
     TextureManager& tm = TextureManager::getInstance();
     const Texture2D& backTex = tm.get("bg_back");
@@ -305,7 +385,13 @@ void Dungeon::render(Vector2 offset) const {
             DrawTexturePro(tilesTex, grid[y][x].getSourceRect(), destRec, Vector2{0, 0}, 0.0f, WHITE);
 
             if (type == TileType::STAIRS_DOWN) {
-                DrawRectangleLines((int)destRec.x, (int)destRec.y, (int)destRec.width, (int)destRec.height, GOLD);
+                // Cổng Cửa: đã hạ boss -> sáng vàng rực rỡ (mở khóa);
+                // chưa hạ -> bọc sắc đỏ đậm + bóng tối (đang bị phong ấn)
+                Color gateColor = bossDefeated ? GOLD : Color{ 180, 70, 70, 255 };
+                DrawRectangleLines((int)destRec.x, (int)destRec.y, (int)destRec.width, (int)destRec.height, gateColor);
+                if (!bossDefeated) {
+                    DrawRectangle((int)destRec.x, (int)destRec.y, (int)destRec.width, (int)destRec.height, Color{ 120, 30, 30, 110 });
+                }
             }
         }
     }

@@ -29,6 +29,7 @@ bool SaveLoadManager::saveGame(const std::string& filePath, const Player& player
     // 2. Ghi thông tin Hầm ngục
     outFile << "[DUNGEON]\n";
     outFile << "Floor=" << dungeon.getFloorLevel() << "\n";
+    outFile << "BossDefeated=" << (dungeon.isBossDefeated() ? 1 : 0) << "\n";
 
     // 3. Ghi thông tin Túi đồ
     const Inventory& inv = player.getInventory();
@@ -70,6 +71,7 @@ bool SaveLoadManager::loadGame(const std::string& filePath, Player& player, Dung
     int exp = 0, expToNext = 50, gold = 0;
     int posX = 2, posY = 2;
     int floor = 1;
+    int bossDefeated = 0;
 
     // Xóa sạch túi đồ hiện tại để nạp lại
     while (player.getInventory().getSize() > 0) {
@@ -103,6 +105,7 @@ bool SaveLoadManager::loadGame(const std::string& filePath, Player& player, Dung
             else if (key == "PosY") posY = std::stoi(val);
         } else if (section == "DUNGEON") {
             if (key == "Floor") floor = std::stoi(val);
+            else if (key == "BossDefeated") bossDefeated = std::stoi(val);
         } else if (section == "INVENTORY") {
             if (key == "Item") {
                 // Parse dạng: Name|Description|Type|Value
@@ -137,6 +140,7 @@ bool SaveLoadManager::loadGame(const std::string& filePath, Player& player, Dung
     
     // Tái tạo tầng hầm ngục
     dungeon.generate(floor);
+    dungeon.setBossDefeated(bossDefeated != 0);
 
     std::cout << "[Load Success] Da nap thanh cong tien trinh tu file: " << filePath << std::endl;
     std::cout << " -> Level " << level << " | HP: " << hp << "/" << maxHp 

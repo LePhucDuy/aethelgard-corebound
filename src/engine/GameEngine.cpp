@@ -8,14 +8,21 @@
 #include "core/Constants.h"
 #include <iostream>
 #include <cmath>
+#include <algorithm>
 
-GameEngine::GameEngine()
+GameEngine::GameEngine(int spawnX, int spawnY)
     : player("Hiep Si Aethelgard", Position(4, 15), 100, 16, 5),
       dungeon(Constants::DUNGEON_WIDTH, Constants::DUNGEON_HEIGHT),
       state(GameState::RUNNING),
       moveTimer(0.0f),
       attackTimer(0.0f),
-      userZoomOffset(0.0f) {
+      userZoomOffset(0.0f),
+      currentZone(-1),
+      bannerText(""),
+      bannerTimer(0.0f),
+      monstersDefeated(0),
+      spawnOverrideX(spawnX),
+      spawnOverrideY(spawnY) {
     camera.target = Vector2{ 0.0f, 20.0f * (float)Constants::TILE_SIZE };
     camera.offset = Vector2{ (float)Constants::SCREEN_WIDTH / 2.0f, (float)Constants::SCREEN_HEIGHT - 145.0f };
     camera.rotation = 0.0f;
@@ -67,7 +74,12 @@ void GameEngine::init() {
 
     // 3. Khởi tạo tầng 1 hầm ngục 2D Side dài 75 ô
     dungeon.generate(1);
-    player.setPosition(dungeon.getPlayerStartPos());
+    // Vị trí xuất phát: ghi đè bởi --spawn (debug) nếu có, ngược lại dùng điểm start của map
+    if (spawnOverrideX >= 0 && spawnOverrideY >= 0) {
+        player.setPosition(Position(spawnOverrideX, spawnOverrideY));
+    } else {
+        player.setPosition(dungeon.getPlayerStartPos());
+    }
 
     // 4. Cung cấp vật phẩm khởi đầu vào túi đồ
     player.getInventory().addItem(std::make_unique<Potion>("Binh Thuoc Khoi Dau", "Hoi phuc 30 HP", 30));
@@ -89,12 +101,14 @@ void GameEngine::drawText(const char* text, float posX, float posY, float fontSi
 }
 
 void GameEngine::handleInput() {
-    if (state == GameState::GAME_OVER) {
+    if (state == GameState::GAME_OVER || state == GameState::VICTORY) {
         if (IsKeyPressed(KEY_R)) {
             dungeon.generate(1);
             player.resetStats(dungeon.getPlayerStartPos());
             combatLog.clear();
             combatLog.push_back("=== BAN DA HOI SINH! BAT DAU LAI TU TANG 1 ===");
+            monstersDefeated = 0;
+            currentZone = -1; // Kích hoạt lại banner khu A
             state = GameState::RUNNING;
         }
         return;
@@ -126,11 +140,23 @@ void GameEngine::handleInput() {
 
         Monster* targetMonster = dungeon.getMonsterAt(target1);
         if (!targetMonster) targetMonster = dungeon.getMonsterAt(target2);
-        if (!targetMonster && dungeon.isWalkable(target3)) targetMonster = dungeon.getMonsterAt(target3);
+        // Bậc dốc chéo phía trước: chỉ đánh tới được nếu ô ngay trước mặt là lối đi
+        // (không cho đòn chéo xuyên qua góc khối đá)
+        if (!targetMonster && dungeon.isWalkable(Position(pPos.x + dirX, pPos.y))) {
+            targetMonster = dungeon.getMonsterAt(target3);
+        }
 
         if (targetMonster) {
             CombatSystem::attack(player, *targetMonster, combatLog);
+            bool wasKilled = !targetMonster->isAlive();
             dungeon.removeDeadMonsters(player);
+            if (wasKilled) monstersDefeated++;
+
+            // Boss gate: hạ BoarKing -> mở khóa Cổng Cửa trên Đỉnh Đền Thờ
+            if (wasKilled && dungeon.checkBossDefeated()) {
+                combatLog.push_back(">>> CHUA HEO RUNG DA HA GUOC! Cong cua o Dinh Den Tho da MO KHOA! <<<");
+                combatLog.push_back(">>> Hay leo len be vang (x70) va nhan [Space] de chien thang! <<<");
+            }
         } else {
             // Kiểm tra xem có quái vật ở trên đầu / trần nhà không để thông báo rõ ràng
             Position abovePos1(pPos.x, pPos.y - 1);
@@ -151,13 +177,15 @@ void GameEngine::handleInput() {
     // 2. HÀNH ĐỘNG NHẢY (JUMP) [SPACE]
     // =========================================================================
     if (IsKeyPressed(KEY_SPACE)) {
-        // Đứng trên bệ đá chuyển tầng: bước xuống tầng tiếp theo
+        // Đứng trên bệ đá cổ (Cổng Cửa): chỉ mở khóa sau khi đã hạ Boar King
         if (player.getPosition() == dungeon.getStairsPos()) {
-            int nextFloor = dungeon.getFloorLevel() + 1;
-            dungeon.generate(nextFloor);
-            player.setPosition(dungeon.getPlayerStartPos());
-            combatLog.push_back("--- BAN DA BUOC XUONG TANG " + std::to_string(nextFloor) + "! ---");
-            player.addExp(20);
+            if (dungeon.hasBoss() && !dungeon.isBossDefeated()) {
+                combatLog.push_back("[PHONG AN] Bo vang bi Boar King phong an! Hay ha guc no truoc.");
+                processMonsterTurn();
+                return;
+            }
+            state = GameState::VICTORY;
+            combatLog.push_back(">>> BAN DA CHIEN THANG! AETHELGARD DUOC GIAI CUU! <<<");
             return;
         }
 
@@ -341,57 +369,16 @@ void GameEngine::handleInput() {
 void GameEngine::processMonsterTurn() {
     if (!player.isAlive()) return;
 
+    // Lượt của quái: mỗi loài tự quyết định hành vi qua act() (đa hình thật sự)
     for (auto& monster : dungeon.getMonsters()) {
         if (!monster || !monster->isAlive()) continue;
 
-        Position mPos = monster->getPosition();
-        Position pPos = player.getPosition();
-        int dist = mPos.manhattanDistanceTo(pPos);
+        monster->act(dungeon, player, combatLog);
 
-        // 1. Kiểm tra cự ly cận chiến hợp lệ trong góc nhìn 2D Side-view:
-        // Quái vật và người chơi chỉ đánh nhau khi:
-        // - Đứng cùng tầng (mPos.y == pPos.y và cách nhau <= 1 ô ngang)
-        // - Hoặc đứng kề nhau trên bậc dốc mở (abs(dx)==1, abs(dy)==1, cả 2 ô đều walkable)
-        // TUYỆT ĐỐI KHÔNG đánh xuyên sàn/trần nhà khi đang đứng trên/dưới đầu nhau (mPos.x == pPos.x && mPos.y != pPos.y)!
-        bool isDirectVertical = (mPos.x == pPos.x && mPos.y != pPos.y);
-        bool isSameFloor = (mPos.y == pPos.y && std::abs(mPos.x - pPos.x) <= 1);
-        bool isSlopeAdjacent = (std::abs(mPos.x - pPos.x) == 1 && std::abs(mPos.y - pPos.y) == 1 && 
-                                dungeon.isWalkable(mPos) && dungeon.isWalkable(pPos));
-
-        bool canMelee = !isDirectVertical && (isSameFloor || isSlopeAdjacent);
-
-        // Ốc sên khi đang rút vào vỏ (isHiding) sẽ tập trung phòng thủ, KHÔNG tấn công người chơi!
-        Snail* snail = dynamic_cast<Snail*>(monster.get());
-        if (snail && snail->getIsHiding()) {
-            canMelee = false;
-        }
-
-        if (canMelee) {
-            // Quái vật ở cự ly cận chiến hợp lệ -> PHẢN CÔNG
-            CombatSystem::attack(*monster, player, combatLog);
-            if (!player.isAlive()) {
-                state = GameState::GAME_OVER;
-                combatLog.push_back(">>> BAN DA TU TRAN! Nhan [R] de hoi sinh va thu lai. <<<");
-                break;
-            }
-        } else if (dist <= 6) {
-            // Quái vật tiến lại gần người chơi 1 bước
-            int stepX = 0;
-            if (pPos.x > mPos.x) stepX = 1;
-            else if (pPos.x < mPos.x) stepX = -1;
-
-            Position nextPos(mPos.x + stepX, mPos.y);
-            // Thử bước ngang, bước lên bậc hoặc bước xuống dốc
-            if (!dungeon.isWalkable(nextPos) || dungeon.getMonsterAt(nextPos) != nullptr) {
-                nextPos = Position(mPos.x + stepX, mPos.y - 1);
-            }
-            if (!dungeon.isWalkable(nextPos) || dungeon.getMonsterAt(nextPos) != nullptr) {
-                nextPos = Position(mPos.x + stepX, mPos.y + 1);
-            }
-
-            if (dungeon.isWalkable(nextPos) && dungeon.getMonsterAt(nextPos) == nullptr && nextPos != pPos) {
-                monster->setPosition(nextPos);
-            }
+        if (!player.isAlive()) {
+            state = GameState::GAME_OVER;
+            combatLog.push_back(">>> BAN DA TU TRAN! Nhan [R] de hoi sinh va thu lai. <<<");
+            break;
         }
     }
 }
@@ -399,6 +386,25 @@ void GameEngine::processMonsterTurn() {
 void GameEngine::update(float deltaTime) {
     if (moveTimer > 0.0f) moveTimer -= deltaTime;
     if (attackTimer > 0.0f) attackTimer -= deltaTime;
+
+    // ===== KỊCH BẢN PHÂN KHU: banner khi người chơi đi qua mốc khu mới =====
+    if (state == GameState::RUNNING) {
+        int px = player.getPosition().x;
+        int zone = (px < 19) ? 0 : (px < 38) ? 1 : (px < 57) ? 2 : 3;
+        if (zone != currentZone) {
+            currentZone = zone;
+            static const char* zoneBanners[4] = {
+                "KHU A - TRAI KHOI DAU: Lam quen dieu khien. Oc sen ban dau chi phan don!",
+                "KHU B - RUNG EP KHAC: Heo rung dang tuan tra, ong sat thu lurot treo tren dau!",
+                "KHU C - VACH DA HUYEN BI: Oc sen giap chan duong. Co thuoc cuong hoa phia truoc!",
+                "KHU D - DINH DEN THO: BOAR KING canh Cong Cua! Ha guc no de mo khoa be vang!"
+            };
+            bannerText = zoneBanners[zone];
+            bannerTimer = 3.5f;
+            combatLog.push_back(std::string("--- ") + zoneBanners[zone] + " ---");
+        }
+    }
+    if (bannerTimer > 0.0f) bannerTimer -= deltaTime;
 
     handleInput();
     player.update(deltaTime);
@@ -489,8 +495,41 @@ void GameEngine::renderHUD() const {
     drawText(TextFormat("ATK: %d  DEF: %d", player.getAttack(), player.getDefense()), 430, 12, 19, RAYWHITE);
     drawText(TextFormat("TANG HAM NGUC: %d", dungeon.getFloorLevel()), 630, 12, 19, SKYBLUE);
 
+    // ===== Kịch bản: tên khu vực + thanh tiến trình lộ trình tới Cổng Cửa =====
+    const char* zoneName = dungeon.getZoneName(player.getPosition().x);
+    drawText(zoneName, 740, 8, 14, GOLD);
+    int pbX = 740, pbY = 30, pbW = 170, pbH = 10;
+    int stairsX = dungeon.getStairsPos().x;
+    float progress = (stairsX > 0) ? (float)player.getPosition().x / (float)stairsX : 0.0f;
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    DrawRectangle(pbX, pbY, pbW, pbH, Color{ 40, 35, 55, 255 });
+    DrawRectangle(pbX, pbY, (int)(pbW * progress), pbH, GOLD);
+    DrawRectangleLines(pbX, pbY, pbW, pbH, RAYWHITE);
+    drawText("CONG CUA", pbX + pbW + 8, pbY - 3, 14, (dungeon.hasBoss() && !dungeon.isBossDefeated()) ? MAROON : GOLD);
+
     // Phím tắt góc phải
     drawText("[F5] Luu | [F9] Tai | [F11] Toan man hinh", screenW - 350, 13, 17, LIGHTGRAY);
+
+    // ===== Boss HP bar: hiện khi Boar King đang sống và ở gần người chơi =====
+    if (state == GameState::RUNNING) {
+        Monster* boss = dungeon.getBossMonster();
+        if (boss && boss->isAlive()) {
+            Position pPos = player.getPosition();
+            Position bPos = boss->getPosition();
+            int cheb = std::max(std::abs(pPos.x - bPos.x), std::abs(pPos.y - bPos.y));
+            if (cheb <= 10) {
+                int bossBarX = screenW - 530, bossBarY = 58, bossBarW = 280, bossBarH = 20;
+                float bossHp = (float)boss->getHp() / (float)boss->getMaxHp();
+                DrawRectangle(bossBarX - 4, bossBarY - 4, bossBarW + 8, bossBarH + 22, Color{ 20, 10, 10, 220 });
+                drawText("BOAR KING - CHUA HEO RUNG", bossBarX, bossBarY - 2, 15, Color{ 255, 160, 90, 255 });
+                DrawRectangle(bossBarX, bossBarY + 16, bossBarW, bossBarH, RED);
+                DrawRectangle(bossBarX, bossBarY + 16, (int)(bossBarW * bossHp), bossBarH, Color{ 255, 120, 40, 255 });
+                DrawRectangleLines(bossBarX, bossBarY + 16, bossBarW, bossBarH, RAYWHITE);
+                drawText(TextFormat("HP: %d/%d", boss->getHp(), boss->getMaxHp()), bossBarX + 80, bossBarY + 20, 16, BLACK);
+            }
+        }
+    }
 
     // 2. Bảng Túi đồ bên phải (Right Inventory Panel)
     int invW = 250;
@@ -538,6 +577,32 @@ void GameEngine::renderHUD() const {
         DrawRectangle(0, 0, screenW, screenH, Color{ 0, 0, 0, 200 });
         drawText("BAN DA THAT TRAN!", screenW / 2 - 180, screenH / 2 - 40, 36, RED);
         drawText("Nhan phim [R] de hoi sinh va thu lai", screenW / 2 - 160, screenH / 2 + 20, 20, RAYWHITE);
+    }
+
+    // 5. Banner khu vực (hiện giữa màn hình khi bước vào khu mới)
+    if (state == GameState::RUNNING && bannerTimer > 0.0f) {
+        float alpha = (bannerTimer > 3.0f) ? (3.5f - bannerTimer) * 2.0f
+                                           : (bannerTimer < 0.5f ? bannerTimer * 2.0f : 1.0f);
+        if (alpha > 1.0f) alpha = 1.0f;
+        Color bannerBg = Color{ 15, 13, 23, (unsigned char)(200 * alpha) };
+        Color bannerFg = GOLD;
+        bannerFg.a = (unsigned char)(255 * alpha);
+        int bW = 720, bH = 64;
+        int bX = screenW / 2 - bW / 2, bY = 120;
+        DrawRectangle(bX, bY, bW, bH, bannerBg);
+        DrawRectangleLines(bX, bY, bW, bH, bannerFg);
+        drawText(bannerText.c_str(), screenW / 2 - (float)bW / 2 + 20, bY + 20, 20, bannerFg);
+    }
+
+    // 6. Màn hình Chiến Thắng (Victory) — kết thúc kịch bản màn chơi
+    if (state == GameState::VICTORY) {
+        DrawRectangle(0, 0, screenW, screenH, Color{ 20, 15, 5, 215 });
+        drawText("CHIEN THANG!", screenW / 2 - 140, screenH / 2 - 110, 48, GOLD);
+        drawText("Aethelgard duoc giai cuu - Cong cua Den Tho da mo", screenW / 2 - 230, screenH / 2 - 40, 22, RAYWHITE);
+        drawText(TextFormat("Cap: %d   |   Vang: %d   |   Quai da ha guc: %d",
+                            player.getLevel(), player.getGold(), monstersDefeated),
+                 screenW / 2 - 200, screenH / 2 + 10, 20, SKYBLUE);
+        drawText("Nhan phim [R] de choi lai tu dau", screenW / 2 - 140, screenH / 2 + 70, 20, LIGHTGRAY);
     }
 }
 

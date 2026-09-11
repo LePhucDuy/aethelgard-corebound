@@ -19,7 +19,7 @@ public:
     ~Snail() override = default;
 
     // Override phương thức thuần ảo từ Monster & Entity (Polymorphism)
-    void act(Dungeon& dungeon) override;
+    void act(Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) override;
     void onDeath(Player& player) override;
 
     // Override takeDamage để tự động kích hoạt kỹ năng Rút Vào Vỏ
