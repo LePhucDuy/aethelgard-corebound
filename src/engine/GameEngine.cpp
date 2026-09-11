@@ -60,9 +60,15 @@ void GameEngine::init() {
     tm.load("warrior_jump",   "assets/characters/warrior/Jumlp-All/Jump-All-Sheet.png");
     tm.load("warrior_dead",   "assets/characters/warrior/Dead/Dead-Sheet.png");
     tm.load("boar_walk",      "assets/mobs/boar/Walk/Walk-Base-Sheet.png");
+    tm.load("boar_idle",      "assets/mobs/boar/Idle/Idle-Sheet.png");
+    tm.load("boar_run",       "assets/mobs/boar/Run/Run-Sheet.png");
+    tm.load("boar_hit",       "assets/mobs/boar/Hit-Vanish/Hit-Sheet.png");
     tm.load("bee_fly",        "assets/mobs/small_bee/Fly/Fly-Sheet.png");
+    tm.load("bee_attack",     "assets/mobs/small_bee/Attack/Attack-Sheet.png");
+    tm.load("bee_hit",        "assets/mobs/small_bee/Hit/Hit-Sheet.png");
     tm.load("snail_walk",     "assets/mobs/snail/walk-Sheet.png");
     tm.load("snail_hide",     "assets/mobs/snail/Hide-Sheet.png");
+    tm.load("snail_dead",     "assets/mobs/snail/Dead-Sheet.png");
 
     // 2. Thiết lập ĐẦY ĐỦ hệ thống hoạt họa phong phú cho Player
     player.addAnimation("idle",   std::make_unique<Animation>("warrior_idle", 4, 64, 80, 0.14f, true));

@@ -239,8 +239,13 @@ std::unique_ptr<Item> Dungeon::takeItemAt(const Position& pos) {
 void Dungeon::removeDeadMonsters(Player& player) {
     for (auto it = monsters.begin(); it != monsters.end(); ) {
         if (*it && !(*it)->isAlive()) {
-            (*it)->onDeath(player);
-            it = monsters.erase(it);
+            // Chờ animation chết chạy xong rồi mới xóa khỏi bản đồ
+            if ((*it)->isDeathAnimFinished()) {
+                (*it)->onDeath(player);
+                it = monsters.erase(it);
+            } else {
+                ++it;
+            }
         } else {
             ++it;
         }

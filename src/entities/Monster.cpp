@@ -9,7 +9,76 @@ Monster::Monster(const std::string& name, const Position& pos, int hp, int attac
     : Entity(name, pos, hp, attack, defense),
       expReward(expReward), goldReward(goldReward),
       homePos(pos), aggroRange(aggroRange), patrolRange(patrolRange),
-      facingRight(true), flying(flying), turnCount(0), patrolDir(1) {}
+      facingRight(true), flying(flying), turnCount(0), patrolDir(1),
+      animState(""), dying(false), rewarded(false) {}
+
+// ===== Hệ thống hoạt họa nhiều trạng thái =====
+
+void Monster::addAnimation(const std::string& stateName, std::unique_ptr<Animation> anim) {
+    anims[stateName] = std::move(anim);
+    // Animation đầu tiên nạp vào trở thành mặc định
+    if (!currentAnim) {
+        setState(stateName);
+    }
+}
+
+void Monster::setState(const std::string& stateName) {
+    auto it = anims.find(stateName);
+    if (it == anims.end()) return;           // Không có animation này -> bỏ qua
+    if (animState == stateName) return;      // Đang dùng rồi -> không reset frame
+    animState = stateName;
+    currentAnim = it->second.get();
+    currentAnim->reset();
+}
+
+void Monster::update(float deltaTime) {
+    Entity::update(deltaTime);
+    if (!currentAnim) return;
+
+    // Tự động thoát khỏi đòn tấn công 1 lần (attack) khi animation chạy xong
+    if (!dying && animState == "attack" && currentAnim->hasFinished()) {
+        setState("idle");
+    }
+}
+
+void Monster::render(float scale, Vector2 offset) const {
+    if (!currentAnim) return;
+
+    float fWidth = (float)currentAnim->getFrameWidth() * scale;
+    float fHeight = (float)currentAnim->getFrameHeight() * scale;
+
+    Vector2 screenPos = {
+        (float)(pos.x * Constants::TILE_SIZE) + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
+        (float)(pos.y * Constants::TILE_SIZE) - fHeight + 4.0f + offset.y
+    };
+
+    Color tint = WHITE;
+    if (dying && currentAnim->getTotalFrames() > 1) {
+        float progress = (float)currentAnim->getCurrentFrame() / (float)(currentAnim->getTotalFrames() - 1);
+        if (progress > 1.0f) progress = 1.0f;
+        tint.a = (unsigned char)(255.0f * (1.0f - progress));
+    }
+
+    currentAnim->draw(screenPos, scale, tint);
+}
+
+void Monster::takeDamage(int amount) {
+    if (dying) return;
+    Entity::takeDamage(amount);
+    if (!alive) kill();
+}
+
+void Monster::kill() {
+    alive = false;
+    dying = true;
+    // Phát animation biến mất: ưu tiên "dead", nếu không có thì giữ nguyên animation hiện tại
+    if (anims.find("dead") != anims.end()) setState("dead");
+}
+
+bool Monster::isDeathAnimFinished() const {
+    auto it = anims.find(animState);
+    return it != anims.end() && it->second && it->second->hasFinished();
+}
 
 // ===== Hạ tầng AI dùng chung =====
 

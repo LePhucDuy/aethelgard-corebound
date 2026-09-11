@@ -11,8 +11,11 @@ BoarKing::BoarKing(const Position& pos)
     : Monster("Boar King (Chua Heo Rung)", pos, 130, 18, 6, 100, 50,
               /*aggroRange*/ 6, /*patrolRange*/ 3, /*flying*/ false),
       enraged(false) {
-    // Dùng lại sheet heo nhưng frame nhanh hơn (đe dọa hơn)
-    setAnimation(std::make_unique<Animation>("boar_walk", 6, 48, 32, 0.09f));
+    // Boss dùng chung texture với Boar nhưng frame nhanh hơn (đe dọa hơn)
+    addAnimation("idle", std::make_unique<Animation>("boar_idle", 4, 48, 32, 0.12f, true));
+    addAnimation("run",  std::make_unique<Animation>("boar_run",  6, 48, 32, 0.08f, true));
+    addAnimation("dead", std::make_unique<Animation>("boar_hit",  4, 48, 32, 0.05f, false));
+    setState("idle");
 }
 
 void BoarKing::act(Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) {
@@ -32,6 +35,7 @@ void BoarKing::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
 
     // 2. Đòn chốt khi đã kề cạnh: mỗi lượt thứ 3 là đòn HÚC x1.5 + đẩy lùi 1 ô
     if (sameFloor && std::abs(pPos.x - pos.x) == 1) {
+        setState("run");  // Húc lao vào người
         int baseAtk = getAttack();
         bool isSlam = (turnCount % 3 == 0);
         if (isSlam) combatLog.push_back("[LAN HUC!] Boar King hung va phong sat thuong lien hoan!");
@@ -53,6 +57,7 @@ void BoarKing::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
 
     // 3. ĐUỔI/TUẦN TRA: aggro 6 ô cùng tầng (8 khi Cực Giản)
     if (sameFloor && std::abs(dx) <= aggroRange && hasLineOfSight(dungeon, pPos)) {
+        setState("run");  // Animation chạy khi đuổi
         faceTowards(pPos);
         // Mỗi lượt thứ 3: LÃO HÚC — lao tới tối đa 3 ô liên tiếp
         int steps = (turnCount % 3 == 0) ? 3 : 1;
@@ -64,6 +69,7 @@ void BoarKing::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
     }
 
     // 4. Tuần tra quanh Cổng Cửa khi người chơi chưa tới gần
+    setState("idle");  // Animation đứng gầm gừ
     patrolStep(dungeon);
 }
 
@@ -86,5 +92,12 @@ void BoarKing::render(float scale, Vector2 offset) const {
         (float)(pos.y * Constants::TILE_SIZE) - fHeight + 4.0f + offset.y
     };
 
-    currentAnim->draw(screenPos, s, Color{ 255, 225, 160, 255 });
+    Color tint = Color{ 255, 225, 160, 255 };
+    if (dying && currentAnim->getTotalFrames() > 1) {
+        float progress = (float)currentAnim->getCurrentFrame() / (float)(currentAnim->getTotalFrames() - 1);
+        if (progress > 1.0f) progress = 1.0f;
+        tint.a = (unsigned char)(255.0f * (1.0f - progress));
+    }
+
+    currentAnim->draw(screenPos, s, tint);
 }

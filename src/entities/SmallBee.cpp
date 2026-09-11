@@ -11,8 +11,12 @@ SmallBee::SmallBee(const Position& pos)
     : Monster("Small Bee (Ong sat thu)", pos, 25, 10, 1, 15, 6,
               /*aggroRange*/ 6, /*patrolRange*/ 2, /*flying*/ true),
       evasionChance(35) {
-    // Khởi tạo animation bay cho Bee: 4 frames, 64x64
-    setAnimation(std::make_unique<Animation>("bee_fly", 4, 64, 64, 0.10f));
+    // Hoạt họa đa trạng thái: idle (lượn lờ), run (bay đuổi), attack (lao chích), dead (Hit-Vanish)
+    addAnimation("idle",   std::make_unique<Animation>("bee_fly",    4, 64, 64, 0.12f, true));
+    addAnimation("run",    std::make_unique<Animation>("bee_fly",    4, 64, 64, 0.08f, true));
+    addAnimation("attack", std::make_unique<Animation>("bee_attack", 4, 64, 64, 0.06f, false));
+    addAnimation("dead",   std::make_unique<Animation>("bee_hit",    4, 64, 64, 0.06f, false));
+    setState("idle");
 }
 
 void SmallBee::takeDamage(int amount) {
@@ -20,7 +24,7 @@ void SmallBee::takeDamage(int amount) {
         std::cout << "[Ne don!] " << name << " tai " << pos << " da bay luon ne sach don danh!" << std::endl;
         return;
     }
-    Entity::takeDamage(amount);
+    Monster::takeDamage(amount);
 }
 
 void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) {
@@ -41,6 +45,7 @@ void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
     //    (|dx|==1 && dy==-1) — vị trí này người chơi đánh phản đòn được qua
     //    ô chéo phía trước, nên cuộc đấu luôn công bằng (hit-and-run)
     if (std::abs(dx) == 1 && dy == -1) {
+        setState("attack");  // Animation lao chích
         combatLog.push_back("[CHICH!] Small Bee lao toi chich mot don roi bay di!");
         CombatSystem::attack(*this, player, combatLog);
 
@@ -54,6 +59,7 @@ void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
     // 2. ĐUỔI THEO: phát hiện người chơi trong bán kính aggro (quái bay nhìn mọi hướng)
     int cheb = std::max(std::abs(dx), std::abs(dy));
     if (cheb <= aggroRange) {
+        setState("run");  // Animation bay nhanh khi đuổi
         setFacing(pPos.x > pos.x);
 
         // Nếu đang THẤP hơn người chơi -> ưu tiên bay lên trước
@@ -81,6 +87,7 @@ void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
     }
 
     // 3. LƯỚN LỌ QUANH ĐIỂM SINH: bay theo hình vuông nhỏ 4 điểm
+    setState("idle");  // Animation lượn lờ nhẹ nhàng
     static const Position hoverOffsets[4] = {
         Position(-1, 0), Position(0, -1), Position(1, 0), Position(0, 1)
     };

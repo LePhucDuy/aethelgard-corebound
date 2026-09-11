@@ -126,7 +126,7 @@ void Player::update(float deltaTime) {
 void Player::render(float scale, Vector2 offset) const {
     // Lấy animation theo trạng thái hiện tại (idle/run/attack/jump/dead)
     auto it = anims.find(currentState);
-    const Animation* anim = (it != anims.end()) ? it->second.get() : currentAnim.get();
+    const Animation* anim = (it != anims.end()) ? it->second.get() : currentAnim;
     if (!anim) return;
 
     // CHUẨN HÓA ANCHOR giống Entity::render cho Monster:

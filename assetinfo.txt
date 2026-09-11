@@ -1,0 +1,6 @@
+assets/mobs/boar/Idle/Idle-Sheet.png:          PNG image data, 192 x 32, 8-bit/color RGBA, non-interlaced
+assets/mobs/boar/Run/Run-Sheet.png:            PNG image data, 288 x 32, 8-bit/color RGBA, non-interlaced
+assets/mobs/boar/Hit-Vanish/Hit-Sheet.png:     PNG image data, 192 x 32, 8-bit/color RGBA, non-interlaced
+assets/mobs/small_bee/Attack/Attack-Sheet.png: PNG image data, 256 x 64, 8-bit/color RGBA, non-interlaced
+assets/mobs/small_bee/Hit/Hit-Sheet.png:       PNG image data, 256 x 64, 8-bit/color RGBA, non-interlaced
+assets/mobs/snail/Dead-Sheet.png:              PNG image data, 384 x 32, 8-bit/color RGBA, non-interlaced

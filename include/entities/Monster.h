@@ -2,6 +2,7 @@
 #define MONSTER_H
 
 #include <vector>
+#include <map>
 #include "entities/Entity.h"
 
 // Forward declaration
@@ -33,9 +34,31 @@ protected:
     int turnCount;      // Số lượt đã qua (dùng cho kỹ năng theo chu kỳ)
     int patrolDir;      // Hướng tuần tra hiện tại (+1 / -1)
 
+    // Hệ thống hoạt họa nhiều trạng thái (idle/run/attack/hit/dead...)
+    std::map<std::string, std::unique_ptr<Animation>> anims;
+    std::string animState;   // Tên animation đang dùng
+    bool dying;              // Đã chết và đang phát animation biến mất
+    bool rewarded;           // Đã trao thưởng EXP/Vàng (tránh trao 2 lần)
+
+public:
+
     // ===== Helper AI dùng chung cho mọi loài =====
     void setFacing(bool right);
     void faceTowards(const Position& target);
+
+    // Quản lý hoạt họa (public để Dungeon gọi update/render)
+    void addAnimation(const std::string& stateName, std::unique_ptr<Animation> anim);
+    void setState(const std::string& stateName);   // Chuyển animation, reset về frame 0
+    const std::string& getState() const { return animState; }
+    void update(float deltaTime) override;
+    void render(float scale = 2.0f, Vector2 offset = {0.0f, 0.0f}) const override;
+
+    // Chết: phát animation biến mất (Hit-Vanish / Dead) rồi mới được dọn khỏi map
+    void kill();
+    bool isDying() const { return dying; }
+    bool isDeathAnimFinished() const;
+    bool isRewarded() const { return rewarded; }
+    void markRewarded() { rewarded = true; }
 
     // Bước tới ô đích nếu an toàn: walkable, không đè quái khác, không đè player,
     // và (với quái bộ) ô đích phải có sàn đỡ phía dưới
@@ -59,6 +82,9 @@ public:
     // AI theo lượt — mỗi loài quái tự triển khai hành vi riêng (Polymorphism)
     void act(Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) override = 0;
     virtual void onDeath(Player& player) = 0;
+
+    // Phản ứng trúng đòn: kích hoạt animation Hit (flash) rồi Entity::takeDamage xử lý máu
+    void takeDamage(int amount) override;
 
     int getExpReward() const { return expReward; }
     int getGoldReward() const { return goldReward; }

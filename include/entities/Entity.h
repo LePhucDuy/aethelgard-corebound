@@ -47,8 +47,9 @@ protected:
     int defense;
     bool alive;
 
-    // Quan hệ hợp thành (Composition): Entity sở hữu Animation của chính nó
-    std::unique_ptr<Animation> currentAnim;
+    // Con trỏ không sở hữu (non-owning) trỏ đến animation đang hoạt động
+    // Animation thực sự được sở hữu bởi std::map trong lớp con (Monster, Player)
+    Animation* currentAnim = nullptr;
 
 public:
     Entity(const std::string& name, const Position& pos, int hp, int attack, int defense);
@@ -79,7 +80,7 @@ public:
 
     // Quản lý animation
     void setAnimation(std::unique_ptr<Animation> anim);
-    Animation* getAnimation() { return currentAnim.get(); }
+    Animation* getAnimation() { return currentAnim; }
 
     // Nạp chồng toán tử in thông tin thực thể
     friend std::ostream& operator<<(std::ostream& os, const Entity& entity) {

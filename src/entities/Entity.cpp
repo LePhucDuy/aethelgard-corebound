@@ -43,5 +43,5 @@ void Entity::render(float scale, Vector2 offset) const {
 }
 
 void Entity::setAnimation(std::unique_ptr<Animation> anim) {
-    currentAnim = std::move(anim);
+    currentAnim = anim.release();  // Giải phóng quyền sở hữu từ unique_ptr, gán raw pointer
 }

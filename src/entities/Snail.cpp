@@ -8,17 +8,21 @@ Snail::Snail(const Position& pos)
     : Monster("Snail (Oc sen giap)", pos, 30, 4, 3, 30, 15,
               /*aggroRange*/ 2, /*patrolRange*/ 1, /*flying*/ false),
       isHiding(false), turnsToMove(0) {
-    setAnimation(std::make_unique<Animation>("snail_walk", 8, 48, 32, 0.14f));
+    // Hoạt họa đa trạng thái: idle (bò ra), hide (rút vỏ), dead (chết)
+    addAnimation("idle", std::make_unique<Animation>("snail_walk", 8, 48, 32, 0.18f, true));
+    addAnimation("hide", std::make_unique<Animation>("snail_hide", 8, 48, 32, 0.16f, true));
+    addAnimation("dead", std::make_unique<Animation>("snail_dead", 8, 48, 32, 0.10f, false));
+    setState("idle");
 }
 
 void Snail::takeDamage(int amount) {
-    Entity::takeDamage(amount);
+    Monster::takeDamage(amount);
 
     if (alive && hp <= (maxHp / 2) && !isHiding) {
         isHiding = true;
         defense += 5; // Tăng thêm 5 giáp (tổng 8 DEF)
-        setAnimation(std::make_unique<Animation>("snail_hide", 8, 48, 32, 0.16f));
-        std::cout << "[KY NANG] " << name << " tai " << pos 
+        setState("hide");  // Chuyển sang animation rút vỏ
+        std::cout << "[KY NANG] " << name << " tai " << pos
                   << " da kich hoat [RUT VAO VO]! Thu minh trong vo va ngung tan cong!" << std::endl;
     }
 }
@@ -41,6 +45,7 @@ void Snail::act(Dungeon& dungeon, Player& player, std::vector<std::string>& comb
     }
 
     // 3. BÒ CHẬM RÃI: mỗi 3 lượt di chuyển 1 ô quanh điểm sinh (patrolRange = 1)
+    setState("idle");  // Animation bò chậm
     turnsToMove++;
     if (turnsToMove % 3 == 0) {
         patrolStep(dungeon);
