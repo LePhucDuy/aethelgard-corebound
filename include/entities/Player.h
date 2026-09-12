@@ -70,6 +70,7 @@ public:
     void addAnimation(const std::string& stateName, std::unique_ptr<Animation> anim);
     void setState(const std::string& stateName);
     const std::string& getState() const { return currentState; }
+    const Animation* getCurrentAnimation() const;
 
     // Getters & Setters
     int getLevel() const { return level; }

@@ -45,6 +45,12 @@ void Player::addAnimation(const std::string& stateName, std::unique_ptr<Animatio
     anims[stateName] = std::move(anim);
 }
 
+const Animation* Player::getCurrentAnimation() const {
+    auto it = anims.find(currentState);
+    if (it != anims.end() && it->second) return it->second.get();
+    return currentAnim;
+}
+
 void Player::setState(const std::string& stateName) {
     if (anims.find(stateName) != anims.end()) {
         currentState = stateName;
@@ -129,18 +135,21 @@ void Player::render(float scale, Vector2 offset) const {
     const Animation* anim = (it != anims.end()) ? it->second.get() : currentAnim;
     if (!anim) return;
 
-    // CHUẨN HÓA ANCHOR: mọi state dùng chung chiều cao tham chiếu REF_H = 80 (cao nhất
-    // trong các sheet: idle/run/attack cao 80, jump/dead chỉ cao 64). Đáy sprite luôn
-    // neo tại mép dưới ô đang đứng: (pos.y + 1) * TILE_SIZE.
-    // -> Fix bug "nhảy tại chỗ bị lún thấp hơn": trước đây mỗi frame tự neo theo
-    // fHeight riêng nên jump (64px) vẽ thấp hơn idle (80px) đúng 16px * scale ~ 29px.
+    // CHUẨN HÓA ANCHOR — mọi state neo chung theo chiều cao tham chiếu REF_H = 80
+    // (cao nhất họ Warrior): đáy LOGIC = pos.y*TILE + FOOT_SINK(6) + trim*scale.
+    // Jump/dead 64px KHÔNG tự neo theo fHeight riêng nữa (đó là lý do nhảy bị lún
+    // đúng 16px*scale) mà neo theo refHeight 80px + trim 6px của chính nó, nên
+    // bàn chân mọi state trùng khít nhau, hết lún khi nhảy.
     constexpr float REF_FRAME_H = 80.0f;
+    constexpr float FOOT_SINK = 6.0f;
     float fWidth = (float)anim->getFrameWidth() * scale;
     float refHeight = REF_FRAME_H * scale;
+    float trimBottom = 12.0f; // idle/run/attack 80px
+    if (currentState == "jump" || currentState == "dead") trimBottom = 6.0f;
 
     Vector2 screenPos = {
         (float)(pos.x * Constants::TILE_SIZE) + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
-        (float)((pos.y + 1) * Constants::TILE_SIZE) - refHeight + offset.y
+        (float)(pos.y * Constants::TILE_SIZE) + FOOT_SINK - refHeight + trimBottom * scale + offset.y
     };
 
     anim->draw(screenPos, scale);

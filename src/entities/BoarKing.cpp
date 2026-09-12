@@ -82,14 +82,17 @@ void BoarKing::onDeath(Player& player) {
 void BoarKing::render(float scale, Vector2 offset) const {
     if (!currentAnim) return;
 
-    // Boss to hơn (x1.35) và ánh vàng để phân biệt
+    // Boss to hơn (x1.35) và ánh vàng để phân biệt — neo chân đồng bộ quái
+    // (FOOT_SINK 6 + TRIM 2, theo tỉ lệ scale boss s).
     float s = scale * 1.35f;
     float fWidth = (float)currentAnim->getFrameWidth() * s;
     float fHeight = (float)currentAnim->getFrameHeight() * s;
+    constexpr float FOOT_SINK = 6.0f;
+    constexpr float TRIM_BOTTOM = 2.0f;
 
     Vector2 screenPos = {
         (float)(pos.x * Constants::TILE_SIZE) + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
-        (float)((pos.y + 1) * Constants::TILE_SIZE) - fHeight + 10.0f + offset.y
+        (float)(pos.y * Constants::TILE_SIZE) + FOOT_SINK + TRIM_BOTTOM * s - fHeight + offset.y
     };
 
     Color tint = Color{ 255, 225, 160, 255 };

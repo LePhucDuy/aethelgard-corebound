@@ -47,12 +47,16 @@ void Monster::render(float scale, Vector2 offset) const {
     float fWidth = (float)currentAnim->getFrameWidth() * scale;
     float fHeight = (float)currentAnim->getFrameHeight() * scale;
 
-    // pos = ô WALKABLE của quái bộ (mặt cỏ), ô EMPTY của ong bay.
-    // Quái bộ: chân đặt ở mép dưới ô đang đứng (neo gốc + TILE_SIZE).
-    // Ong bay: giữ nguyên neo cũ (bay lơ lửng trên không là đúng).
+    // pos = ô FLOOR (mặt cỏ) của quái bộ, ô EMPTY của ong bay.
+    // Đáy FRAME neo tại mép TRÊN ô + lún 6px, cộng TRIM đáy NHỎ (~2px) cho phần
+    // đệm trong suốt dưới chân ốc/heo. TRIM 10 cũ đẩy quái chìm ~14px*scale
+    // xuống lòng đất (bug ảnh mới) nên giảm về 2px cho chân vừa chạm cỏ.
+    // Ong bay giữ neo cũ (bay lơ lửng trên không là đúng).
+    constexpr float FOOT_SINK = 6.0f;
+    constexpr float TRIM_BOTTOM = 2.0f;
     Vector2 screenPos = {
         (float)(pos.x * Constants::TILE_SIZE) + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
-        (float)((flying ? pos.y : pos.y + 1) * Constants::TILE_SIZE) - fHeight + offset.y
+        (float)(pos.y * Constants::TILE_SIZE) - fHeight + (flying ? 0.0f : (FOOT_SINK + TRIM_BOTTOM * scale)) + offset.y
     };
 
     Color tint = WHITE;

@@ -438,6 +438,29 @@ void GameEngine::update(float deltaTime) {
     }
 
     camera.zoom = idealZoom + userZoomOffset;
+    if (camera.zoom < 0.6f) camera.zoom = 0.6f;
+    if (camera.zoom > 2.0f) camera.zoom = 2.0f;
+    // Hai mốc Y quan trọng: đỉnh tầng cao nhất (y=6) và đáy mặt đất (y=19).
+    float topWorldY = 6.0f * (float)Constants::TILE_SIZE;
+    float groundBottomY = 19.0f * (float)Constants::TILE_SIZE;
+    // Đoạn nội dung BẮT BUỘC phải lọt khung: từ ĐỈNH ĐẦU player tới ĐÁY mặt đất.
+    // (Neo chân mới: foot = pos.y*TILE + 6 + trim*scale, đầu = foot - fH*1.8.)
+    const Animation* animH = player.getCurrentAnimation();
+    float playerFHW = animH ? (float)animH->getFrameHeight() : 80.0f;
+    float playerTrimW = (playerFHW > 70.0f) ? 12.0f : 6.0f; // 80px -> 12, 64px -> 6
+    float playerFootW = (float)(player.getPosition().y * Constants::TILE_SIZE) + 6.0f + playerTrimW * 1.8f;
+    float playerHeadW = playerFootW - playerFHW * 1.8f;
+    float needTop = (playerHeadW < topWorldY) ? playerHeadW : topWorldY;
+    float needBottom = groundBottomY + (float)Constants::TILE_SIZE;
+    {
+        float fitZoom = activeHeight / ((needBottom - needTop) + 24.0f);
+        if (fitZoom < 0.55f) fitZoom = 0.55f;
+        if (camera.zoom > fitZoom) {
+            // Mượt zoom (tránh giật hình khi ngưỡng fit bật/tắt giữa chừng)
+            float f = 1.0f - std::exp(-6.0f * deltaTime);
+            camera.zoom += (fitZoom - camera.zoom) * f;
+        }
+    }
 
     // 1. Camera Target X: bám theo người chơi trên suốt 75 ô ngang của tầng ngục
     float screenW = (float)GetScreenWidth();
@@ -450,9 +473,6 @@ void GameEngine::update(float deltaTime) {
         if (targetX < halfViewW) targetX = halfViewW;
         if (targetX > worldWidth - halfViewW) targetX = worldWidth - halfViewW;
     }
-    // Hai mốc Y quan trọng: đỉnh tầng cao nhất (y=6) và đáy mặt đất (y=19).
-    float topWorldY = 6.0f * (float)Constants::TILE_SIZE;
-    float groundBottomY = 19.0f * (float)Constants::TILE_SIZE;
     // Deadzone dọc: player di chuyển trong vùng này thì camera Y đứng yên
     // (không giật); chỉ pan khi player vượt biên trên/dưới của deadzone.
     float halfViewH = (activeHeight / 2.0f) / camera.zoom;
@@ -465,11 +485,11 @@ void GameEngine::update(float deltaTime) {
     float targetY = prevTargetY;
     if (dy < -DEADZONE_HALF) targetY = desiredTargetY + DEADZONE_HALF;
     else if (dy > DEADZONE_HALF) targetY = desiredTargetY - DEADZONE_HALF;
-    // Kẹp: nửa khung nhìn không được vượt quá [topWorldY, groundBottomY + TILE]
-    // để luôn còn đất trong khung hình, hết vùng đen bên dưới.
-    float minTargetY = topWorldY + halfViewH;
-    float maxTargetY = groundBottomY + (float)Constants::TILE_SIZE - halfViewH;
-    if (minTargetY > maxTargetY) targetY = (topWorldY + groundBottomY) / 2.0f;
+    // Kẹp: nửa khung nhìn không được vượt quá [needTop, needBottom]
+    // để ôm trọn cả đầu player lẫn mặt đất, hết vùng đen bên dưới.
+    float minTargetY = needTop + halfViewH;
+    float maxTargetY = needBottom - halfViewH;
+    if (minTargetY > maxTargetY) targetY = (needTop + needBottom) / 2.0f;
     else {
         if (targetY < minTargetY) targetY = minTargetY;
         if (targetY > maxTargetY) targetY = maxTargetY;
