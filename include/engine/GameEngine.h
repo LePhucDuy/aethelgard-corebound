@@ -38,6 +38,13 @@ private:
     float edgeSlipTimer;
     float userZoomOffset;
 
+    // Trạng thái lún đầm lầy (Swamp sinking)
+    bool isSinking;
+    bool submergedInSwamp;
+    float sinkTimer;
+    float sinkDuration;
+    float sinkDepth;
+
     // Kịch bản màn chơi
     int currentZone;               // Khu vực hiện tại (-1: chưa vào khu nào)
     std::string bannerText;        // Banner thông báo khu mới
@@ -66,8 +73,8 @@ public:
     // Cập nhật logic theo khung thời gian delta
     void update(float deltaTime);
 
-    // Vẽ toàn bộ thế giới game và giao diện người dùng
-    void render() const;
+    // Vẽ toàn bộ thế giới game và giao diện người dùng (hỗ trợ chụp ảnh màn hình đồng bộ trước SwapBuffers)
+    void render(const std::string& screenshotPath = "") const;
 
     // Vòng lặp chính của game (hỗ trợ chụp ảnh tự động khi truyền đường dẫn)
     void run(const std::string& autoScreenshot = "");

@@ -8,6 +8,7 @@ Player::Player(const std::string& name, const Position& pos, int hp, int attack,
       level(1), exp(0), expToNextLevel(50), gold(0),
       inventory(std::make_unique<Inventory>(Constants::MAX_INVENTORY_SLOTS)),
       currentState("idle"), runTimer(0.0f), jumpTimer(0.0f), jumpVisualLift(0.0f),
+      sinkVisualOffset(0.0f),
       facingRight(true) {}
 
 void Player::checkLevelUp() {
@@ -185,7 +186,7 @@ void Player::render(float scale, Vector2 offset) const {
     Vector2 screenPos = {
         visualPos.x + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
         visualPos.y + FOOT_SINK - refHeight + trimBottom * scale + offset.y
-            - jumpLift
+            - jumpLift + sinkVisualOffset
     };
 
     anim->draw(screenPos, scale);
@@ -235,5 +236,6 @@ void Player::resetStats(const Position& startPos) {
     runTimer = 0.0f;
     jumpTimer = 0.0f;
     jumpVisualLift = 0.0f;
+    sinkVisualOffset = 0.0f;
     facingRight = true;
 }

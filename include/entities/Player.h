@@ -34,6 +34,7 @@ private:
     float runTimer;
     float jumpTimer;       // Thời gian còn khóa hoạt họa nhảy (ưu tiên hơn run)
     float jumpVisualLift;  // Độ nâng hình ảnh (px world) cho cú nhảy xa
+    float sinkVisualOffset;// Độ lún vào bùn đầm lầy (px)
     bool facingRight;
 
     void checkLevelUp();
@@ -93,6 +94,8 @@ public:
     // Đặt lại chỉ số ban đầu khi chơi lại
     void resetStats(const Position& startPos);
     void resetJumpVisual() { jumpTimer = 0.0f; jumpVisualLift = 0.0f; }
+    void setSinkVisualOffset(float offset) { sinkVisualOffset = offset; }
+    float getSinkVisualOffset() const { return sinkVisualOffset; }
 };
 
 #endif // PLAYER_H

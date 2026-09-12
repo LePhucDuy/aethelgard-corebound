@@ -6,6 +6,7 @@
 #include "items/Weapon.h"
 #include "entities/Snail.h"
 #include "core/Constants.h"
+#include <rlgl.h>
 #include <iostream>
 #include <cmath>
 #include <algorithm>
@@ -18,6 +19,11 @@ GameEngine::GameEngine(int spawnX, int spawnY, bool startWithInventory)
       attackTimer(0.0f),
       edgeSlipTimer(0.0f),
       userZoomOffset(0.0f),
+      isSinking(false),
+      submergedInSwamp(false),
+      sinkTimer(0.0f),
+      sinkDuration(1.6f),
+      sinkDepth(0.0f),
       currentZone(-1),
       bannerText(""),
       bannerTimer(0.0f),
@@ -126,12 +132,53 @@ void GameEngine::handleInput() {
             monstersDefeated = 0;
             currentZone = -1; // Kích hoạt lại banner khu A
             edgeSlipTimer = 0.0f;
+            isSinking = false;
+            submergedInSwamp = false;
+            sinkTimer = 0.0f;
+            sinkDepth = 0.0f;
+            player.setSinkVisualOffset(0.0f);
             state = GameState::RUNNING;
         }
         return;
     }
 
     Position pPos = player.getPosition();
+
+    // =========================================================================
+    // XỬ LÝ KHI ĐANG BỊ LÚN ĐẦM LẦY (SWAMP SINKING)
+    // =========================================================================
+    if (isSinking) {
+        // Cho phép người chơi vùng vẫy phóng mình nhảy thoát lên bờ trong nửa giây đầu (sinkTimer > 0.8s)
+        if (sinkTimer > 0.8f && IsKeyPressed(KEY_SPACE)) {
+            int escDir = player.isFacingRight() ? 1 : -1;
+            if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) escDir = 1;
+            if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))  escDir = -1;
+
+            Position candidates[] = {
+                Position(pPos.x + escDir * 2, 18),
+                Position(pPos.x + escDir, 18),
+                Position(pPos.x - escDir * 2, 18),
+                Position(pPos.x - escDir, 18),
+                Position(pPos.x + escDir * 3, 18),
+                Position(pPos.x - escDir * 3, 18)
+            };
+
+            for (const auto& cand : candidates) {
+                if (dungeon.isValidPos(cand) && dungeon.isWalkable(cand) && !dungeon.isWater(cand) && dungeon.getMonsterAt(cand) == nullptr) {
+                    player.triggerJump(cand.x - pPos.x, -1);
+                    player.setPosition(cand);
+                    isSinking = false;
+                    sinkTimer = 0.0f;
+                    sinkDepth = 0.0f;
+                    player.setSinkVisualOffset(0.0f);
+                    combatLog.push_back("[THOAT HIEM!] Ban da kip thoi vung vay phong minh thoat khoi dam lay lun!");
+                    return;
+                }
+            }
+        }
+        // Khi đang lún: bị bùn giữ chân, không thể đi lại hay tấn công bình thường
+        return;
+    }
 
     // Phím Toàn màn hình [F11] hoặc [Alt + Enter]
     if (IsKeyPressed(KEY_F11) || ((IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) && IsKeyPressed(KEY_ENTER))) {
@@ -372,9 +419,12 @@ void GameEngine::handleInput() {
                         Position cand(jX, fallY);
                         if (dungeon.isWater(cand)) {
                             player.setPosition(cand);
-                            player.takeDamage(9999);
-                            state = GameState::GAME_OVER;
-                            combatLog.push_back(">>> BAN DA ROI XUONG VUC NUOC VA BI CHET DUOI! Nhan [R] de hoi sinh va thu lai. <<<");
+                            isSinking = true;
+                            sinkTimer = sinkDuration;
+                            sinkDepth = 0.0f;
+                            player.setSinkVisualOffset(0.0f);
+                            combatLog.push_back("[LUN DAM LAY] Ban da phong minh xuong dam lay lun va dang bi chim dan!");
+                            combatLog.push_back(">> Nhanh tay nhan [Space] de vung vay thoat len bo!");
                             jumped = true;
                             break;
                         }
@@ -493,12 +543,15 @@ void GameEngine::handleInput() {
                         bool landed = false;
                         for (int fallY = pPos.y; fallY < dungeon.getHeight(); ++fallY) {
                             Position checkPos(targetX, fallY);
-                            // RƠI TRÚNG VỰC NƯỚC -> CHẾT ĐUỐI!
+                            // RƠI TRÚNG ĐẦM LẦY -> BẮT ĐẦU CHÌM DẦN!
                             if (dungeon.isWater(checkPos)) {
                                 player.setPosition(checkPos);
-                                player.takeDamage(9999);
-                                state = GameState::GAME_OVER;
-                                combatLog.push_back(">>> BAN DA SA CHAN XUONG VUC NUOC VA BI CHET DUOI! Nhan [R] de hoi sinh va thu lai. <<<");
+                                isSinking = true;
+                                sinkTimer = sinkDuration;
+                                sinkDepth = 0.0f;
+                                player.setSinkVisualOffset(0.0f);
+                                combatLog.push_back("[LUN DAM LAY] Ban da sa vao dam lay lun va dang bi chim dan!");
+                                combatLog.push_back(">> Nhanh tay nhan [Space] de vung vay thoat len bo!");
                                 landed = true;
                                 break;
                             }
@@ -616,11 +669,33 @@ void GameEngine::update(float deltaTime) {
     if (attackTimer > 0.0f) attackTimer -= deltaTime;
     if (edgeSlipTimer > 0.0f) edgeSlipTimer -= deltaTime;
 
-    // Kiểm tra an toàn: nếu người chơi sa chân vào nước ở bất kỳ thời điểm nào -> Chết đuối và Game Over
-    if (state == GameState::RUNNING && dungeon.isWater(player.getPosition())) {
-        player.takeDamage(9999);
-        state = GameState::GAME_OVER;
-        combatLog.push_back(">>> BAN DA SA CHAN XUONG DONG NUOC VA BI CHET DUOI! Nhan [R] de hoi sinh va thu lai. <<<");
+    // Cập nhật tiến trình lún đầm lầy (Swamp Sinking)
+    if (state == GameState::RUNNING && isSinking) {
+        sinkTimer -= deltaTime;
+        float progress = 1.0f - (sinkTimer / sinkDuration);
+        if (progress < 0.0f) progress = 0.0f;
+        if (progress > 1.0f) progress = 1.0f;
+
+        // Nhân vật chìm sâu dần vào bùn (tối đa 32px)
+        sinkDepth = progress * 32.0f;
+        player.setSinkVisualOffset(sinkDepth);
+
+        // Đã chìm hết thời gian -> Nuốt chửng hoàn toàn & Game Over
+        if (sinkTimer <= 0.0f) {
+            isSinking = false;
+            submergedInSwamp = true;
+            player.takeDamage(9999);
+            state = GameState::GAME_OVER;
+            combatLog.push_back(">>> BAN DA BI DAM LAY NUOT CHUNG VA MAT MANG! Nhan [R] de hoi sinh va thu lai. <<<");
+        }
+    } else if (state == GameState::RUNNING && dungeon.isWater(player.getPosition()) && !isSinking) {
+        // Kích hoạt lún đầm lầy nếu người chơi đang đứng trên ô đầm lầy
+        isSinking = true;
+        sinkTimer = sinkDuration;
+        sinkDepth = 0.0f;
+        player.setSinkVisualOffset(0.0f);
+        combatLog.push_back("[LUN DAM LAY] Ban da sa vao dam lay lun va dang bi chim dan vao bun sau!");
+        combatLog.push_back(">> Nhanh tay nhan [Space] de vung vay thoat len bo!");
     }
 
     // ===== KỊCH BẢN PHÂN KHU: banner khi người chơi đi qua mốc khu mới (5 khu vực) =====
@@ -1034,7 +1109,7 @@ void GameEngine::renderHUD() const {
     }
 }
 
-void GameEngine::render() const {
+void GameEngine::render(const std::string& screenshotPath) const {
     BeginDrawing();
     ClearBackground(Color{ 108, 160, 220, 255 });
 
@@ -1052,13 +1127,54 @@ void GameEngine::render() const {
     // 4. Vẽ quái vật (đa hình, đứng chân chuẩn trên mặt cỏ)
     dungeon.renderMonsters(Vector2{0.0f, 0.0f});
 
-    // 5. Vẽ người chơi (bàn chân đứng vững chãi ngay trên mặt cỏ)
-    player.render(1.8f, Vector2{ 0.0f, 0.0f });
+    // 5. Vẽ người chơi (khi đã chìm hẳn vào đầm lầy thì không cần vẽ hoạt ảnh chết)
+    if (!submergedInSwamp) {
+        player.render(1.8f, Vector2{ 0.0f, 0.0f });
+    }
+
+    // 5.1. Hiệu ứng bùn lầy phủ quanh người và bọt khí sôi khi đang lún đầm lầy
+    if (isSinking) {
+        Vector2 pV = player.getVisualPosition();
+        float mudY = 18.0f * (float)Constants::TILE_SIZE + 14.0f; // Bề mặt bùn lầy
+        float timeSec = (float)GetTime();
+
+        // Lớp bùn phủ trùm lên nửa thân dưới đang lún
+        DrawRectangle((int)(pV.x - 8), (int)mudY, Constants::TILE_SIZE + 16, 20, Color{ 34, 46, 24, 220 });
+        DrawRectangle((int)(pV.x - 4), (int)(mudY - 2), Constants::TILE_SIZE + 8, 4, Color{ 58, 86, 38, 240 });
+
+        // Bong bóng bùn sôi quanh người chơi
+        for (int b = 0; b < 4; ++b) {
+            float bx = pV.x + 4.0f + (float)b * 8.0f + sinf(timeSec * 4.0f + (float)b) * 3.0f;
+            float by = mudY - 2.0f + cosf(timeSec * 5.0f + (float)b) * 3.0f;
+            float br = 1.5f + sinf(timeSec * 6.0f + (float)b) * 0.8f;
+            if (br > 0.5f) {
+                DrawCircle((int)bx, (int)by, br, Color{ 140, 215, 80, 230 });
+            }
+        }
+    } else if (submergedInSwamp) {
+        // Khi đã chìm hẳn: chỉ còn bọt khí sủi tăm nơi vừa chìm, không vẽ hoạt ảnh chết
+        Vector2 pV = player.getVisualPosition();
+        float mudY = 18.0f * (float)Constants::TILE_SIZE + 14.0f;
+        float timeSec = (float)GetTime();
+        for (int b = 0; b < 3; ++b) {
+            float bx = pV.x + 4.0f + (float)b * 10.0f + sinf(timeSec * 3.0f + (float)b) * 4.0f;
+            float by = mudY - 1.0f + cosf(timeSec * 4.0f + (float)b) * 2.0f;
+            float br = 1.2f + sinf(timeSec * 5.0f + (float)b) * 0.6f;
+            if (br > 0.4f) {
+                DrawCircle((int)bx, (int)by, br, Color{ 140, 215, 80, 180 });
+            }
+        }
+    }
 
     EndMode2D();
 
     // 6. Vẽ giao diện người dùng
     renderHUD();
+
+    if (!screenshotPath.empty()) {
+        rlDrawRenderBatchActive();
+        TakeScreenshot(screenshotPath.c_str());
+    }
 
     EndDrawing();
 }
@@ -1071,22 +1187,35 @@ void GameEngine::run(const std::string& autoScreenshot) {
     init();
 
     int testFrames = 0;
+    int gameOverFrames = 0;
 
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
         update(dt);
-        render();
+
+        bool takeNow = false;
+        if (!autoScreenshot.empty()) {
+            testFrames++;
+            if (autoScreenshot.find("submerge") != std::string::npos || autoScreenshot.find("gameover") != std::string::npos) {
+                if (state == GameState::GAME_OVER) {
+                    gameOverFrames++;
+                    if (gameOverFrames >= 3) {
+                        takeNow = true;
+                    }
+                }
+            } else {
+                takeNow = (testFrames >= 10);
+            }
+        }
+
+        render(takeNow ? autoScreenshot : "");
 
         if (IsKeyPressed(KEY_F12)) {
             TakeScreenshot("screenshot.png");
         }
 
-        if (!autoScreenshot.empty()) {
-            testFrames++;
-            if (testFrames >= 10) {
-                TakeScreenshot(autoScreenshot.c_str());
-                break;
-            }
+        if (takeNow) {
+            break;
         }
     }
 

@@ -97,13 +97,13 @@ void Dungeon::generate(int floor) {
         }
     }
 
-    // TẠO CÁC VỰC NƯỚC SÂU Ở TẦNG ĐÁY (y = 18 đến height - 1)
-    // Vực nước 1: Rừng nấm (x = 40..44)
-    makeWaterChasm(40, 44);
-    // Vực nước 2: Vách đá huyền bí (x = 69..74)
-    makeWaterChasm(69, 74);
-    // Vực nước 3: Bình nguyên tàn tích (x = 98..103)
-    makeWaterChasm(98, 103);
+    // TẠO CÁC VỰC ĐẦM LẦY LÚN Ở TẦNG ĐÁY (y = 18 đến height - 1)
+    // Đầm lầy 1: Rừng nấm (x = 41..43, rộng 3 ô -> đứng ở bờ x=40 nhảy vọt qua x=44)
+    makeWaterChasm(41, 43);
+    // Đầm lầy 2: Vách đá huyền bí (x = 69..71, rộng 3 ô -> nhảy vọt từ x=68 sang x=72)
+    makeWaterChasm(69, 71);
+    // Đầm lầy 3: Bình nguyên tàn tích (x = 99..101, rộng 3 ô -> nhảy vọt từ x=98 sang x=102)
+    makeWaterChasm(99, 101);
 
     // =========================================================================
     // KHU A: TRẠI KHỞI ĐẦU (x = 0 đến 24)
@@ -539,52 +539,67 @@ void Dungeon::render(Vector2 offset) const {
 
             if (type == TileType::WATER) {
                 float timeSec = (float)GetTime();
-                float waterDrop = 14.0f; // Mặt nước thấp hơn nền cỏ 14px
+                float swampDrop = 14.0f; // Mặt bùn đầm lầy thấp hơn nền đất 14px
 
                 if (y == 18) {
-                    // 1. KHE NỨT ĐỊA CHẤT / VÁCH ĐÁ SÂU (vùng từ mép nền y=0 đến waterDrop)
-                    // Hốc tối vực sâu
-                    DrawRectangle((int)destRec.x, (int)destRec.y, (int)destRec.width, (int)waterDrop, Color{ 14, 20, 32, 230 });
-                    // Bóng đổ vòm vực
-                    DrawRectangle((int)destRec.x, (int)destRec.y, (int)destRec.width, 3, Color{ 8, 12, 20, 200 });
+                    // 1. KHE NỨT ĐẦM LẦY / BỜ VÁCH BÙN THỦNG (vùng từ mép nền y=0 đến swampDrop)
+                    // Hốc tối bùn than
+                    DrawRectangle((int)destRec.x, (int)destRec.y, (int)destRec.width, (int)swampDrop, Color{ 16, 20, 12, 235 });
+                    // Vòm bóng đổ rìa vực
+                    DrawRectangle((int)destRec.x, (int)destRec.y, (int)destRec.width, 3, Color{ 8, 12, 6, 210 });
 
-                    // BỜ VÁCH ĐẤT TRÁI (nếu ô bên trái là đất liền)
+                    // BỜ VÁCH ĐẤT BÙN TRÁI (nếu ô bên trái là đất liền)
                     if (x > 0 && grid[18][x - 1].getType() != TileType::WATER) {
-                        DrawRectangle((int)destRec.x, (int)destRec.y, 6, (int)waterDrop + 8, Color{ 65, 45, 30, 255 });
-                        DrawRectangle((int)destRec.x + 6, (int)destRec.y, 2, (int)waterDrop + 4, Color{ 40, 28, 18, 220 });
-                        DrawRectangle((int)destRec.x, (int)destRec.y, 5, 3, Color{ 55, 125, 55, 255 }); // Cỏ rủ mép trái
+                        DrawRectangle((int)destRec.x, (int)destRec.y, 6, (int)swampDrop + 8, Color{ 52, 38, 26, 255 });
+                        DrawRectangle((int)destRec.x + 6, (int)destRec.y, 2, (int)swampDrop + 4, Color{ 36, 26, 18, 220 });
+                        DrawRectangle((int)destRec.x, (int)destRec.y, 5, 3, Color{ 45, 95, 35, 255 }); // Rêu rủ mép trái
                     }
-                    // BỜ VÁCH ĐẤT PHẢI (nếu ô bên phải là đất liền)
+                    // BỜ VÁCH ĐẤT BÙN PHẢI (nếu ô bên phải là đất liền)
                     if (x < width - 1 && grid[18][x + 1].getType() != TileType::WATER) {
-                        DrawRectangle((int)(destRec.x + destRec.width - 6), (int)destRec.y, 6, (int)waterDrop + 8, Color{ 65, 45, 30, 255 });
-                        DrawRectangle((int)(destRec.x + destRec.width - 8), (int)destRec.y, 2, (int)waterDrop + 4, Color{ 40, 28, 18, 220 });
-                        DrawRectangle((int)(destRec.x + destRec.width - 5), (int)destRec.y, 5, 3, Color{ 55, 125, 55, 255 }); // Cỏ rủ mép phải
+                        DrawRectangle((int)(destRec.x + destRec.width - 6), (int)destRec.y, 6, (int)swampDrop + 8, Color{ 52, 38, 26, 255 });
+                        DrawRectangle((int)(destRec.x + destRec.width - 8), (int)destRec.y, 2, (int)swampDrop + 4, Color{ 36, 26, 18, 220 });
+                        DrawRectangle((int)(destRec.x + destRec.width - 5), (int)destRec.y, 5, 3, Color{ 45, 95, 35, 255 }); // Rêu rủ mép phải
                     }
 
-                    // 2. MẶT NƯỚC HẠ THẤP (bắt đầu từ destRec.y + waterDrop)
-                    Rectangle waterRec = {
+                    // 2. MẶT BÙN ĐẦM LẦY LÚN (bắt đầu từ destRec.y + swampDrop)
+                    Rectangle swampRec = {
                         destRec.x,
-                        destRec.y + waterDrop,
+                        destRec.y + swampDrop,
                         destRec.width,
-                        destRec.height - waterDrop
+                        destRec.height - swampDrop
                     };
-                    float waveH = sinf(timeSec * 3.5f + (float)x * 0.9f) * 2.5f;
+                    float bogH = sinf(timeSec * 2.2f + (float)x * 0.8f) * 2.0f;
 
-                    // Thân khối nước
-                    DrawRectangleRec(waterRec, Color{ 22, 85, 165, 235 });
-                    // Gợn sóng nhấp nhô bên dưới mép vực
-                    DrawRectangle((int)waterRec.x, (int)(waterRec.y + waveH + 2.0f), (int)waterRec.width, 3, Color{ 130, 215, 255, 220 });
-                    DrawRectangle((int)waterRec.x, (int)(waterRec.y + waveH), (int)waterRec.width, 2, Color{ 225, 248, 255, 240 });
-                    // Bọt nước sủi tăm
-                    float bubbleX = waterRec.x + 8.0f + sinf(timeSec * 2.0f + (float)x) * 6.0f;
-                    float bubbleY = waterRec.y + 6.0f + cosf(timeSec * 2.5f + (float)x) * 3.0f;
-                    DrawCircle((int)bubbleX, (int)bubbleY, 1.5f, Color{ 255, 255, 255, 190 });
+                    // Thân bùn đầm lầy xanh rêu đậm
+                    DrawRectangleRec(swampRec, Color{ 34, 46, 24, 245 });
+
+                    // Lớp váng rêu đầm lầy dập dềnh
+                    DrawRectangle((int)swampRec.x, (int)(swampRec.y + bogH + 2.0f), (int)swampRec.width, 4, Color{ 58, 86, 38, 235 });
+                    DrawRectangle((int)swampRec.x, (int)(swampRec.y + bogH), (int)swampRec.width, 2, Color{ 88, 128, 54, 230 });
+
+                    // Bọt khí mê-tan đầm lầy sôi sùng sục (Toxic swamp bubbles)
+                    // Bọt khí to
+                    float b1X = swampRec.x + 8.0f + sinf(timeSec * 1.8f + (float)x * 2.0f) * 6.0f;
+                    float b1Y = swampRec.y + 4.0f + cosf(timeSec * 2.2f + (float)x) * 2.5f;
+                    float b1R = 2.2f + sinf(timeSec * 3.0f + (float)x) * 0.8f;
+                    if (b1R > 0.8f) {
+                        DrawCircle((int)b1X, (int)b1Y, b1R, Color{ 135, 205, 80, 220 });
+                        DrawCircle((int)b1X, (int)b1Y, b1R * 0.5f, Color{ 210, 250, 160, 240 });
+                    }
+                    // Bọt khí nhỏ
+                    float b2X = swampRec.x + 22.0f + cosf(timeSec * 2.5f + (float)x * 1.5f) * 5.0f;
+                    float b2Y = swampRec.y + 6.0f + sinf(timeSec * 2.0f + (float)x * 3.0f) * 2.0f;
+                    DrawCircle((int)b2X, (int)b2Y, 1.4f, Color{ 160, 225, 95, 200 });
+
+                    // Làn khói độc mờ ảo bốc lên trên mặt bùn (Toxic swamp mist)
+                    float mistY = swampRec.y - 6.0f + sinf(timeSec * 1.5f + (float)x) * 3.0f;
+                    DrawRectangle((int)swampRec.x, (int)mistY, (int)swampRec.width, 5, Color{ 85, 160, 65, 40 });
                 } else {
-                    // Nước tầng sâu (y > 18): xanh thẳm huyền bí
-                    DrawRectangleRec(destRec, Color{ 10, 38, 78, 245 });
-                    // Vệt sáng khúc xạ ánh nước ngầm
+                    // Bùn lầy tầng sâu (y > 18): bùn đen quánh đặc
+                    DrawRectangleRec(destRec, Color{ 18, 25, 14, 250 });
+                    // Vệt quánh trầm tích đầm lầy
                     if ((x + y) % 3 == 0) {
-                        DrawRectangle((int)destRec.x + 4, (int)destRec.y + 6, (int)destRec.width - 8, 2, Color{ 40, 120, 190, 90 });
+                        DrawRectangle((int)destRec.x + 4, (int)destRec.y + 8, (int)destRec.width - 8, 3, Color{ 32, 44, 22, 110 });
                     }
                 }
                 continue;
