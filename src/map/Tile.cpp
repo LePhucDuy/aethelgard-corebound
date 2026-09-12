@@ -34,6 +34,12 @@ void Tile::setType(TileType newType) {
             walkable = true;
             sourceRect = Rectangle{ 112.0f, 16.0f, 16.0f, 16.0f };
             break;
+
+        case TileType::WATER:
+            // Vực nước sâu nguy hiểm (vẽ hiệu ứng hoạt họa riêng trong Dungeon::render)
+            walkable = false;
+            sourceRect = Rectangle{ 0.0f, 0.0f, 0.0f, 0.0f };
+            break;
     }
 }
 

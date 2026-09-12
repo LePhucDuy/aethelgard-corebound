@@ -11,7 +11,8 @@ enum class TileType {
     FLOOR,          // Bề mặt cỏ / lối đi bệ đá (nhân vật đứng và bước đi)
     WALL,           // Khối đất đá ngầm / vách núi (chặn va chạm)
     DOOR,           // Cổng gỗ / cửa đá
-    STAIRS_DOWN     // Bệ đá cổ chuyển tiếp xuống tầng sâu hơn
+    STAIRS_DOWN,    // Bệ đá cổ chuyển tiếp xuống tầng sâu hơn
+    WATER           // Vực nước sâu nguy hiểm (rơi xuống mất mạng và hồi sinh lại)
 };
 
 /**

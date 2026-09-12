@@ -60,6 +60,7 @@ public:
     // Kiểm tra tính hợp lệ của ô
     bool isValidPos(const Position& pos) const;
     bool isWalkable(const Position& pos) const;
+    bool isWater(const Position& pos) const;
 
     // Quản lý thực thể trên bản đồ
     Monster* getMonsterAt(const Position& pos);

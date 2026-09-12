@@ -119,10 +119,12 @@ void Monster::faceTowards(const Position& target) {
 }
 
 bool Monster::isGrounded(Dungeon& dungeon, const Position& p) const {
-    // Ô dưới chân phải là vật rắn (WALL/FLOOR gạch đỡ, STAIRS): tức là không thể đi xuyên
-    // qua được. EMPTY là không khí -> không có sàn đỡ.
-    if (!dungeon.isValidPos(Position(p.x, p.y + 1))) return true; // Đáy map: coi như có đất
-    return !dungeon.isWalkable(Position(p.x, p.y + 1));
+    // Ô dưới chân phải là vật rắn đỡ (WALL, FLOOR, STAIRS_DOWN).
+    // Tuyệt đối không đứng trên không khí (EMPTY) hoặc nước ngập (WATER)!
+    Position below(p.x, p.y + 1);
+    if (!dungeon.isValidPos(below)) return false;
+    TileType t = dungeon.getTileType(below);
+    return (t == TileType::WALL || t == TileType::FLOOR || t == TileType::STAIRS_DOWN);
 }
 
 bool Monster::hasLineOfSight(Dungeon& dungeon, const Position& target) const {

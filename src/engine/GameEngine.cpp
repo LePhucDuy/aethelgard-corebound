@@ -16,6 +16,7 @@ GameEngine::GameEngine(int spawnX, int spawnY, bool startWithInventory)
       state(GameState::RUNNING),
       moveTimer(0.0f),
       attackTimer(0.0f),
+      edgeSlipTimer(0.0f),
       userZoomOffset(0.0f),
       currentZone(-1),
       bannerText(""),
@@ -124,6 +125,7 @@ void GameEngine::handleInput() {
             combatLog.push_back("=== BAN DA HOI SINH! BAT DAU LAI TU TANG 1 ===");
             monstersDefeated = 0;
             currentZone = -1; // Kích hoạt lại banner khu A
+            edgeSlipTimer = 0.0f;
             state = GameState::RUNNING;
         }
         return;
@@ -245,7 +247,7 @@ void GameEngine::handleInput() {
             // Boss gate: hạ BoarKing -> mở khóa Cổng Cửa trên Đỉnh Đền Thờ
             if (wasKilled && dungeon.checkBossDefeated()) {
                 combatLog.push_back(">>> CHUA HEO RUNG DA HA GUOC! Cong cua o Dinh Den Tho da MO KHOA! <<<");
-                combatLog.push_back(">>> Hay leo len be vang (x70) va nhan [Space] de chien thang! <<<");
+                combatLog.push_back(">>> Hay leo len be vang (x126) va nhan [Space] de chien thang! <<<");
             }
         } else {
             // Kiểm tra xem có quái vật ở trên đầu / trần nhà không để thông báo rõ ràng
@@ -313,18 +315,44 @@ void GameEngine::handleInput() {
 
         bool jumped = false;
         if (directional) {
-            // Ưu tiên đáp XA trước: chéo xa 2 ô lên bệ -> ngang xa 3 ô ->
-            // ngang xa 2 ô -> chéo gần -> thẳng đứng -> bước tới.
+            // ƯU TIÊN BAY XA VƯỢT HỐ PIT (cự ly 3 ô, 4 ô, 5 ô, 2 ô, 1 ô với ưu tiên cùng độ cao)
             Position farCandidates[] = {
-                Position(pPos.x + jumpDir * 2, pPos.y - 1), // Nhảy xa 2 ô + lên bệ
-                Position(pPos.x + jumpDir * 3, pPos.y),     // Nhảy xa 3 ô ngang
+                // Nhảy xa 3 ô (cự ly chuẩn vượt hố pit 2 ô từ sát mép)
+                Position(pPos.x + jumpDir * 3, pPos.y),     // Bay xa 3 ô ngang bằng
+                Position(pPos.x + jumpDir * 3, pPos.y - 1), // Bay xa 3 ô + lên bệ 1 bậc
+                Position(pPos.x + jumpDir * 3, pPos.y + 1), // Bay xa 3 ô + xuống dốc 1 bậc
+                Position(pPos.x + jumpDir * 3, pPos.y - 2), // Bay xa 3 ô + lên cao 2 bậc
+
+                // Nhảy xa 4 ô (chạy lấy đà bấm nhảy sớm trước mép hố 1 ô)
+                Position(pPos.x + jumpDir * 4, pPos.y),     // Bay xa 4 ô ngang bằng
+                Position(pPos.x + jumpDir * 4, pPos.y - 1), // Bay xa 4 ô + lên bệ 1 bậc
+                Position(pPos.x + jumpDir * 4, pPos.y + 1), // Bay xa 4 ô + xuống dốc 1 bậc
+                Position(pPos.x + jumpDir * 4, pPos.y - 2), // Bay xa 4 ô + lên cao 2 bậc
+
+                // Nhảy xa 5 ô (chạy lấy đà bấm nhảy sớm trước mép hố 2 ô)
+                Position(pPos.x + jumpDir * 5, pPos.y),     // Bay xa 5 ô ngang bằng
+                Position(pPos.x + jumpDir * 5, pPos.y - 1), // Bay xa 5 ô + lên bệ 1 bậc
+                Position(pPos.x + jumpDir * 5, pPos.y + 1), // Bay xa 5 ô + xuống dốc 1 bậc
+
+                // Nhảy cự ly 2 ô
                 Position(pPos.x + jumpDir * 2, pPos.y),     // Nhảy xa 2 ô ngang
-                Position(pPos.x + jumpDir * 3, pPos.y - 1), // Bay xa 3 ô + lên cao
+                Position(pPos.x + jumpDir * 2, pPos.y - 1), // Nhảy xa 2 ô + lên bệ 1 bậc
+                Position(pPos.x + jumpDir * 2, pPos.y + 1), // Nhảy xa 2 ô + xuống dốc 1 bậc
+                Position(pPos.x + jumpDir * 2, pPos.y - 2), // Nhảy xa 2 ô + lên bệ 2 bậc
+                Position(pPos.x + jumpDir * 2, pPos.y + 2), // Nhảy xa 2 ô + xuống dốc 2 bậc
+
+                // Nhảy cự ly 1 ô
+                Position(pPos.x + jumpDir, pPos.y),         // Nhảy bước tới
                 Position(pPos.x + jumpDir, pPos.y - 1),     // Nhảy chéo gần lên bệ
-                Position(pPos.x + jumpDir * 2, pPos.y + 1), // Nhảy xa + đáp xuống dốc
-                Position(pPos.x, pPos.y - 1),               // Nhảy thẳng lên 1 ô
-                Position(pPos.x + jumpDir, pPos.y)          // Nhảy bước tới
+                Position(pPos.x + jumpDir, pPos.y + 1),     // Nhảy bước xuống dốc
+                Position(pPos.x + jumpDir, pPos.y - 2),     // Nhảy chéo gần lên bệ cao
+                Position(pPos.x + jumpDir, pPos.y + 2),
+
+                // Nhảy tại chỗ
+                Position(pPos.x, pPos.y - 1),
+                Position(pPos.x, pPos.y - 2)
             };
+
             for (const auto& target : farCandidates) {
                 if (canLand(target)) {
                     player.setPosition(target);
@@ -332,13 +360,45 @@ void GameEngine::handleInput() {
                     break;
                 }
             }
+
+            // Nếu không có bệ ngang/cao để đáp: người chơi sẽ phóng mình lao về phía trước và rơi xuống tầng dưới
+            if (!jumped) {
+                for (int dist = 2; dist >= 1 && !jumped; --dist) {
+                    int jX = pPos.x + jumpDir * dist;
+                    if (!dungeon.isValidPos(Position(jX, pPos.y))) continue;
+                    if (dungeon.getTileType(Position(jX, pPos.y)) == TileType::WALL) continue;
+
+                    for (int fallY = pPos.y + 1; fallY < dungeon.getHeight(); ++fallY) {
+                        Position cand(jX, fallY);
+                        if (dungeon.isWater(cand)) {
+                            player.setPosition(cand);
+                            player.takeDamage(9999);
+                            state = GameState::GAME_OVER;
+                            combatLog.push_back(">>> BAN DA ROI XUONG VUC NUOC VA BI CHET DUOI! Nhan [R] de hoi sinh va thu lai. <<<");
+                            jumped = true;
+                            break;
+                        }
+                        if (dungeon.isWalkable(cand) && dungeon.getMonsterAt(cand) == nullptr) {
+                            player.setPosition(cand);
+                            combatLog.push_back("[NHAY XUONG] Ban da phong minh roi xuong tang ben duoi!");
+                            jumped = true;
+                            break;
+                        }
+                    }
+                }
+            }
         } else {
+            // Nhảy không giữ hướng: vẫn ưu tiên lao tới phía trước theo hướng quay mặt
             Position jumpCandidates[] = {
-                Position(pPos.x + dirX, pPos.y - 1), // Nhảy chéo lên bệ trên
-                Position(pPos.x + dirX * 2, pPos.y), // Nhảy xa 2 ô phía trước
-                Position(pPos.x, pPos.y - 1),         // Nhảy thẳng lên 1 ô
-                Position(pPos.x, pPos.y - 2),         // Nhảy cao 2 ô
-                Position(pPos.x + dirX, pPos.y)      // Nhảy bước tới
+                Position(pPos.x + dirX * 3, pPos.y),
+                Position(pPos.x + dirX * 3, pPos.y - 1),
+                Position(pPos.x + dirX * 2, pPos.y),
+                Position(pPos.x + dirX * 2, pPos.y - 1),
+                Position(pPos.x + dirX, pPos.y),
+                Position(pPos.x + dirX, pPos.y - 1),     // Nhảy chéo lên bệ trên 1 bậc
+                Position(pPos.x + dirX, pPos.y - 2),     // Nhảy chéo lên bệ cao 2 bậc
+                Position(pPos.x, pPos.y - 1),             // Nhảy thẳng lên 1 ô
+                Position(pPos.x, pPos.y - 2)              // Nhảy cao 2 ô
             };
 
             for (const auto& target : jumpCandidates) {
@@ -351,6 +411,7 @@ void GameEngine::handleInput() {
         }
 
         if (jumped) {
+            edgeSlipTimer = 0.0f;
             std::unique_ptr<Item> item = dungeon.takeItemAt(player.getPosition());
             if (item) {
                 combatLog.push_back("Nhat duoc: " + item->getName() + "!");
@@ -398,6 +459,7 @@ void GameEngine::handleInput() {
                     int actualDx = cand.x - pPos.x;
                     int actualDy = cand.y - pPos.y;
                     player.moveBy(actualDx, actualDy, dungeon);
+                    edgeSlipTimer = 0.0f;
 
                     std::unique_ptr<Item> item = dungeon.takeItemAt(player.getPosition());
                     if (item) {
@@ -414,6 +476,53 @@ void GameEngine::handleInput() {
                 Position forwardPos(pPos.x + dx, pPos.y);
                 if (dungeon.getMonsterAt(forwardPos)) {
                     combatLog.push_back("Quai vat dang chan duong! Nhan [J] hoac [F] de tan cong.");
+                } else {
+                    // TRỌNG LỰC: BƯỚC HỤT VÀO HỐ HOẶC VỰC NƯỚC SÂU
+                    TileType forwardType = dungeon.getTileType(forwardPos);
+                    // Rơi nếu phía trước là không khí (EMPTY) hoặc nước ngập (WATER)
+                    if (forwardType == TileType::EMPTY || forwardType == TileType::WATER) {
+                        // Khoảng đệm coyote time (0.18s): ngập ngừng ở mép hố để kịp bấm Space nhảy qua
+                        if (edgeSlipTimer <= 0.0f) {
+                            edgeSlipTimer = 0.18f;
+                            return;
+                        }
+
+                        // Người chơi tiếp tục nhấn giữ phím vượt qua thời gian chờ -> Trượt chân rơi xuống!
+                        edgeSlipTimer = 0.0f;
+                        int targetX = pPos.x + dx;
+                        bool landed = false;
+                        for (int fallY = pPos.y; fallY < dungeon.getHeight(); ++fallY) {
+                            Position checkPos(targetX, fallY);
+                            // RƠI TRÚNG VỰC NƯỚC -> CHẾT ĐUỐI!
+                            if (dungeon.isWater(checkPos)) {
+                                player.setPosition(checkPos);
+                                player.takeDamage(9999);
+                                state = GameState::GAME_OVER;
+                                combatLog.push_back(">>> BAN DA SA CHAN XUONG VUC NUOC VA BI CHET DUOI! Nhan [R] de hoi sinh va thu lai. <<<");
+                                landed = true;
+                                break;
+                            }
+                            // RƠI ĐÁP TRÚNG BỆ NỀN DƯỚI (FLOOR, STAIRS)
+                            if (dungeon.isWalkable(checkPos) && dungeon.getMonsterAt(checkPos) == nullptr) {
+                                int actualDx = targetX - pPos.x;
+                                int actualDy = fallY - pPos.y;
+                                player.moveBy(actualDx, actualDy, dungeon);
+                                combatLog.push_back("[TRUOT CHAN] Ban da bi truot chan roi xuong tang duoi!");
+                                std::unique_ptr<Item> item = dungeon.takeItemAt(player.getPosition());
+                                if (item) {
+                                    combatLog.push_back("Nhat duoc: " + item->getName() + "!");
+                                    player.getInventory().addItem(std::move(item));
+                                }
+                                landed = true;
+                                break;
+                            }
+                        }
+                        if (!landed) {
+                            player.takeDamage(9999);
+                            state = GameState::GAME_OVER;
+                            combatLog.push_back(">>> BAN DA SA CHAN XUONG VUC THAM VA TU TRAN! Nhan [R] de hoi sinh va thu lai. <<<");
+                        }
+                    }
                 }
             }
             return;
@@ -505,18 +614,27 @@ void GameEngine::handleInput() {
 void GameEngine::update(float deltaTime) {
     if (moveTimer > 0.0f) moveTimer -= deltaTime;
     if (attackTimer > 0.0f) attackTimer -= deltaTime;
+    if (edgeSlipTimer > 0.0f) edgeSlipTimer -= deltaTime;
 
-    // ===== KỊCH BẢN PHÂN KHU: banner khi người chơi đi qua mốc khu mới =====
+    // Kiểm tra an toàn: nếu người chơi sa chân vào nước ở bất kỳ thời điểm nào -> Chết đuối và Game Over
+    if (state == GameState::RUNNING && dungeon.isWater(player.getPosition())) {
+        player.takeDamage(9999);
+        state = GameState::GAME_OVER;
+        combatLog.push_back(">>> BAN DA SA CHAN XUONG DONG NUOC VA BI CHET DUOI! Nhan [R] de hoi sinh va thu lai. <<<");
+    }
+
+    // ===== KỊCH BẢN PHÂN KHU: banner khi người chơi đi qua mốc khu mới (5 khu vực) =====
     if (state == GameState::RUNNING) {
         int px = player.getPosition().x;
-        int zone = (px < 19) ? 0 : (px < 38) ? 1 : (px < 57) ? 2 : 3;
+        int zone = (px < 25) ? 0 : (px < 56) ? 1 : (px < 89) ? 2 : (px < 113) ? 3 : 4;
         if (zone != currentZone) {
             currentZone = zone;
-            static const char* zoneBanners[4] = {
-                "KHU A - TRAI KHOI DAU: Lam quen dieu khien. Oc sen ban dau chi phan don!",
-                "KHU B - RUNG EP KHAC: Heo rung dang tuan tra, ong sat thu lurot treo tren dau!",
-                "KHU C - VACH DA HUYEN BI: Oc sen giap chan duong. Co thuoc cuong hoa phia truoc!",
-                "KHU D - DINH DEN THO: BOAR KING canh Cong Cua! Ha guc no de mo khoa be vang!"
+            static const char* zoneBanners[5] = {
+                "KHU A - TRAI KHOI DAU: Lam quen dieu khien. Canh chung cac ho khoang cach!",
+                "KHU B - RUNG NAM & CAU TREO: Heo rung tren cau treo, vuc nuoc sau ben duoi!",
+                "KHU C - VACH DA & VUC NUOC: Sa chan xuong nuoc se bi chet duoi va quay lai tu dau!",
+                "KHU D - BINH NGUYEN TAN TICH: Quan doan quai vat canh giu loi len Den Tho!",
+                "KHU E - DINH DEN THO BOSS: BOAR KING ngap tran no khi! Ha guc no de mo khoa be vang!"
             };
             bannerText = zoneBanners[zone];
             bannerTimer = 3.5f;

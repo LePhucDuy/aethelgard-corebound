@@ -35,6 +35,7 @@ private:
     Font fontMain;
     float moveTimer;
     float attackTimer;
+    float edgeSlipTimer;
     float userZoomOffset;
 
     // Kịch bản màn chơi

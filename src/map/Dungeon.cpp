@@ -76,12 +76,20 @@ void Dungeon::generate(int floor) {
         }
     };
 
+    // Helper tạo vực nước sâu (water chasm) ở tầng đáy (y = 18 đến đáy)
+    auto makeWaterChasm = [this](int startX, int endX) {
+        for (int x = startX; x <= endX && x < width; ++x) {
+            for (int y = 18; y < height; ++y) {
+                grid[y][x].setType(TileType::WATER);
+            }
+        }
+    };
+
     // =========================================================================
-    // 2. BỐ TRÍ ĐỊA HÌNH 2D SIDE-VIEW DÀI 75 Ô (2400 PIXELS) THÔNG SUỐT 100%
+    // 2. BỐ TRÍ ĐỊA HÌNH 2D SIDE-VIEW DÀI 130 Ô (4160 PIXELS)
     // =========================================================================
 
     // A. MẶT ĐẤT CHÍNH (Main Ground Floor) chạy suốt từ x = 0 đến x = width - 1 ở y = 18
-    // Mặt cỏ ở y = 18, các khối đất lấp kín toàn bộ xuống tận đáy bản đồ (y = 19 đến height - 1)
     for (int x = 0; x < width; ++x) {
         grid[18][x].setCustom(TileType::FLOOR, Rectangle{ 32.0f, 16.0f, 16.0f, 16.0f }, true);
         for (int y = 19; y < height; ++y) {
@@ -89,142 +97,247 @@ void Dungeon::generate(int floor) {
         }
     }
 
-    // B. KHU VỰC 1: ĐỒI KHỞI ĐẦU (x = 0 đến 16) ở y = 15
+    // TẠO CÁC VỰC NƯỚC SÂU Ở TẦNG ĐÁY (y = 18 đến height - 1)
+    // Vực nước 1: Rừng nấm (x = 40..44)
+    makeWaterChasm(40, 44);
+    // Vực nước 2: Vách đá huyền bí (x = 69..74)
+    makeWaterChasm(69, 74);
+    // Vực nước 3: Bình nguyên tàn tích (x = 98..103)
+    makeWaterChasm(98, 103);
+
+    // =========================================================================
+    // KHU A: TRẠI KHỞI ĐẦU (x = 0 đến 24)
+    // =========================================================================
+    // Đồi khởi đầu (x = 0..16) ở y = 15
     makePlatform(0, 16, 15, 2);
-    for (int x = 0; x <= 16; ++x) {
-        grid[18][x].setCustom(TileType::WALL, Rectangle{ 32.0f, 32.0f, 16.0f, 16.0f }, false);
-    }
     playerStartPos = Position(4, 15);
 
-    // Cầu thang nối Đồi 1 xuống mặt đất chính (y=15 đến 18)
-    makeStair(17, 16);
-    makeStair(18, 17);
+    // Cầu thang từ Đồi 1 xuống mặt đất (x = 12..14)
+    makeStair(12, 16);
+    makeStair(13, 17);
 
-    // Cầu thang nối Đồi 1 lên Cao Nguyên 2 (y=15 lên 12)
-    makeStair(17, 14);
-    makeStair(18, 13);
+    // HỐ PIT KHOẢNG CÁCH 0: x = 17..18 (khoảng không 2 ô để nhảy vọt qua)
+    // Dưới đáy x = 17..18 là mặt sàn đất y = 18 an toàn để rơi xuống khi trượt chân
 
-    // C. KHU VỰC 2: RỪNG NẤM TRUNG TÂM (x = 19 đến 35) ở y = 12
-    makePlatform(19, 35, 12, 2);
+    // BẬC BỆ ĐÓN BÊN KHU B: phẳng ngang bằng tầm đồi (y = 15) từ x = 19 đến 23
+    makePlatform(19, 23, 15, 2);
 
-    // Cầu thang nối Khu 2 xuống mặt đất chính
-    makeStair(26, 13);
-    makeStair(27, 14);
+    // Bậc thang nối từ y = 15 lên tầng cao y = 12 của Khu B
+    makeStair(24, 14);
+    makeStair(25, 13);
+
+    // =========================================================================
+    // KHU B: RỪNG NẤM & CẦU TREO (x = 26 đến 55) - Tầng cao y = 12
+    // Hố pit 1: x = 36..37 (rơi xuống sàn đất y = 18)
+    // Cầu treo: x = 38..47 (bắc ngang qua Vực nước 1 x = 40..44)
+    // Hố pit 2: x = 48..49 (rơi xuống sàn đất y = 18)
+    // =========================================================================
+    makePlatform(26, 35, 12, 2); // Đoạn 1 kéo dài từ x = 26 đến 35
+    // Hố pit 1: x = 36..37 (trống để nhảy hoặc rơi)
+    makePlatform(38, 47, 12, 1); // Cầu treo bắc qua vực nước
+    // Hố pit 2: x = 48..49 (trống)
+    makePlatform(50, 54, 12, 2); // Đoạn 3
+
+    // Bậc thang nối Khu B xuống mặt đất chính
+    makeStair(26, 17);
+    makeStair(27, 16);
     makeStair(28, 15);
-    makeStair(29, 16);
-    makeStair(30, 17);
+    makeStair(29, 14);
+    makeStair(30, 13);
 
-    // Cầu thang nối Khu 2 lên Vách Đá 3 (y=12 lên 9)
-    makeStair(36, 11);
-    makeStair(37, 10);
+    // Bậc thang nối Khu B lên Vách Đá Khu C (y=12 lên 9)
+    makeStair(55, 11);
+    makeStair(56, 10);
 
-    // D. KHU VỰC 3: VÁCH ĐÁ HUYỀN BÍ (x = 38 đến 54) ở y = 9
-    makePlatform(38, 54, 9, 2);
+    // =========================================================================
+    // KHU C: VÁCH ĐÁ & VỰC NƯỚC (x = 56 đến 88) - Tầng cao y = 9
+    // Hố pit 3: x = 69..70 - RƠI XUỐNG VỰC NƯỚC 2 -> CHẾT ĐUỐI!
+    // Hố pit 4: x = 81..82 - Rơi xuống sàn đất tầng dưới y = 18
+    // =========================================================================
+    makePlatform(57, 68, 9, 2); // Đoạn vách đá 1
+    // Hố pit 3: x = 69..70 (trống - bên dưới là vực nước sâu!)
+    makePlatform(71, 80, 9, 2); // Đoạn vách đá 2
+    // Hố pit 4: x = 81..82 (trống - bên dưới là sàn đất)
+    makePlatform(83, 88, 9, 2); // Đoạn vách đá 3
 
-    // Cầu thang nối Khu 3 xuống mặt đất chính
-    makeStair(45, 10);
-    makeStair(46, 11);
-    makeStair(47, 12);
-    makeStair(48, 13);
-    makeStair(49, 14);
-    makeStair(50, 15);
-    makeStair(51, 16);
-    makeStair(52, 17);
-
-    // Cầu thang nối Khu 3 lên Đền Thờ 4 (y=9 lên 6)
-    makeStair(55, 8);
-    makeStair(56, 7);
-
-    // E. KHU VỰC 4: ĐỀN THỜ CỔ TÍCH ĐỈNH NÚI (x = 57 đến 72) ở y = 6
-    makePlatform(57, 72, 6, 2);
-
-    // Cầu thang nối Đền Thờ xuống mặt đất chính ở bên phải
-    makeStair(62, 7);
-    makeStair(63, 8);
-    makeStair(64, 9);
+    // Cầu thang nối Khu C xuống tầng đất bên trái
+    makeStair(58, 17);
+    makeStair(59, 16);
+    makeStair(60, 15);
+    makeStair(61, 14);
+    makeStair(62, 13);
+    makeStair(63, 12);
+    makeStair(64, 11);
     makeStair(65, 10);
-    makeStair(66, 11);
-    makeStair(67, 12);
-    makeStair(68, 13);
-    makeStair(69, 14);
-    makeStair(70, 15);
-    makeStair(71, 16);
-    makeStair(72, 17);
 
-    // Bệ đá cổ chuyển tầng ngục tối đặt tại đỉnh Đền Thờ (x = 70, y = 6)
-    stairsPos = Position(70, 6);
+    // Cầu thang nối Khu C xuống tầng đất bên phải
+    makeStair(76, 17);
+    makeStair(77, 16);
+    makeStair(78, 15);
+    makeStair(79, 14);
+    makeStair(80, 13);
+    makeStair(81, 12);
+    makeStair(82, 11);
+    makeStair(83, 10);
+
+    // =========================================================================
+    // KHU D: BÌNH NGUYÊN TÀN TÍCH (x = 89 đến 112) - Tầng cao y = 9
+    // Hố pit 5: x = 99..100 - RƠI XUỐNG VỰC NƯỚC 3 -> CHẾT ĐUỐI!
+    // =========================================================================
+    makePlatform(89, 98, 9, 2);   // Đoạn tàn tích 1
+    // Hố pit 5: x = 99..100 (trống - bên dưới là vực nước sâu!)
+    makePlatform(101, 110, 9, 2); // Đoạn tàn tích 2
+
+    // Cầu thang từ tầng dưới lên Khu D
+    makeStair(90, 17);
+    makeStair(91, 16);
+    makeStair(92, 15);
+    makeStair(93, 14);
+    makeStair(94, 13);
+    makeStair(95, 12);
+    makeStair(96, 11);
+    makeStair(97, 10);
+
+    // Cầu thang nối Khu D lên Đỉnh Đền Thờ Khu E (y=9 lên 6)
+    makeStair(111, 8);
+    makeStair(112, 7);
+
+    // =========================================================================
+    // KHU E: ĐỈNH ĐỀN THỜ BOSS (x = 113 đến 129) - Tầng cao y = 6
+    // Bệ đá Đền Thờ uy nghiêm, nơi Boar King ngự trị và Bệ đá Chiến Thắng
+    // =========================================================================
+    makePlatform(113, 128, 6, 2);
+
+    // Cầu thang phía sau Đền Thờ dẫn xuống hành lang ngầm tầng dưới (y = 18)
+    makeStair(122, 7);
+    makeStair(123, 8);
+    makeStair(124, 9);
+    makeStair(124, 10);
+    makeStair(125, 11);
+    makeStair(125, 12);
+    makeStair(126, 13);
+    makeStair(126, 14);
+    makeStair(127, 15);
+    makeStair(127, 16);
+    makeStair(128, 17);
+
+    // Bệ đá cổ chuyển tầng / Chiến thắng đặt tại đỉnh Đền Thờ (x = 126, y = 6)
+    stairsPos = Position(126, 6);
     grid[stairsPos.y][stairsPos.x].setCustom(TileType::STAIRS_DOWN, Rectangle{ 128.0f, 16.0f, 16.0f, 16.0f }, true);
 
     // =========================================================================
-    // 3. PHÂN BỔ QUÁI VẬT THEO KỊCH BẢN 4 KHU (spawn có kiểm tra ô hợp lệ)
+    // 3. PHÂN BỔ QUÁI VẬT THEO 5 KHU VỰC TRÊN BẢN ĐỒ 130 Ô
     // =========================================================================
-
-    // KHU A - TRẠI KHỞI ĐẦU (x0-16, y15): ốc sên hiền chỉ phản đòn — mục tiêu tập đánh
+    // KHU A - TRẠI KHỞI ĐẦU (x = 0..24)
     spawnMonster(MonsterType::SNAIL, Position(11, 15));
+    spawnMonster(MonsterType::SNAIL, Position(21, 18));
 
-    // KHU B - RỪNG ÉP KHẮC (x19-35, y12): 2 heo rừng tuần tra + 1 ong trên không
-    spawnMonster(MonsterType::BOAR, Position(23, 12));
-    spawnMonster(MonsterType::BOAR, Position(31, 12));
-    spawnMonster(MonsterType::SMALL_BEE, Position(26, 10));
+    // KHU B - RỪNG NẤM & CẦU TREO (x = 25..55)
+    spawnMonster(MonsterType::BOAR, Position(27, 12));
+    spawnMonster(MonsterType::SMALL_BEE, Position(33, 10));
+    spawnMonster(MonsterType::BOAR, Position(43, 12)); // Trên cầu treo bắc qua nước
+    spawnMonster(MonsterType::SMALL_BEE, Position(52, 10));
+    // Tầng dưới Khu B
+    spawnMonster(MonsterType::BOAR, Position(29, 18));
+    spawnMonster(MonsterType::SNAIL, Position(35, 18));
+    spawnMonster(MonsterType::BOAR, Position(52, 18));
 
-    // KHU C - VÁCH ĐÁ HUYỀN BÍ (x38-54, y9): 2 ốc sên chặn lối + 1 ong
-    spawnMonster(MonsterType::SNAIL, Position(44, 9));
-    spawnMonster(MonsterType::SNAIL, Position(50, 9));
-    spawnMonster(MonsterType::SMALL_BEE, Position(46, 7));
+    // KHU C - VÁCH ĐÁ & VỰC NƯỚC (x = 56..88)
+    spawnMonster(MonsterType::SNAIL, Position(60, 9));
+    spawnMonster(MonsterType::SMALL_BEE, Position(65, 7));
+    spawnMonster(MonsterType::BOAR, Position(75, 9));
+    spawnMonster(MonsterType::SNAIL, Position(79, 9));
+    spawnMonster(MonsterType::SMALL_BEE, Position(85, 7));
+    // Tầng dưới Khu C
+    spawnMonster(MonsterType::BOAR, Position(60, 18));
+    spawnMonster(MonsterType::SNAIL, Position(66, 18));
+    spawnMonster(MonsterType::BOAR, Position(78, 18));
+    spawnMonster(MonsterType::SNAIL, Position(86, 18));
 
-    // KHU D - ĐỈNH ĐỀN THỜ (x57-72, y6): BOSS canh Cổng Cửa + 1 ong hộ vệ
-    spawnMonster(MonsterType::BOAR_KING, Position(64, 6));
-    spawnMonster(MonsterType::SMALL_BEE, Position(68, 4));
+    // KHU D - BÌNH NGUYÊN TÀN TÍCH (x = 89..112)
+    spawnMonster(MonsterType::BOAR, Position(93, 9));
+    spawnMonster(MonsterType::SMALL_BEE, Position(96, 7));
+    spawnMonster(MonsterType::BOAR, Position(105, 9));
+    spawnMonster(MonsterType::SMALL_BEE, Position(109, 7));
+    // Tầng dưới Khu D
+    spawnMonster(MonsterType::BOAR, Position(92, 18));
+    spawnMonster(MonsterType::SNAIL, Position(96, 18));
+    spawnMonster(MonsterType::BOAR, Position(106, 18));
+    spawnMonster(MonsterType::SNAIL, Position(110, 18));
+
+    // KHU E - ĐỈNH ĐỀN THỜ BOSS (x = 113..129)
+    spawnMonster(MonsterType::BOAR_KING, Position(121, 6)); // BOSS CHÍNH
+    spawnMonster(MonsterType::SMALL_BEE, Position(117, 4)); // Hộ vệ bay
+    spawnMonster(MonsterType::SMALL_BEE, Position(125, 4));
+    // Tầng hầm Đền Thờ (y = 18)
+    spawnMonster(MonsterType::BOAR, Position(118, 18));
+    spawnMonster(MonsterType::SNAIL, Position(123, 18));
 
     // =========================================================================
-    // QUÁI VẬT TẦNG DƯỚI (MẶT ĐẤT CHÍNH y = 18):
-    // Phân bổ tuần tra dọc toàn bộ hành lang tầng dưới từ x = 20 đến x = 74
+    // 4. SINH VẬT PHẨM TRÊN BẢN ĐỒ 130 Ô
     // =========================================================================
-    // Dưới chân Khu B (x20-35, y18)
-    spawnMonster(MonsterType::BOAR, Position(24, 18));
-    spawnMonster(MonsterType::SNAIL, Position(33, 18));
-
-    // Dưới chân Khu C (x38-55, y18)
-    spawnMonster(MonsterType::BOAR, Position(41, 18));
-    spawnMonster(MonsterType::SMALL_BEE, Position(47, 16));
-    spawnMonster(MonsterType::SNAIL, Position(53, 18));
-
-    // Dưới chân Khu D - Hang động chân Đền Thờ (x58-73, y18)
-    spawnMonster(MonsterType::BOAR, Position(61, 18));
-    spawnMonster(MonsterType::SMALL_BEE, Position(66, 16));
-    spawnMonster(MonsterType::BOAR, Position(70, 18));
-
-    // =========================================================================
-    // 4. SINH VẬT PHẨM TRÊN BẢN ĐỒ
-    // =========================================================================
+    // KHU A
     groundItems.push_back(std::make_unique<Potion>(
         "Binh Mau Nho", "Hoi phuc 35 HP", 35, Position(8, 15), "item_potion_health"
     ));
-    groundItems.push_back(std::make_unique<Weapon>(
-        "Thanh Kiem Thep", "Vu khi tang +8 ATK", 8, Position(22, 12), "item_sword_steel"
-    ));
     groundItems.push_back(std::make_unique<Potion>(
-        "Binh Thuoc Cuong Hoa", "Hoi phuc 60 HP", 60, Position(42, 9), "item_potion_strength"
-    ));
-    groundItems.push_back(std::make_unique<Weapon>(
-        "Dai Kiem Huyen Bi", "Vu khi tang +15 ATK", 15, Position(60, 6), "item_sword_mystic"
-    ));
-    groundItems.push_back(std::make_unique<Potion>(
-        "Than Duoc Aethelgard", "Hoi phuc 100 HP", 100, Position(69, 6), "item_potion_elixir"
+        "Binh Mau Nho", "Hoi phuc 35 HP", 35, Position(19, 18), "item_potion_health"
     ));
 
-    // Phần thưởng khuyến khích thám hiểm tầng dưới (y = 18)
-    groundItems.push_back(std::make_unique<Potion>(
-        "Binh Mau Nho", "Hoi phuc 35 HP", 35, Position(32, 18), "item_potion_health"
+    // KHU B
+    groundItems.push_back(std::make_unique<Weapon>(
+        "Thanh Kiem Thep", "Vu khi tang +8 ATK", 8, Position(26, 12), "item_sword_steel"
     ));
     groundItems.push_back(std::make_unique<Potion>(
-        "Binh Thuoc Cuong Hoa", "Hoi phuc 60 HP", 60, Position(54, 18), "item_potion_strength"
+        "Binh Thuoc Cuong Hoa", "Hoi phuc 60 HP", 60, Position(44, 12), "item_potion_strength"
     ));
     groundItems.push_back(std::make_unique<Potion>(
-        "Than Duoc Aethelgard", "Hoi phuc 100 HP", 100, Position(73, 18), "item_potion_elixir"
+        "Binh Mau Nho", "Hoi phuc 35 HP", 35, Position(33, 18), "item_potion_health"
     ));
 
-    std::cout << "[Dungeon] Sinh dia hinh 2D Side thanh cong: 75 o ngang cho Tang " << floorLevel << std::endl;
+    // KHU C
+    groundItems.push_back(std::make_unique<Potion>(
+        "Binh Thuoc Cuong Hoa", "Hoi phuc 60 HP", 60, Position(62, 9), "item_potion_strength"
+    ));
+    groundItems.push_back(std::make_unique<Weapon>(
+        "Dai Kiem Huyen Bi", "Vu khi tang +15 ATK", 15, Position(76, 9), "item_sword_mystic"
+    ));
+    groundItems.push_back(std::make_unique<Potion>(
+        "Than Duoc Aethelgard", "Hoi phuc 100 HP", 100, Position(85, 9), "item_potion_elixir"
+    ));
+    groundItems.push_back(std::make_unique<Potion>(
+        "Binh Thuoc Cuong Hoa", "Hoi phuc 60 HP", 60, Position(64, 18), "item_potion_strength"
+    ));
+    groundItems.push_back(std::make_unique<Potion>(
+        "Than Duoc Aethelgard", "Hoi phuc 100 HP", 100, Position(82, 18), "item_potion_elixir"
+    ));
+
+    // KHU D
+    groundItems.push_back(std::make_unique<Weapon>(
+        "Thanh Kiem Thep", "Vu khi tang +8 ATK", 8, Position(95, 9), "item_sword_steel"
+    ));
+    groundItems.push_back(std::make_unique<Potion>(
+        "Binh Thuoc Cuong Hoa", "Hoi phuc 60 HP", 60, Position(106, 9), "item_potion_strength"
+    ));
+    groundItems.push_back(std::make_unique<Potion>(
+        "Than Duoc Aethelgard", "Hoi phuc 100 HP", 100, Position(94, 18), "item_potion_elixir"
+    ));
+    groundItems.push_back(std::make_unique<Potion>(
+        "Binh Mau Nho", "Hoi phuc 35 HP", 35, Position(108, 18), "item_potion_health"
+    ));
+
+    // KHU E - ĐỈNH ĐỀN THỜ
+    groundItems.push_back(std::make_unique<Potion>(
+        "Than Duoc Aethelgard", "Hoi phuc 100 HP", 100, Position(116, 6), "item_potion_elixir"
+    ));
+    groundItems.push_back(std::make_unique<Weapon>(
+        "Dai Kiem Huyen Bi", "Vu khi tang +15 ATK", 15, Position(124, 6), "item_sword_mystic"
+    ));
+    groundItems.push_back(std::make_unique<Potion>(
+        "Than Duoc Aethelgard", "Hoi phuc 100 HP", 100, Position(120, 18), "item_potion_elixir"
+    ));
+
+    std::cout << "[Dungeon] Sinh dia hinh 2D Side thanh cong: 130 o ngang (5 khu) cho Tang " << floorLevel << std::endl;
 }
 
 bool Dungeon::isValidPos(const Position& pos) const {
@@ -234,6 +347,11 @@ bool Dungeon::isValidPos(const Position& pos) const {
 bool Dungeon::isWalkable(const Position& pos) const {
     if (!isValidPos(pos)) return false;
     return grid[pos.y][pos.x].isWalkable();
+}
+
+bool Dungeon::isWater(const Position& pos) const {
+    if (!isValidPos(pos)) return false;
+    return grid[pos.y][pos.x].getType() == TileType::WATER;
 }
 
 Monster* Dungeon::getMonsterAt(const Position& pos) {
@@ -294,10 +412,11 @@ void Dungeon::update(float deltaTime, Player& player, std::vector<std::string>& 
 // ===== Kịch bản màn chơi =====
 
 const char* Dungeon::getZoneName(int x) const {
-    if (x < 19) return "TRAI KHOI DAU";
-    if (x < 38) return "RUNG EP KHAC";
-    if (x < 57) return "VACH DA HUYEN BI";
-    return "DINH DEN THO";
+    if (x < 25) return "TRAI KHOI DAU";
+    if (x < 56) return "RUNG NAM & CAU TREO";
+    if (x < 89) return "VACH DA & VUC NUOC";
+    if (x < 113) return "BINH NGUYEN TAN TICH";
+    return "DINH DEN THO BOSS";
 }
 
 TileType Dungeon::getTileType(const Position& pos) const {
@@ -417,6 +536,59 @@ void Dungeon::render(Vector2 offset) const {
                 (float)Constants::TILE_SIZE,
                 (float)Constants::TILE_SIZE
             };
+
+            if (type == TileType::WATER) {
+                float timeSec = (float)GetTime();
+                float waterDrop = 14.0f; // Mặt nước thấp hơn nền cỏ 14px
+
+                if (y == 18) {
+                    // 1. KHE NỨT ĐỊA CHẤT / VÁCH ĐÁ SÂU (vùng từ mép nền y=0 đến waterDrop)
+                    // Hốc tối vực sâu
+                    DrawRectangle((int)destRec.x, (int)destRec.y, (int)destRec.width, (int)waterDrop, Color{ 14, 20, 32, 230 });
+                    // Bóng đổ vòm vực
+                    DrawRectangle((int)destRec.x, (int)destRec.y, (int)destRec.width, 3, Color{ 8, 12, 20, 200 });
+
+                    // BỜ VÁCH ĐẤT TRÁI (nếu ô bên trái là đất liền)
+                    if (x > 0 && grid[18][x - 1].getType() != TileType::WATER) {
+                        DrawRectangle((int)destRec.x, (int)destRec.y, 6, (int)waterDrop + 8, Color{ 65, 45, 30, 255 });
+                        DrawRectangle((int)destRec.x + 6, (int)destRec.y, 2, (int)waterDrop + 4, Color{ 40, 28, 18, 220 });
+                        DrawRectangle((int)destRec.x, (int)destRec.y, 5, 3, Color{ 55, 125, 55, 255 }); // Cỏ rủ mép trái
+                    }
+                    // BỜ VÁCH ĐẤT PHẢI (nếu ô bên phải là đất liền)
+                    if (x < width - 1 && grid[18][x + 1].getType() != TileType::WATER) {
+                        DrawRectangle((int)(destRec.x + destRec.width - 6), (int)destRec.y, 6, (int)waterDrop + 8, Color{ 65, 45, 30, 255 });
+                        DrawRectangle((int)(destRec.x + destRec.width - 8), (int)destRec.y, 2, (int)waterDrop + 4, Color{ 40, 28, 18, 220 });
+                        DrawRectangle((int)(destRec.x + destRec.width - 5), (int)destRec.y, 5, 3, Color{ 55, 125, 55, 255 }); // Cỏ rủ mép phải
+                    }
+
+                    // 2. MẶT NƯỚC HẠ THẤP (bắt đầu từ destRec.y + waterDrop)
+                    Rectangle waterRec = {
+                        destRec.x,
+                        destRec.y + waterDrop,
+                        destRec.width,
+                        destRec.height - waterDrop
+                    };
+                    float waveH = sinf(timeSec * 3.5f + (float)x * 0.9f) * 2.5f;
+
+                    // Thân khối nước
+                    DrawRectangleRec(waterRec, Color{ 22, 85, 165, 235 });
+                    // Gợn sóng nhấp nhô bên dưới mép vực
+                    DrawRectangle((int)waterRec.x, (int)(waterRec.y + waveH + 2.0f), (int)waterRec.width, 3, Color{ 130, 215, 255, 220 });
+                    DrawRectangle((int)waterRec.x, (int)(waterRec.y + waveH), (int)waterRec.width, 2, Color{ 225, 248, 255, 240 });
+                    // Bọt nước sủi tăm
+                    float bubbleX = waterRec.x + 8.0f + sinf(timeSec * 2.0f + (float)x) * 6.0f;
+                    float bubbleY = waterRec.y + 6.0f + cosf(timeSec * 2.5f + (float)x) * 3.0f;
+                    DrawCircle((int)bubbleX, (int)bubbleY, 1.5f, Color{ 255, 255, 255, 190 });
+                } else {
+                    // Nước tầng sâu (y > 18): xanh thẳm huyền bí
+                    DrawRectangleRec(destRec, Color{ 10, 38, 78, 245 });
+                    // Vệt sáng khúc xạ ánh nước ngầm
+                    if ((x + y) % 3 == 0) {
+                        DrawRectangle((int)destRec.x + 4, (int)destRec.y + 6, (int)destRec.width - 8, 2, Color{ 40, 120, 190, 90 });
+                    }
+                }
+                continue;
+            }
 
             DrawTexturePro(tilesTex, grid[y][x].getSourceRect(), destRec, Vector2{0, 0}, 0.0f, WHITE);
 
