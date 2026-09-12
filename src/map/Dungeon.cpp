@@ -177,6 +177,24 @@ void Dungeon::generate(int floor) {
     spawnMonster(MonsterType::SMALL_BEE, Position(68, 4));
 
     // =========================================================================
+    // QUÁI VẬT TẦNG DƯỚI (MẶT ĐẤT CHÍNH y = 18):
+    // Phân bổ tuần tra dọc toàn bộ hành lang tầng dưới từ x = 20 đến x = 74
+    // =========================================================================
+    // Dưới chân Khu B (x20-35, y18)
+    spawnMonster(MonsterType::BOAR, Position(24, 18));
+    spawnMonster(MonsterType::SNAIL, Position(33, 18));
+
+    // Dưới chân Khu C (x38-55, y18)
+    spawnMonster(MonsterType::BOAR, Position(41, 18));
+    spawnMonster(MonsterType::SMALL_BEE, Position(47, 16));
+    spawnMonster(MonsterType::SNAIL, Position(53, 18));
+
+    // Dưới chân Khu D - Hang động chân Đền Thờ (x58-73, y18)
+    spawnMonster(MonsterType::BOAR, Position(61, 18));
+    spawnMonster(MonsterType::SMALL_BEE, Position(66, 16));
+    spawnMonster(MonsterType::BOAR, Position(70, 18));
+
+    // =========================================================================
     // 4. SINH VẬT PHẨM TRÊN BẢN ĐỒ
     // =========================================================================
     groundItems.push_back(std::make_unique<Potion>(
@@ -193,6 +211,17 @@ void Dungeon::generate(int floor) {
     ));
     groundItems.push_back(std::make_unique<Potion>(
         "Than Duoc Aethelgard", "Hoi phuc 100 HP", 100, Position(69, 6), "item_potion_elixir"
+    ));
+
+    // Phần thưởng khuyến khích thám hiểm tầng dưới (y = 18)
+    groundItems.push_back(std::make_unique<Potion>(
+        "Binh Mau Nho", "Hoi phuc 35 HP", 35, Position(32, 18), "item_potion_health"
+    ));
+    groundItems.push_back(std::make_unique<Potion>(
+        "Binh Thuoc Cuong Hoa", "Hoi phuc 60 HP", 60, Position(54, 18), "item_potion_strength"
+    ));
+    groundItems.push_back(std::make_unique<Potion>(
+        "Than Duoc Aethelgard", "Hoi phuc 100 HP", 100, Position(73, 18), "item_potion_elixir"
     ));
 
     std::cout << "[Dungeon] Sinh dia hinh 2D Side thanh cong: 75 o ngang cho Tang " << floorLevel << std::endl;
@@ -253,10 +282,11 @@ void Dungeon::removeDeadMonsters(Player& player) {
     }
 }
 
-void Dungeon::update(float deltaTime) {
+void Dungeon::update(float deltaTime, Player& player, std::vector<std::string>& combatLog) {
     for (auto& monster : monsters) {
         if (monster && monster->isAlive()) {
             monster->update(deltaTime);
+            monster->updateAI(deltaTime, *this, player, combatLog);
         }
     }
 }

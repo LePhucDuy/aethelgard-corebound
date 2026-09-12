@@ -20,6 +20,13 @@ class Dungeon;
  *   kiểm tra sàn đỡ dưới chân (isGrounded — quái bộ không đứng lơ lửng),
  *   tầm nhìn thẳng (hasLineOfSight — không đánh/nhìn xuyên tường).
  */
+enum class MonsterAIState {
+    PATROL,
+    CHASE,
+    ATTACK,
+    RETURNING
+};
+
 class Monster : public Entity {
 protected:
     int expReward;
@@ -33,6 +40,13 @@ protected:
     bool flying;        // Bay: chỉ đứng trên ô không khí (EMPTY), không cần sàn đỡ
     int turnCount;      // Số lượt đã qua (dùng cho kỹ năng theo chu kỳ)
     int patrolDir;      // Hướng tuần tra hiện tại (+1 / -1)
+
+    // Hệ thống AI thời gian thực độc lập
+    MonsterAIState aiState;
+    float actionTimer;       // Đếm ngược thời gian cho bước di chuyển kế tiếp
+    float attackCooldown;    // Đếm ngược thời gian giữa các đòn đánh
+    float pauseTimer;        // Thời gian dừng lại quan sát trước khi quay đầu
+    bool isAlerted;          // true khi đã phát hiện người chơi
 
     // Hệ thống hoạt họa nhiều trạng thái (idle/run/attack/hit/dead...)
     std::map<std::string, std::unique_ptr<Animation>> anims;
@@ -72,6 +86,17 @@ public:
 
     // Tuần tra: đi qua lại quanh homePos, đổi hướng khi chạm biên hoặc bị chắn
     void patrolStep(Dungeon& dungeon);
+
+    // Kiểm tra xem người chơi có nằm trong tầm nhìn phía trước mặt hay không
+    // (Nếu quái đang quay lưng hoặc bị tường chắn -> trả về false)
+    bool canSeePlayer(Dungeon& dungeon, const Player& player) const;
+
+    // Cập nhật AI thời gian thực độc lập qua deltaTime
+    virtual void updateAI(float deltaTime, Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog);
+
+    MonsterAIState getAIState() const { return aiState; }
+    void setAIState(MonsterAIState s) { aiState = s; }
+    bool isTargetAlerted() const { return isAlerted; }
 
 public:
     Monster(const std::string& name, const Position& pos, int hp, int attack, int defense,

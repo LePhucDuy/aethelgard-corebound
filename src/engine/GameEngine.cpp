@@ -197,7 +197,6 @@ void GameEngine::handleInput() {
                         const Item* item = inv[i];
                         combatLog.push_back("Su dung: " + item->getName());
                         inv.useItem(i, &player);
-                        processMonsterTurn();
                     }
                     return;
                 }
@@ -260,7 +259,6 @@ void GameEngine::handleInput() {
             }
         }
 
-        processMonsterTurn();
         return;
     }
 
@@ -272,7 +270,6 @@ void GameEngine::handleInput() {
         if (player.getPosition() == dungeon.getStairsPos()) {
             if (dungeon.hasBoss() && !dungeon.isBossDefeated()) {
                 combatLog.push_back("[PHONG AN] Bo vang bi Boar King phong an! Hay ha guc no truoc.");
-                processMonsterTurn();
                 return;
             }
             state = GameState::VICTORY;
@@ -361,7 +358,6 @@ void GameEngine::handleInput() {
             }
         }
 
-        processMonsterTurn();
         return;
     }
 
@@ -412,9 +408,7 @@ void GameEngine::handleInput() {
                 }
             }
 
-            if (moved) {
-                processMonsterTurn();
-            } else {
+            if (!moved) {
                 // Nếu bị quái vật cản bước
                 Position forwardPos(pPos.x + dx, pPos.y);
                 if (dungeon.getMonsterAt(forwardPos)) {
@@ -448,7 +442,6 @@ void GameEngine::handleInput() {
                 Position(pPos.x + 1, pPos.y + dy)
             };
 
-            bool moved = false;
             for (const auto& cand : candidates) {
                 if (dungeon.isWalkable(cand) && dungeon.getMonsterAt(cand) == nullptr) {
                     if (dy < 0) {
@@ -461,14 +454,10 @@ void GameEngine::handleInput() {
                         combatLog.push_back("Nhat duoc: " + item->getName() + "!");
                         player.getInventory().addItem(std::move(item));
                     }
-                    moved = true;
                     break;
                 }
             }
 
-            if (moved) {
-                processMonsterTurn();
-            }
             return;
         }
     }
@@ -493,7 +482,6 @@ void GameEngine::handleInput() {
                 if (item) {
                     combatLog.push_back("Su dung: " + item->getName());
                     inv.useItem(slotIdx, &player);
-                    processMonsterTurn();
                 }
             }
             return;
@@ -509,23 +497,6 @@ void GameEngine::handleInput() {
     if (IsKeyPressed(KEY_F9)) {
         if (SaveLoadManager::loadGame("saves/savegame.txt", player, dungeon)) {
             combatLog.push_back("[HE THONG] Da tai lai game thanh cong (F9)!");
-        }
-    }
-}
-
-void GameEngine::processMonsterTurn() {
-    if (!player.isAlive()) return;
-
-    // Lượt của quái: mỗi loài tự quyết định hành vi qua act() (đa hình thật sự)
-    for (auto& monster : dungeon.getMonsters()) {
-        if (!monster || !monster->isAlive()) continue;
-
-        monster->act(dungeon, player, combatLog);
-
-        if (!player.isAlive()) {
-            state = GameState::GAME_OVER;
-            combatLog.push_back(">>> BAN DA TU TRAN! Nhan [R] de hoi sinh va thu lai. <<<");
-            break;
         }
     }
 }
@@ -555,7 +526,22 @@ void GameEngine::update(float deltaTime) {
 
     handleInput();
     player.update(deltaTime);
-    dungeon.update(deltaTime);
+
+    // Cập nhật AI quái vật thời gian thực độc lập khi không mở túi đồ
+    if (!showInventory && state == GameState::RUNNING) {
+        dungeon.update(deltaTime, player, combatLog);
+        if (!player.isAlive()) {
+            state = GameState::GAME_OVER;
+            combatLog.push_back(">>> BAN DA TU TRAN! Nhan [R] de hoi sinh va thu lai. <<<");
+        }
+    } else {
+        // Khi mở túi đồ hoặc tạm dừng: vẫn cập nhật khung hình chuyển động
+        for (auto& monster : dungeon.getMonsters()) {
+            if (monster && monster->isAlive()) {
+                monster->update(deltaTime);
+            }
+        }
+    }
 
     // Căn chỉnh camera ghim chặt đáy mặt đất vào sát mép trên thanh Nhật ký chiến đấu
     // Tuyệt đối loại bỏ hoàn toàn 100% vùng trống / khoảng trống bên dưới!

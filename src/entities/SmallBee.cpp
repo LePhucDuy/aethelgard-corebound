@@ -28,12 +28,10 @@ void SmallBee::takeDamage(int amount) {
 }
 
 void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) {
-    turnCount++;
     Position pPos = player.getPosition();
     int dx = pPos.x - pos.x;
     int dy = pPos.y - pos.y;
 
-    // Ong CHỈ đứng trên ô không khí (EMPTY) — không bao giờ đáp xuống mặt cỏ
     auto canFlyTo = [&](const Position& c) {
         return dungeon.isValidPos(c)
             && dungeon.getTileType(c) == TileType::EMPTY
@@ -41,34 +39,67 @@ void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
             && c != pPos;
     };
 
-    // 1. TẤN CÔNG CHIA GIAO (cheo phia tren): đứng chéo trên đầu người chơi
-    //    (|dx|==1 && dy==-1) — vị trí này người chơi đánh phản đòn được qua
-    //    ô chéo phía trước, nên cuộc đấu luôn công bằng (hit-and-run)
-    if (std::abs(dx) == 1 && dy == -1) {
-        setState("attack");  // Animation lao chích
-        combatLog.push_back("[CHICH!] Small Bee lao toi chich mot don roi bay di!");
-        CombatSystem::attack(*this, player, combatLog);
+    // 1. TẤN CÔNG CHÍCH (ở vị trí chéo trên đầu người chơi: |dx| <= 1, dy == -1)
+    if (std::abs(dx) <= 1 && dy == -1 && player.isAlive()) {
+        faceTowards(pPos);
+        if (attackCooldown <= 0.0f) {
+            setState("attack");
+            combatLog.push_back("[CHICH!] Small Bee lao toi chich roi bay lui!");
+            CombatSystem::attack(*this, player, combatLog);
+            attackCooldown = 1.0f;
 
-        // Bay lui xa người chơi ra 2 ô chéo phía trên
-        int away = (dx > 0) ? 1 : -1;
-        Position retreat(pos.x + away, pos.y - 1);
-        if (canFlyTo(retreat)) setPosition(retreat);
+            // Bay lùi xa người chơi ra 2 ô chéo phía trên
+            int away = (dx > 0) ? 1 : -1;
+            Position retreat(pos.x + away, pos.y - 1);
+            if (canFlyTo(retreat)) setPosition(retreat);
+        }
+        actionTimer = 0.35f;
         return;
     }
 
-    // 2. ĐUỔI THEO: phát hiện người chơi trong bán kính aggro (quái bay nhìn mọi hướng)
-    int cheb = std::max(std::abs(dx), std::abs(dy));
-    if (cheb <= aggroRange) {
-        setState("run");  // Animation bay nhanh khi đuổi
-        setFacing(pPos.x > pos.x);
-
-        // Nếu đang THẤP hơn người chơi -> ưu tiên bay lên trước
-        if (dy > 0) {
-            Position up(pos.x, pos.y - 1);
-            if (canFlyTo(up)) { setPosition(up); return; }
+    // 2. NẾU ĐANG TUẦN TRA (PATROL)
+    if (aiState == MonsterAIState::PATROL) {
+        if (canSeePlayer(dungeon, player)) {
+            // Thấy người chơi ở đúng hướng bay -> Chuyển sang đuổi bắt
+            aiState = MonsterAIState::CHASE;
+            isAlerted = true;
+            faceTowards(pPos);
+            setState("run");
+            combatLog.push_back("[VO VE] Small Bee phat hien ban va lao toi!");
+            actionTimer = 0.15f;
+            return;
         }
 
-        // Nhắm đến vị trí chia giao chéo phía trên người chơi
+        // Tuần tra bay lượn trên không
+        setState("idle");
+        Position next(pos.x + patrolDir, pos.y);
+        bool outOfRange = std::abs(next.x - homePos.x) > patrolRange;
+        if (outOfRange || !canFlyTo(next)) {
+            patrolDir = -patrolDir;
+            setFacing(patrolDir > 0);
+            pauseTimer = 0.6f;
+            return;
+        }
+        setFacing(patrolDir > 0);
+        setPosition(next);
+        actionTimer = 0.5f;
+        return;
+    }
+
+    // 3. NẾU ĐANG TRUY ĐUỔI (CHASE)
+    if (aiState == MonsterAIState::CHASE) {
+        int cheb = std::max(std::abs(dx), std::abs(dy));
+        if (cheb > aggroRange + 3) {
+            aiState = MonsterAIState::RETURNING;
+            isAlerted = false;
+            actionTimer = 0.6f;
+            return;
+        }
+
+        setState("run");
+        setFacing(pPos.x > pos.x);
+
+        // Nhắm đến vị trí chéo trên đầu người chơi
         int side = (pos.x >= pPos.x) ? 1 : -1;
         Position strike(pPos.x + side, pPos.y - 1);
 
@@ -76,26 +107,43 @@ void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
         int sdy = strike.y - pos.y;
         Position step(pos.x + (sdx == 0 ? 0 : (sdx > 0 ? 1 : -1)),
                       pos.y + (sdy == 0 ? 0 : (sdy > 0 ? 1 : -1)));
-        if (step != pos && canFlyTo(step)) { setPosition(step); return; }
 
-        // Bị chắn: thử bay tách trục
+        if (step != pos && canFlyTo(step)) {
+            setPosition(step);
+            actionTimer = 0.22f; // Bứt tốc bay nhanh
+            return;
+        }
+
         Position altX(pos.x + (sdx > 0 ? 1 : -1), pos.y);
         Position altY(pos.x, pos.y + (sdy > 0 ? 1 : -1));
         if (sdx != 0 && canFlyTo(altX)) setPosition(altX);
         else if (canFlyTo(altY)) setPosition(altY);
+        actionTimer = 0.22f;
         return;
     }
 
-    // 3. LƯỚN LỌ QUANH ĐIỂM SINH: bay theo hình vuông nhỏ 4 điểm
-    setState("idle");  // Animation lượn lờ nhẹ nhàng
-    static const Position hoverOffsets[4] = {
-        Position(-1, 0), Position(0, -1), Position(1, 0), Position(0, 1)
-    };
-    const Position& off = hoverOffsets[turnCount % 4];
-    Position target(homePos.x + off.x, homePos.y + off.y);
-    if (canFlyTo(target)) {
-        setFacing(target.x > pos.x);
-        setPosition(target);
+    // 4. QUAY VỀ (RETURNING)
+    if (aiState == MonsterAIState::RETURNING) {
+        if (canSeePlayer(dungeon, player)) {
+            aiState = MonsterAIState::CHASE;
+            isAlerted = true;
+            actionTimer = 0.15f;
+            return;
+        }
+
+        if (std::abs(pos.x - homePos.x) <= 1 && std::abs(pos.y - homePos.y) <= 1) {
+            aiState = MonsterAIState::PATROL;
+            actionTimer = 0.6f;
+            return;
+        }
+
+        int hdx = homePos.x - pos.x;
+        int hdy = homePos.y - pos.y;
+        Position step(pos.x + (hdx == 0 ? 0 : (hdx > 0 ? 1 : -1)),
+                      pos.y + (hdy == 0 ? 0 : (hdy > 0 ? 1 : -1)));
+        if (canFlyTo(step)) setPosition(step);
+        actionTimer = 0.4f;
+        return;
     }
 }
 

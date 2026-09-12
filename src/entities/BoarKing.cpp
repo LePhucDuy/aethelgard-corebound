@@ -13,15 +13,14 @@ BoarKing::BoarKing(const Position& pos)
       enraged(false) {
     // Boss dùng chung texture với Boar nhưng frame nhanh hơn (đe dọa hơn)
     addAnimation("idle", std::make_unique<Animation>("boar_idle", 4, 48, 32, 0.12f, true));
+    addAnimation("walk", std::make_unique<Animation>("boar_walk", 6, 48, 32, 0.10f, true));
     addAnimation("run",  std::make_unique<Animation>("boar_run",  6, 48, 32, 0.08f, true));
     addAnimation("dead", std::make_unique<Animation>("boar_hit",  4, 48, 32, 0.05f, false));
     setState("idle");
 }
 
 void BoarKing::act(Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) {
-    turnCount++;
-
-    // 1. CỰC GIẢN (một lần duy nhất khi HP <= 30%): tăng sức mạnh vĩnh viễn
+    // 1. CỰC GIẬN (một lần duy nhất khi HP <= 30%): tăng sức mạnh vĩnh viễn
     if (!enraged && hp <= maxHp * 3 / 10) {
         enraged = true;
         attack += 6;
@@ -31,46 +30,101 @@ void BoarKing::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
 
     Position pPos = player.getPosition();
     int dx = pPos.x - pos.x;
-    bool sameFloor = (pPos.y == pos.y);
+    int dy = pPos.y - pos.y;
+    bool adjacent = (std::abs(dx) <= 1 && std::abs(dy) <= 1);
 
-    // 2. Đòn chốt khi đã kề cạnh: mỗi lượt thứ 3 là đòn HÚC x1.5 + đẩy lùi 1 ô
-    if (sameFloor && std::abs(pPos.x - pos.x) == 1) {
-        setState("run");  // Húc lao vào người
-        int baseAtk = getAttack();
-        bool isSlam = (turnCount % 3 == 0);
-        if (isSlam) combatLog.push_back("[LAN HUC!] Boar King hung va phong sat thuong lien hoan!");
-        if (isSlam) attack = baseAtk * 3 / 2;
-        CombatSystem::attack(*this, player, combatLog);
-        attack = baseAtk;
+    // 2. CẬN CHIẾN: đứng kề cạnh -> Húc dữ dội
+    if (adjacent && player.isAlive()) {
+        faceTowards(pPos);
+        setState("run");
+        if (attackCooldown <= 0.0f) {
+            turnCount++;
+            int baseAtk = getAttack();
+            bool isSlam = (turnCount % 3 == 0);
+            if (isSlam) combatLog.push_back("[LAN HUC!] Boar King phong sat thuong manh me!");
+            if (isSlam) attack = baseAtk * 3 / 2;
+            CombatSystem::attack(*this, player, combatLog);
+            attack = baseAtk;
+            attackCooldown = 0.7f;
 
-        // Knockback: đẩy người chơi lùi 1 ô (nếu ô phía sau trống)
-        if (isSlam) {
-            int push = (pos.x > pPos.x) ? 1 : -1;
-            Position back(pPos.x + push, pPos.y);
-            if (dungeon.isWalkable(back) && dungeon.getMonsterAt(back) == nullptr && back != pos) {
-                player.setPosition(back);
-                combatLog.push_back("Ban bi huc bay lui 1 o!");
+            // Knockback: đẩy người chơi lùi 1 ô nếu ô phía sau trống
+            if (isSlam) {
+                int push = (pos.x > pPos.x) ? -1 : 1;
+                Position back(pPos.x + push, pPos.y);
+                if (dungeon.isWalkable(back) && dungeon.getMonsterAt(back) == nullptr && back != pos) {
+                    player.setPosition(back);
+                    combatLog.push_back("Ban bi Boar King huc bay lui 1 o!");
+                }
             }
         }
+        actionTimer = 0.3f;
         return;
     }
 
-    // 3. ĐUỔI/TUẦN TRA: aggro 6 ô cùng tầng (8 khi Cực Giản)
-    if (sameFloor && std::abs(dx) <= aggroRange && hasLineOfSight(dungeon, pPos)) {
-        setState("run");  // Animation chạy khi đuổi
+    // 3. Trạng thái TUẦN TRA (PATROL)
+    if (aiState == MonsterAIState::PATROL) {
+        if (canSeePlayer(dungeon, player)) {
+            aiState = MonsterAIState::CHASE;
+            isAlerted = true;
+            faceTowards(pPos);
+            setState("run");
+            combatLog.push_back("[GAM RO!] Boar King phat hien ban va gao thet lao toi!");
+            actionTimer = 0.15f;
+            return;
+        }
+
+        setState("walk");
+        patrolStep(dungeon);
+        actionTimer = 0.7f;
+        return;
+    }
+
+    // 4. Trạng thái TRUY ĐUỔI (CHASE)
+    if (aiState == MonsterAIState::CHASE) {
+        if (std::abs(dx) > aggroRange + 3 || std::abs(dy) > 2) {
+            aiState = MonsterAIState::RETURNING;
+            isAlerted = false;
+            combatLog.push_back("Boar King nguoi con gian va quay ve be phong an.");
+            actionTimer = 0.6f;
+            return;
+        }
+
+        setState("run");
         faceTowards(pPos);
-        // Mỗi lượt thứ 3: LÃO HÚC — lao tới tối đa 3 ô liên tiếp
-        int steps = (turnCount % 3 == 0) ? 3 : 1;
+        turnCount++;
+        int steps = (turnCount % 3 == 0) ? 2 : 1;
         for (int i = 0; i < steps; ++i) {
             int step = (pPos.x > pos.x) ? 1 : -1;
             if (!tryStepTo(dungeon, Position(pos.x + step, pos.y), player)) break;
         }
+        actionTimer = 0.18f; // Rất nhanh khi lao tới
         return;
     }
 
-    // 4. Tuần tra quanh Cổng Cửa khi người chơi chưa tới gần
-    setState("idle");  // Animation đứng gầm gừ
-    patrolStep(dungeon);
+    // 5. Trạng thái QUAY VỀ (RETURNING)
+    if (aiState == MonsterAIState::RETURNING) {
+        if (canSeePlayer(dungeon, player)) {
+            aiState = MonsterAIState::CHASE;
+            isAlerted = true;
+            faceTowards(pPos);
+            setState("run");
+            actionTimer = 0.15f;
+            return;
+        }
+
+        if (pos.x == homePos.x) {
+            aiState = MonsterAIState::PATROL;
+            setState("idle");
+            actionTimer = 0.8f;
+            return;
+        }
+
+        setState("walk");
+        int step = (homePos.x > pos.x) ? 1 : -1;
+        tryStepTo(dungeon, Position(pos.x + step, pos.y), player);
+        actionTimer = 0.5f;
+        return;
+    }
 }
 
 void BoarKing::onDeath(Player& player) {

@@ -90,7 +90,7 @@ public:
     bool checkBossDefeated();
 
     // Cập nhật và vẽ
-    void update(float deltaTime);
+    void update(float deltaTime, Player& player, std::vector<std::string>& combatLog);
     void renderBackground(Vector2 offset = {0.0f, 0.0f}) const;
     void render(Vector2 offset = {0.0f, 0.0f}) const;
     void renderMonsters(Vector2 offset = {0.0f, 0.0f}) const;

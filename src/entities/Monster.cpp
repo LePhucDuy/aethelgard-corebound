@@ -10,6 +10,8 @@ Monster::Monster(const std::string& name, const Position& pos, int hp, int attac
       expReward(expReward), goldReward(goldReward),
       homePos(pos), aggroRange(aggroRange), patrolRange(patrolRange),
       facingRight(true), flying(flying), turnCount(0), patrolDir(1),
+      aiState(MonsterAIState::PATROL), actionTimer(0.0f), attackCooldown(0.0f),
+      pauseTimer(0.0f), isAlerted(false),
       animState(""), dying(false), rewarded(false) {}
 
 // ===== Hệ thống hoạt họa nhiều trạng thái =====
@@ -72,7 +74,14 @@ void Monster::render(float scale, Vector2 offset) const {
 void Monster::takeDamage(int amount) {
     if (dying) return;
     Entity::takeDamage(amount);
-    if (!alive) kill();
+    if (!alive) {
+        kill();
+    } else {
+        // Bị đánh trúng -> lập tức báo động và chuyển sang truy đuổi
+        isAlerted = true;
+        aiState = MonsterAIState::CHASE;
+        actionTimer = 0.1f;
+    }
 }
 
 void Monster::kill() {
@@ -106,12 +115,18 @@ bool Monster::isGrounded(Dungeon& dungeon, const Position& p) const {
 }
 
 bool Monster::hasLineOfSight(Dungeon& dungeon, const Position& target) const {
-    // Cùng hàng ngang: kiểm tra từng ô giữa 2 thực thể, không cho tường chắn ngang tầm nhìn
-    if (target.y == pos.y) {
-        int step = (target.x > pos.x) ? 1 : -1;
-        for (int x = pos.x + step; x != target.x; x += step) {
-            if (!dungeon.isWalkable(Position(x, pos.y))) return false;
-        }
+    int dx = target.x - pos.x;
+    int dy = target.y - pos.y;
+    int steps = std::max(std::abs(dx), std::abs(dy));
+    if (steps == 0) return true;
+
+    float xStep = (float)dx / (float)steps;
+    float yStep = (float)dy / (float)steps;
+
+    for (int i = 1; i < steps; ++i) {
+        int checkX = (int)std::round(pos.x + i * xStep);
+        int checkY = (int)std::round(pos.y + i * yStep);
+        if (!dungeon.isWalkable(Position(checkX, checkY))) return false;
     }
     return true;
 }
@@ -138,13 +153,54 @@ void Monster::patrolStep(Dungeon& dungeon) {
     if (outOfRange || blocked) {
         // Đổi hướng tuần tra khi chạm biên vùng hoặc bị chặn
         patrolDir = -patrolDir;
-        next = Position(pos.x + patrolDir, pos.y);
-        bool canTurn = dungeon.isWalkable(next)
-                       && dungeon.getMonsterAt(next) == nullptr
-                       && (flying || isGrounded(dungeon, next));
-        if (!canTurn) return; // Đứng yên lượt này
+        setFacing(patrolDir > 0);
+        pauseTimer = 0.8f; // Dừng lại 0.8s quan sát
+        setState("idle");  // Đứng yên trong lúc dừng
+        return;
     }
 
     setFacing(patrolDir > 0);
     setPosition(next);
+}
+
+bool Monster::canSeePlayer(Dungeon& dungeon, const Player& player) const {
+    if (!player.isAlive()) return false;
+    Position pPos = player.getPosition();
+
+    int dx = pPos.x - pos.x;
+    int dy = pPos.y - pos.y;
+
+    // 1. Khoảng cách ngang trong tầm phát hiện
+    if (std::abs(dx) > aggroRange) return false;
+
+    // 2. Độ cao / cùng tầng
+    if (!flying && std::abs(dy) > 1) return false;
+    if (flying && std::abs(dy) > aggroRange) return false;
+
+    // 3. HƯỚNG NHÌN (QUAY LƯNG THÌ KHÔNG PHÁT HIỆN):
+    // Quái quay phải (facingRight == true) -> chỉ nhìn thấy dx > 0
+    // Quái quay trái (facingRight == false) -> chỉ nhìn thấy dx < 0
+    if (facingRight && dx < 0) return false;
+    if (!facingRight && dx > 0) return false;
+    if (dx == 0 && !flying) return false;
+
+    // 4. Đường nhìn thẳng không bị tường chắn
+    if (!hasLineOfSight(dungeon, pPos)) return false;
+
+    return true;
+}
+
+void Monster::updateAI(float deltaTime, Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) {
+    if (!alive || dying) return;
+
+    if (actionTimer > 0.0f) actionTimer -= deltaTime;
+    if (attackCooldown > 0.0f) attackCooldown -= deltaTime;
+    if (pauseTimer > 0.0f) {
+        pauseTimer -= deltaTime;
+        return; // Đang dừng quan sát trước khi quay đầu
+    }
+
+    if (actionTimer <= 0.0f) {
+        act(dungeon, player, combatLog);
+    }
 }

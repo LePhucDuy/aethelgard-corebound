@@ -52,7 +52,6 @@ private:
     int spawnOverrideY;
 
     void handleInput();
-    void processMonsterTurn();
     void renderHUD() const;
     void drawText(const char* text, float posX, float posY, float fontSize, Color color) const;
 

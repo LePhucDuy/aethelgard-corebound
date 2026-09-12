@@ -29,27 +29,42 @@ void Snail::takeDamage(int amount) {
 
 void Snail::act(Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) {
     Position pPos = player.getPosition();
+    int dx = pPos.x - pos.x;
+    int dy = pPos.y - pos.y;
 
-    // 1. RÚT VÀO VỎ: không tấn công, hồi 2 HP mỗi lượt
-    //    -> tạo áp lực buộc người chơi phải dồn sát thương liên tục thay vì chờ đợi
+    // 1. RÚT VÀO VỎ: không tấn công, hồi 2 HP định kỳ
     if (isHiding) {
         heal(2);
+        actionTimer = 2.0f;
         return;
     }
 
-    // 2. PHẢN ĐÒN: chỉ tấn công khi người chơi chủ động đứng kề ngang
-    bool adjacent = (pPos.y == pos.y) && std::abs(pPos.x - pos.x) == 1;
-    if (adjacent) {
-        CombatSystem::attack(*this, player, combatLog);
+    // 2. PHẢN ĐÒN / CẬN CHIẾN: đứng kề ngang người chơi
+    bool adjacent = (std::abs(dx) <= 1 && dy == 0);
+    if (adjacent && player.isAlive()) {
+        faceTowards(pPos);
+        if (attackCooldown <= 0.0f) {
+            CombatSystem::attack(*this, player, combatLog);
+            attackCooldown = 1.2f;
+        }
+        actionTimer = 0.5f;
         return;
     }
 
-    // 3. BÒ CHẬM RÃI: mỗi 3 lượt di chuyển 1 ô quanh điểm sinh (patrolRange = 1)
-    setState("idle");  // Animation bò chậm
-    turnsToMove++;
-    if (turnsToMove % 3 == 0) {
-        patrolStep(dungeon);
+    // 3. NẾU NHÌN THẤY NGƯỜI CHƠI PHÍA TRƯỚC (tầm nhìn 3 ô, không quay lưng)
+    if (canSeePlayer(dungeon, player)) {
+        setState("idle");
+        faceTowards(pPos);
+        int step = (dx > 0) ? 1 : -1;
+        tryStepTo(dungeon, Position(pos.x + step, pos.y), player);
+        actionTimer = 0.9f;
+        return;
     }
+
+    // 4. TUẦN TRA BÒ CHẬM RÃI
+    setState("idle");
+    patrolStep(dungeon);
+    actionTimer = 1.4f;
 }
 
 void Snail::onDeath(Player& player) {

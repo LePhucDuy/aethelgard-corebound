@@ -41,12 +41,10 @@ bool SaveLoadManager::saveGame(const std::string& filePath, const Player& player
             // Kiểm tra dynamic_cast (RTTI / Polymorphism) để biết loại item
             const Weapon* w = dynamic_cast<const Weapon*>(item);
             if (w) {
-                outFile << "Item=" << w->getName() << "|" << w->getDescription() << "|WEAPON|" << w->getBonusAttack() << "\n";
                 outFile << "Item=" << w->getName() << "|" << w->getDescription() << "|WEAPON|" << w->getBonusAttack() << "|" << w->getTextureId() << "\n";
             } else {
                 const Potion* p = dynamic_cast<const Potion*>(item);
                 if (p) {
-                    outFile << "Item=" << p->getName() << "|" << p->getDescription() << "|POTION|" << p->getHealAmount() << "\n";
                     outFile << "Item=" << p->getName() << "|" << p->getDescription() << "|POTION|" << p->getHealAmount() << "|" << p->getTextureId() << "\n";
                 }
             }
