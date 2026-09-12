@@ -74,7 +74,7 @@ void GameEngine::init() {
     player.addAnimation("idle",   std::make_unique<Animation>("warrior_idle", 4, 64, 80, 0.14f, true));
     player.addAnimation("run",    std::make_unique<Animation>("warrior_run", 8, 80, 80, 0.08f, true));
     player.addAnimation("attack", std::make_unique<Animation>("warrior_attack", 8, 96, 80, 0.06f, false));
-    player.addAnimation("jump",   std::make_unique<Animation>("warrior_jump", 15, 64, 64, 0.05f, false));
+    player.addAnimation("jump",   std::make_unique<Animation>("warrior_jump", 15, 64, 64, 0.03f, true));
     player.addAnimation("dead",   std::make_unique<Animation>("warrior_dead", 10, 64, 64, 0.12f, false));
     player.setState("idle");
 
@@ -196,22 +196,75 @@ void GameEngine::handleInput() {
         }
 
         int dirX = player.isFacingRight() ? 1 : -1;
-        player.triggerJump(dirX, -1);
+        // NHẢY ĐỊNH HƯỚNG: nếu đang GIỮ phím Trái/Phải lúc bấm Space thì nhảy
+        // theo hướng đang giữ (bay xa 2-3 ô); nếu không giữ hướng nào thì nhảy
+        // theo hướng mặt cũ (cú nhảy ngắn tại chỗ như trước).
+        bool holdRight = IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT);
+        bool holdLeft  = IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT);
+        int jumpDir = dirX;
+        bool directional = false;
+        if (holdRight && !holdLeft)      { jumpDir = 1;  directional = true; }
+        else if (holdLeft && !holdRight) { jumpDir = -1; directional = true; }
+        player.triggerJump(jumpDir, -1);
 
-        Position jumpCandidates[] = {
-            Position(pPos.x + dirX, pPos.y - 1), // Nhảy chéo lên bệ trên
-            Position(pPos.x + dirX * 2, pPos.y), // Nhảy xa 2 ô phía trước
-            Position(pPos.x, pPos.y - 1),         // Nhảy thẳng lên 1 ô
-            Position(pPos.x, pPos.y - 2),         // Nhảy cao 2 ô
-            Position(pPos.x + dirX, pPos.y)      // Nhảy bước tới
+        // Helper: đường bay được NHẢY XUYÊN QUA quái (fly-over) và ô EMPTY/FLOOR,
+        // chỉ bị chặn bởi khối WALL đặc. Ô đáp (landing) thì vẫn phải trống quái
+        // (kiểm tra riêng trong canLand) để không đáp đè lên đầu quái.
+        auto pathFlyable = [&](const Position& from, const Position& to) {
+            int steps = std::max(std::abs(to.x - from.x), std::abs(to.y - from.y));
+            for (int i = 1; i < steps; ++i) {
+                float t = (float)i / (float)steps;
+                Position mid(from.x + (int)std::round((to.x - from.x) * t),
+                             from.y + (int)std::round((to.y - from.y) * t));
+                if (mid == from) continue;
+                if (!dungeon.isValidPos(mid)) return false;
+                // Quái trên đường bay: cho phép nhảy vọt qua (không chặn)
+                if (dungeon.getMonsterAt(mid) != nullptr) continue;
+                if (dungeon.getTileType(mid) == TileType::WALL) return false;
+            }
+            return true;
+        };
+        auto canLand = [&](const Position& t) {
+            return dungeon.isValidPos(t) && pathFlyable(pPos, t)
+                && dungeon.isWalkable(t) && dungeon.getMonsterAt(t) == nullptr;
         };
 
         bool jumped = false;
-        for (const auto& target : jumpCandidates) {
-            if (dungeon.isWalkable(target) && dungeon.getMonsterAt(target) == nullptr) {
-                player.setPosition(target);
-                jumped = true;
-                break;
+        if (directional) {
+            // Ưu tiên đáp XA trước: chéo xa 2 ô lên bệ -> ngang xa 3 ô ->
+            // ngang xa 2 ô -> chéo gần -> thẳng đứng -> bước tới.
+            Position farCandidates[] = {
+                Position(pPos.x + jumpDir * 2, pPos.y - 1), // Nhảy xa 2 ô + lên bệ
+                Position(pPos.x + jumpDir * 3, pPos.y),     // Nhảy xa 3 ô ngang
+                Position(pPos.x + jumpDir * 2, pPos.y),     // Nhảy xa 2 ô ngang
+                Position(pPos.x + jumpDir * 3, pPos.y - 1), // Bay xa 3 ô + lên cao
+                Position(pPos.x + jumpDir, pPos.y - 1),     // Nhảy chéo gần lên bệ
+                Position(pPos.x + jumpDir * 2, pPos.y + 1), // Nhảy xa + đáp xuống dốc
+                Position(pPos.x, pPos.y - 1),               // Nhảy thẳng lên 1 ô
+                Position(pPos.x + jumpDir, pPos.y)          // Nhảy bước tới
+            };
+            for (const auto& target : farCandidates) {
+                if (canLand(target)) {
+                    player.setPosition(target);
+                    jumped = true;
+                    break;
+                }
+            }
+        } else {
+            Position jumpCandidates[] = {
+                Position(pPos.x + dirX, pPos.y - 1), // Nhảy chéo lên bệ trên
+                Position(pPos.x + dirX * 2, pPos.y), // Nhảy xa 2 ô phía trước
+                Position(pPos.x, pPos.y - 1),         // Nhảy thẳng lên 1 ô
+                Position(pPos.x, pPos.y - 2),         // Nhảy cao 2 ô
+                Position(pPos.x + dirX, pPos.y)      // Nhảy bước tới
+            };
+
+            for (const auto& target : jumpCandidates) {
+                if (canLand(target)) {
+                    player.setPosition(target);
+                    jumped = true;
+                    break;
+                }
             }
         }
 
@@ -237,9 +290,10 @@ void GameEngine::handleInput() {
 
     if (moveRightHeld || moveLeftHeld) {
         bool isInit = (moveRightHeld && moveRightInit) || (moveLeftHeld && moveLeftInit);
-
+        // Khi giữ phím: cho frame đầu đi ngay, các frame sau lặp theo nhịp nhanh
+        // 0.07s (thay vì 0.10s cũ) để chạy mượt, không khựng. Nhấn đầu 0.12s.
         if (isInit || moveTimer <= 0.0f) {
-            moveTimer = isInit ? 0.22f : 0.10f; // Nhấn đầu tiên chờ 0.22s, giữ phím lặp lại mỗi 0.10s
+            moveTimer = isInit ? 0.12f : 0.07f; // Nhấn đầu chờ 0.12s, giữ phím lặp mỗi 0.07s
             int dx = moveRightHeld ? 1 : -1;
 
             Position candidates[] = {
@@ -300,7 +354,7 @@ void GameEngine::handleInput() {
         bool isInit = (moveUpHeld && moveUpInit) || (moveDownHeld && moveDownInit);
 
         if (isInit || moveTimer <= 0.0f) {
-            moveTimer = isInit ? 0.22f : 0.10f;
+            moveTimer = isInit ? 0.12f : 0.07f;
             int dy = moveUpHeld ? -1 : 1;
 
             Position candidates[] = {

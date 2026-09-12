@@ -32,6 +32,8 @@ private:
     std::map<std::string, std::unique_ptr<Animation>> anims;
     std::string currentState;
     float runTimer;
+    float jumpTimer;       // Thời gian còn khóa hoạt họa nhảy (ưu tiên hơn run)
+    float jumpVisualLift;  // Độ nâng hình ảnh (px world) cho cú nhảy xa
     bool facingRight;
 
     void checkLevelUp();
@@ -89,6 +91,7 @@ public:
 
     // Đặt lại chỉ số ban đầu khi chơi lại
     void resetStats(const Position& startPos);
+    void resetJumpVisual() { jumpTimer = 0.0f; jumpVisualLift = 0.0f; }
 };
 
 #endif // PLAYER_H
