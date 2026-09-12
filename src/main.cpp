@@ -9,6 +9,7 @@ int main(int argc, char* argv[]) {
     std::string screenshotPath = "";
     int spawnX = -1, spawnY = -1; // Tuỳ chọn debug: --spawn X Y (nhảy thẳng tới khu bất kỳ)
     bool startWithInventory = false; // Tuỳ chọn debug: --inventory (mở sẵn túi đồ khi khởi động)
+    bool startLethal = false;        // Tuỳ chọn debug: --kill (kiểm tra hoạt cảnh chết)
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -19,11 +20,13 @@ int main(int argc, char* argv[]) {
             spawnY = std::atoi(argv[++i]);
         } else if (arg == "--inventory") {
             startWithInventory = true;
+        } else if (arg == "--kill") {
+            startLethal = true;
         }
     }
 
     // Khởi chạy vòng lặp trò chơi Aethelgard: Corebound
-    GameEngine engine(spawnX, spawnY, startWithInventory);
+    GameEngine engine(spawnX, spawnY, startWithInventory, startLethal);
     engine.run(screenshotPath);
 
     return 0;

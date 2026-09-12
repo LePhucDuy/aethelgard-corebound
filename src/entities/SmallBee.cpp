@@ -72,17 +72,18 @@ void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
 
         // Tuần tra bay lượn trên không
         setState("idle");
+        setMoveLerpSpeed(5.5f);
         Position next(pos.x + patrolDir, pos.y);
         bool outOfRange = std::abs(next.x - homePos.x) > patrolRange;
         if (outOfRange || !canFlyTo(next)) {
             patrolDir = -patrolDir;
             setFacing(patrolDir > 0);
-            pauseTimer = 0.6f;
+            pauseTimer = 0.5f;
             return;
         }
         setFacing(patrolDir > 0);
         setPosition(next);
-        actionTimer = 0.5f;
+        actionTimer = 0.45f;
         return;
     }
 
@@ -92,11 +93,12 @@ void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
         if (cheb > aggroRange + 3) {
             aiState = MonsterAIState::RETURNING;
             isAlerted = false;
-            actionTimer = 0.6f;
+            actionTimer = 0.5f;
             return;
         }
 
         setState("run");
+        setMoveLerpSpeed(14.0f);
         setFacing(pPos.x > pos.x);
 
         // Nhắm đến vị trí chéo trên đầu người chơi
@@ -110,7 +112,7 @@ void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
 
         if (step != pos && canFlyTo(step)) {
             setPosition(step);
-            actionTimer = 0.22f; // Bứt tốc bay nhanh
+            actionTimer = 0.20f; // Bứt tốc bay nhanh
             return;
         }
 

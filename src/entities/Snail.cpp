@@ -54,17 +54,19 @@ void Snail::act(Dungeon& dungeon, Player& player, std::vector<std::string>& comb
     // 3. NẾU NHÌN THẤY NGƯỜI CHƠI PHÍA TRƯỚC (tầm nhìn 3 ô, không quay lưng)
     if (canSeePlayer(dungeon, player)) {
         setState("idle");
+        setMoveLerpSpeed(2.5f);
         faceTowards(pPos);
         int step = (dx > 0) ? 1 : -1;
         tryStepTo(dungeon, Position(pos.x + step, pos.y), player);
-        actionTimer = 0.9f;
+        actionTimer = 0.85f;
         return;
     }
 
     // 4. TUẦN TRA BÒ CHẬM RÃI
     setState("idle");
+    setMoveLerpSpeed(2.0f);
     patrolStep(dungeon);
-    actionTimer = 1.4f;
+    actionTimer = 0.95f;
 }
 
 void Snail::onDeath(Player& player) {

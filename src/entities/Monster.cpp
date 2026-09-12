@@ -167,7 +167,7 @@ void Monster::patrolStep(Dungeon& dungeon) {
         // Đổi hướng tuần tra khi chạm biên vùng hoặc bị chặn
         patrolDir = -patrolDir;
         setFacing(patrolDir > 0);
-        pauseTimer = 0.8f; // Dừng lại 0.8s quan sát
+        pauseTimer = 0.5f; // Dừng lại 0.5s quan sát tự nhiên trước khi quay đầu
         setState("idle");  // Đứng yên trong lúc dừng
         return;
     }

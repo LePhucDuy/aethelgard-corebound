@@ -85,6 +85,9 @@ public:
     int getDefense() const { return defense; }
     bool isAlive() const { return alive; }
 
+    float getMoveLerpSpeed() const { return moveLerpSpeed; }
+    void setMoveLerpSpeed(float speed) { moveLerpSpeed = speed; }
+
     // Quản lý animation
     void setAnimation(std::unique_ptr<Animation> anim);
     Animation* getAnimation() { return currentAnim; }

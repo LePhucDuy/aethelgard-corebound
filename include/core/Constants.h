@@ -10,7 +10,7 @@ namespace Constants {
 
     // Grid & Map settings
     constexpr int TILE_SIZE = 32;       // Kích thước ô lưới hiển thị
-    constexpr int DUNGEON_WIDTH = 130;  // 130 ô ngang (4160px chiều dài map)
+    constexpr int DUNGEON_WIDTH = 165;  // 165 ô ngang (5280px chiều dài map gồm Đấu Trường Boss)
     constexpr int DUNGEON_HEIGHT = 26;  // 26 ô dọc (832px chiều cao map)
 
     // Inventory settings

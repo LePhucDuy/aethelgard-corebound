@@ -16,8 +16,8 @@ void Animation::update(float deltaTime) {
     if (isFinished && !isLoop) return;
 
     timer += deltaTime;
-    if (timer >= frameDuration) {
-        timer = 0.0f;
+    while (timer >= frameDuration && (!isFinished || isLoop)) {
+        timer -= frameDuration;
         currentFrame++;
         if (currentFrame >= totalFrames) {
             if (isLoop) {
@@ -25,6 +25,8 @@ void Animation::update(float deltaTime) {
             } else {
                 currentFrame = totalFrames - 1;
                 isFinished = true;
+                timer = 0.0f;
+                break;
             }
         }
     }
