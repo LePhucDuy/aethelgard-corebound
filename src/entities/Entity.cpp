@@ -3,13 +3,19 @@
 #include <algorithm>
 
 Entity::Entity(const std::string& name, const Position& pos, int hp, int attack, int defense)
-    : name(name), pos(pos),
+    : IGameObject(name),
+      name(name), pos(pos),
       visualPos{ (float)(pos.x * Constants::TILE_SIZE), (float)(pos.y * Constants::TILE_SIZE) },
       moveLerpSpeed(20.0f),
       hp(hp), maxHp(hp), attack(attack), defense(defense), alive(true), currentAnim(nullptr) {}
 
 void Entity::resetVisualPosition() {
     visualPos = { (float)(pos.x * Constants::TILE_SIZE), (float)(pos.y * Constants::TILE_SIZE) };
+}
+
+void Entity::setPosition(const Position& newPos, bool snapVisual) {
+    pos = newPos;
+    if (snapVisual) resetVisualPosition();
 }
 
 void Entity::takeDamage(int amount) {

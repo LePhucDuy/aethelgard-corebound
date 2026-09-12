@@ -2,8 +2,8 @@
 #include "entities/Player.h"
 #include <iostream>
 
-Potion::Potion(const std::string& name, const std::string& description, int healAmount, const Position& pos, const std::string& textureId)
-    : Item(name, description, pos, textureId), healAmount(healAmount) {}
+Potion::Potion(const std::string& name, const std::string& description, int healAmount, const Position& pos, const std::string& textureId, int count)
+    : Item(name, description, pos, textureId), healAmount(healAmount), stackCount(count) {}
 
 bool Potion::use(Player* target) {
     if (!target) return false;

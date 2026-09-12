@@ -95,6 +95,13 @@ void Animation::setTextureId(const std::string& id, int frames, int width, int h
     reset();
 }
 
+void Animation::setCurrentFrame(int frame) {
+    if (frame >= 0 && frame < totalFrames) {
+        currentFrame = frame;
+        timer = 0.0f;
+    }
+}
+
 int Animation::getCurrentFrame() const {
     return currentFrame;
 }

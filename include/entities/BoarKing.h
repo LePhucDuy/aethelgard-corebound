@@ -1,7 +1,7 @@
 #ifndef BOAR_KING_H
 #define BOAR_KING_H
 
-#include "entities/Monster.h"
+#include "entities/Boar.h"
 #include <vector>
 
 // Forward declaration
@@ -20,8 +20,9 @@ enum class BoarKingState {
 
 /**
  * @brief Lớp BoarKing — BOSS TỐI THƯỢNG canh giữ Đấu Trường Khu F.
+ * Kế thừa đa mức (Multi-level Inheritance: IGameObject -> Entity -> Monster -> GroundMonster -> Boar -> BoarKing).
  */
-class BoarKing : public Monster {
+class BoarKing : public Boar {
 private:
     BoarKingState bossState;
     bool enraged;
@@ -41,6 +42,7 @@ public:
 
     void update(float deltaTime) override;
     void act(Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) override;
+    void takeDamage(int amount) override;
     void onDeath(Player& player) override;
     void render(float scale = 2.0f, Vector2 offset = {0.0f, 0.0f}) const override;
 

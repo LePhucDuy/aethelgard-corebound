@@ -1,15 +1,15 @@
 #ifndef SNAIL_H
 #define SNAIL_H
 
-#include "entities/Monster.h"
+#include "entities/GroundMonster.h"
 
 /**
- * @brief Lớp Snail (Ốc sên thiết giáp) kế thừa từ Monster
+ * @brief Lớp Snail (Ốc sên thiết giáp) kế thừa từ GroundMonster
  * Quái phòng thủ (Tanker): Giáp dày.
  * Kỹ năng đặc biệt: Khi máu xuống dưới 50%, kích hoạt chế độ "Rút vào vỏ" (Hide),
  * tăng đột biến giáp và chuyển sang hoạt họa Hide-Sheet.png!
  */
-class Snail : public Monster {
+class Snail : public GroundMonster {
 private:
     bool isHiding;
     int turnsToMove; // Ốc sên bò chậm (2 lượt mới di chuyển 1 ô)

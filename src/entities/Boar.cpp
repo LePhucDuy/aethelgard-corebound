@@ -6,17 +6,23 @@
 #include <cstdlib>
 
 Boar::Boar(const Position& pos)
-    : Monster("Boar (Lon rung)", pos, 45, 12, 3, 25, 10,
-              /*aggroRange*/ 6, /*patrolRange*/ 3, /*flying*/ false) {
-    // Hoạt họa đa trạng thái: idle (đứng yên), walk (tuần tra), run (chạy/đuổi), dead (Hit-Vanish)
+    : GroundMonster("Boar (Lon rung)", pos, 45, 12, 3, 25, 10,
+                    /*aggroRange*/ 6, /*patrolRange*/ 3) {
+    // Hoạt họa đa trạng thái: idle (đứng yên), walk (tuần tra), run (chạy/đuổi), hit (bị đánh), dead (Hit-Vanish)
     addAnimation("idle", std::make_unique<Animation>("boar_idle", 4, 48, 32, 0.15f, true));
     addAnimation("walk", std::make_unique<Animation>("boar_walk", 6, 48, 32, 0.12f, true));
     addAnimation("run",  std::make_unique<Animation>("boar_run",  6, 48, 32, 0.09f, true));
+    addAnimation("hit",  std::make_unique<Animation>("boar_hit",  4, 48, 32, 0.07f, false));
     addAnimation("dead", std::make_unique<Animation>("boar_hit",  4, 48, 32, 0.06f, false));
     setState("idle");
 }
 
 void Boar::act(Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) {
+    // Nếu đang phát hoạt ảnh bị đánh (hit) thì giữ nguyên, không đè hoạt ảnh di chuyển
+    if (animState == "hit" && currentAnim && !currentAnim->hasFinished()) {
+        return;
+    }
+
     Position pPos = player.getPosition();
     int dx = pPos.x - pos.x;
     int dy = pPos.y - pos.y;
@@ -112,5 +118,7 @@ void Boar::act(Dungeon& dungeon, Player& player, std::vector<std::string>& comba
 void Boar::onDeath(Player& player) {
     std::cout << "[Ha guc] Boar da bi tieu diet! Ban tang +" << expReward << " EXP va +" << goldReward << " Vang!" << std::endl;
     player.addExp(expReward);
-    player.addGold(goldReward);
+    if (!goldDropped) {
+        player.addGold(goldReward);
+    }
 }

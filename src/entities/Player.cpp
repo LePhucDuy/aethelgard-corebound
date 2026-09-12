@@ -1,15 +1,24 @@
 #include "entities/Player.h"
 #include "core/Constants.h"
+#include "core/Templates.h"
 #include <iostream>
 #include <cmath>
+#include <algorithm>
 
 Player::Player(const std::string& name, const Position& pos, int hp, int attack, int defense)
     : Entity(name, pos, hp, attack, defense),
-      level(1), exp(0), expToNextLevel(50), gold(0),
+      level(1), exp(0), expToNextLevel(50), gold(0), forgeLevel(0),
       inventory(std::make_unique<Inventory>(Constants::MAX_INVENTORY_SLOTS)),
       currentState("idle"), runTimer(0.0f), jumpTimer(0.0f), jumpVisualLift(0.0f),
       sinkVisualOffset(0.0f),
-      facingRight(true) {}
+      fallTimer(0.0f), fallAirDuration(0.0f), fallTotalDuration(0.0f),
+      startFallY(0.0f), targetFallY(0.0f),
+      facingRight(true) {
+    // Khởi tạo các kỹ năng đa hình
+    skills.push_back(std::make_unique<SlashSkill>());
+    skills.push_back(std::make_unique<DashSkill>());
+    skills.push_back(std::make_unique<HealSkill>());
+}
 
 void Player::checkLevelUp() {
     while (exp >= expToNextLevel) {
@@ -44,6 +53,29 @@ void Player::addGold(int amount) {
     std::cout << "[Vang] +" << amount << " vang (Tong: " << gold << ")" << std::endl;
 }
 
+bool Player::spendGold(int amount) {
+    if (amount <= 0) return true;
+    if (gold < amount) return false;
+    gold -= amount;
+    std::cout << "[Vang] Da tieu ton -" << amount << " vang (Con lai: " << gold << ")" << std::endl;
+    return true;
+}
+
+bool Player::upgradeForge() {
+    int cost = getNextUpgradeCost();
+    if (!spendGold(cost)) {
+        std::cout << "[De ren] Khong du " << cost << " vang de cuong hoa vu khi!" << std::endl;
+        return false;
+    }
+
+    int bonus = getNextUpgradeBonus();
+    forgeLevel++;
+    attack += bonus;
+    std::cout << "[De ren] Cuong hoa thanh cong! Vu khi len Cap +" << forgeLevel 
+              << ", tang +" << bonus << " ATK! (Tong ATK: " << attack << ")" << std::endl;
+    return true;
+}
+
 void Player::addAnimation(const std::string& stateName, std::unique_ptr<Animation> anim) {
     anims[stateName] = std::move(anim);
 }
@@ -62,6 +94,7 @@ void Player::setState(const std::string& stateName) {
 }
 
 void Player::triggerAttack() {
+    if (fallTimer > 0.0f) return; // Không chém khi đang rơi tự do
     if (anims.find("attack") != anims.end()) {
         currentState = "attack";
         anims["attack"]->reset();
@@ -76,6 +109,7 @@ void Player::setFacingRight(bool right) {
 }
 
 void Player::triggerJump(int dx, int dy) {
+    if (fallTimer > 0.0f) return; // Đang rơi xuống hố không được nhảy tiếp
     (void)dy;
     if (dx < 0) {
         setFacingRight(false);
@@ -94,8 +128,44 @@ void Player::triggerJump(int dx, int dy) {
     }
 }
 
+void Player::setPosition(const Position& newPos, bool snapVisual) {
+    int dy = newPos.y - pos.y;
+    Entity::setPosition(newPos, snapVisual);
+
+    // Bất kỳ khi nào người chơi rơi từ trên cao xuống sàn dưới (dy >= 2 ô):
+    // Tự động kích hoạt hiệu ứng rơi tự do Jump-End-Sheet với tốc độ chậm chuẩn vật lý
+    if (!snapVisual && dy >= 2 && alive) {
+        float airDuration = std::clamp(0.22f * std::sqrt((float)dy), 0.35f, 0.65f);
+        float landDuration = 0.22f;
+        triggerFall(airDuration, landDuration);
+    }
+}
+
+void Player::triggerFall(float airDuration, float landDuration) {
+    fallAirDuration = airDuration;
+    fallTotalDuration = airDuration + landDuration;
+    fallTimer = fallTotalDuration;
+    startFallY = visualPos.y;
+    targetFallY = (float)(pos.y * Constants::TILE_SIZE);
+    currentState = "fall";
+    jumpTimer = 0.0f;
+    jumpVisualLift = 0.0f;
+    runTimer = 0.0f;
+
+    auto it = anims.find("fall");
+    if (it != anims.end() && it->second) {
+        it->second->reset();
+        it->second->setCurrentFrame(0);
+    }
+}
+
 void Player::update(float deltaTime) {
     Entity::update(deltaTime);
+
+    // Cập nhật hồi chiêu các kỹ năng
+    for (auto& s : skills) {
+        if (s) s->update(deltaTime);
+    }
 
     if (!alive) {
         if (anims.find("dead") != anims.end()) {
@@ -104,6 +174,56 @@ void Player::update(float deltaTime) {
                 anims["dead"]->reset();
             }
             anims["dead"]->update(deltaTime);
+        }
+        return;
+    }
+
+    // Xử lý hoạt ảnh rơi tự do xuống hố (Jump-End-Sheet) với tốc độ vật lý chân thực ngoài đời:
+    // Giai đoạn 1: Rơi trong không trung (airDuration ~0.52s): gia tốc trọng trường s = 0.5 * g * t^2,
+    // Frame 0 duỗi thẳng chân lao xuống nhanh dần.
+    // Giai đoạn 2: Tiếp đất giảm chấn (landDuration ~0.22s):
+    // Frame 1 chùng gối giảm chấn -> Frame 2 gập sâu gối thu kiếm kiên định -> về idle.
+    if (fallTimer > 0.0f) {
+        fallTimer -= deltaTime;
+        currentState = "fall";
+
+        float elapsed = fallTotalDuration - fallTimer;
+        auto it = anims.find("fall");
+
+        if (elapsed < fallAirDuration) {
+            float tNorm = elapsed / fallAirDuration;
+            float progress = tNorm * tNorm; // Parabol gia tốc trọng trường rơi nhanh dần
+            visualPos.y = startFallY + (targetFallY - startFallY) * progress;
+
+            if (it != anims.end() && it->second) {
+                it->second->setCurrentFrame(0); // Frame 0: Lơ lửng trên không, duỗi thẳng chân
+            }
+        } else {
+            visualPos.y = targetFallY; // Đã chạm sàn tầng dưới
+
+            float landElapsed = elapsed - fallAirDuration;
+            float landTotal = fallTotalDuration - fallAirDuration;
+            float landNorm = (landTotal > 0.0f) ? (landElapsed / landTotal) : 1.0f;
+
+            if (it != anims.end() && it->second) {
+                if (landNorm < 0.45f) {
+                    it->second->setCurrentFrame(1); // Frame 1: Chạm đất, chùng gối giảm chấn
+                } else {
+                    it->second->setCurrentFrame(2); // Frame 2: Gập sâu gối, thu kiếm thủ thế kiên định
+                }
+            }
+        }
+
+        // Tự động căn chỉnh nhẹ nhàng trục X vào tâm ô đích
+        float targetX = (float)(pos.x * Constants::TILE_SIZE);
+        float tx = 1.0f - std::exp(-12.0f * deltaTime);
+        visualPos.x += (targetX - visualPos.x) * tx;
+        if (std::abs(visualPos.x - targetX) < 0.25f) visualPos.x = targetX;
+
+        if (fallTimer <= 0.0f) {
+            fallTimer = 0.0f;
+            visualPos.y = targetFallY;
+            currentState = "idle";
         }
         return;
     }
@@ -176,6 +296,8 @@ void Player::render(float scale, Vector2 offset) const {
         trimBottom = 6.0f;
     } else if (currentState == "dead") {
         trimBottom = 27.0f; // Dead sheet 64px: khớp đáy bàn chân F0 và xác nằm F7 sát mặt đất
+    } else if (currentState == "fall") {
+        trimBottom = 12.0f; // Jump-End sheet 64px: khớp chuẩn xác 100% từng pixel với Idle
     }
 
     // Parabol chuẩn: progress 0->1, lift = max * sin(pi*progress):
@@ -188,14 +310,16 @@ void Player::render(float scale, Vector2 offset) const {
         jumpLift = jumpVisualLift * std::sin(progress * 3.14159265f);
     }
 
-    // Căn chỉnh trục X khi chết để bàn chân không bị dịch chuyển đột ngột giữa Idle và Dead
-    float deadShiftX = 0.0f;
+    // Căn chỉnh trục X khi chết hoặc tiếp đất để bàn chân không bị dịch chuyển đột ngột giữa Idle và Fall/Dead
+    float stateShiftX = 0.0f;
     if (currentState == "dead") {
-        deadShiftX = facingRight ? (16.5f * scale) : (-16.5f * scale);
+        stateShiftX = facingRight ? (16.5f * scale) : (-16.5f * scale);
+    } else if (currentState == "fall") {
+        stateShiftX = facingRight ? (9.0f * scale) : (-9.0f * scale);
     }
 
     Vector2 screenPos = {
-        visualPos.x + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + deadShiftX + offset.x,
+        visualPos.x + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + stateShiftX + offset.x,
         visualPos.y + FOOT_SINK - refHeight + trimBottom * scale + offset.y
             - jumpLift + sinkVisualOffset
     };
@@ -204,6 +328,7 @@ void Player::render(float scale, Vector2 offset) const {
 }
 
 bool Player::moveBy(int dx, int dy, Dungeon& dungeon) {
+    if (fallTimer > 0.0f) return false; // Không di chuyển ngang khi đang rơi xuống hố
     (void)dungeon;
     pos.x += dx;
     pos.y += dy;
@@ -242,14 +367,31 @@ void Player::resetStats(const Position& startPos) {
     exp = 0;
     expToNextLevel = 50;
     gold = 0;
+    forgeLevel = 0;
     alive = true;
     currentState = "idle";
     runTimer = 0.0f;
     jumpTimer = 0.0f;
     jumpVisualLift = 0.0f;
     sinkVisualOffset = 0.0f;
+    fallTimer = 0.0f;
+    fallAirDuration = 0.0f;
+    fallTotalDuration = 0.0f;
+    startFallY = 0.0f;
+    targetFallY = 0.0f;
     facingRight = true;
     for (auto& pair : anims) {
         if (pair.second) pair.second->reset();
     }
 }
+
+bool Player::useSkill(size_t index, GameEngine* engine) {
+    if (index >= skills.size() || !skills[index]) return false;
+    return skills[index]->execute(this, engine);
+}
+
+Skill* Player::getSkill(size_t index) const {
+    if (index >= skills.size()) return nullptr;
+    return skills[index].get();
+}
+

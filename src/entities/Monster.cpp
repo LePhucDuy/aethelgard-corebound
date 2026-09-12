@@ -3,6 +3,10 @@
 #include "map/Dungeon.h"
 #include <cstdlib>
 
+// Khởi tạo các thành viên tĩnh (Static Members - Slide 36-39 Chương 3)
+int Monster::activeMonsterCount = 0;
+int Monster::totalMonstersDefeated = 0;
+
 Monster::Monster(const std::string& name, const Position& pos, int hp, int attack, int defense,
                  int expReward, int goldReward,
                  int aggroRange, int patrolRange, bool flying)
@@ -12,7 +16,15 @@ Monster::Monster(const std::string& name, const Position& pos, int hp, int attac
       facingRight(true), flying(flying), turnCount(0), patrolDir(1),
       aiState(MonsterAIState::PATROL), actionTimer(0.0f), attackCooldown(0.0f),
       pauseTimer(0.0f), isAlerted(false),
-      animState(""), dying(false), rewarded(false) {}
+      animState(""), dying(false), rewarded(false), goldDropped(false) {
+    ++activeMonsterCount;
+}
+
+Monster::~Monster() {
+    if (activeMonsterCount > 0) {
+        --activeMonsterCount;
+    }
+}
 
 // ===== Hệ thống hoạt họa nhiều trạng thái =====
 
@@ -34,7 +46,13 @@ void Monster::addAnimation(const std::string& stateName, std::unique_ptr<Animati
 void Monster::setState(const std::string& stateName) {
     auto it = anims.find(stateName);
     if (it == anims.end()) return;           // Không có animation này -> bỏ qua
-    if (animState == stateName) return;      // Đang dùng rồi -> không reset frame
+    if (animState == stateName) {
+        // Nếu đang ở trạng thái hit và bị đánh tiếp -> reset frame 0 để giật tiếp đòn mới
+        if (stateName == "hit" && currentAnim) {
+            currentAnim->reset();
+        }
+        return;      // Đang dùng rồi -> không reset frame trừ khi là hit
+    }
     animState = stateName;
     currentAnim = it->second.get();
     currentAnim->reset();
@@ -48,6 +66,15 @@ void Monster::update(float deltaTime) {
     // Tự động thoát khỏi đòn tấn công 1 lần (attack) khi animation chạy xong
     if (!dying && animState == "attack" && currentAnim->hasFinished()) {
         setState("idle");
+    }
+
+    // Tự động thoát khỏi trạng thái bị đánh (hit) khi animation chớp giật chạy xong
+    if (!dying && animState == "hit" && currentAnim->hasFinished()) {
+        if (isAlerted || aiState == MonsterAIState::CHASE) {
+            setState("run");
+        } else {
+            setState("idle");
+        }
     }
 }
 
@@ -85,14 +112,21 @@ void Monster::takeDamage(int amount) {
     if (!alive) {
         kill();
     } else {
+        // Bị đánh trúng -> phát hoạt ảnh bị đánh (hit) nếu có
+        if (anims.find("hit") != anims.end()) {
+            setState("hit");
+        }
         // Bị đánh trúng -> lập tức báo động và chuyển sang truy đuổi
         isAlerted = true;
         aiState = MonsterAIState::CHASE;
-        actionTimer = 0.1f;
+        actionTimer = 0.28f; // Dừng nhẹ trong thời gian chớp trúng đòn
     }
 }
 
 void Monster::kill() {
+    if (!dying) {
+        ++totalMonstersDefeated;
+    }
     alive = false;
     dying = true;
     // Phát animation biến mất: ưu tiên "dead", nếu không có thì giữ nguyên animation hiện tại

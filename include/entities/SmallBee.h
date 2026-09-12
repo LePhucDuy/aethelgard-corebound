@@ -1,13 +1,13 @@
 #ifndef SMALL_BEE_H
 #define SMALL_BEE_H
 
-#include "entities/Monster.h"
+#include "entities/FlyingMonster.h"
 
 /**
- * @brief Lớp SmallBee (Ong sát thủ) kế thừa từ Monster
+ * @brief Lớp SmallBee (Ong sát thủ) kế thừa từ FlyingMonster (Kế thừa phân cấp)
  * Quái cơ động bay: tốc độ cao, né đòn tốt, gây sát thương độc chích.
  */
-class SmallBee : public Monster {
+class SmallBee : public FlyingMonster {
 private:
     int evasionChance; // Tỉ lệ phần trăm né đòn (%)
 

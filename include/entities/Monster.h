@@ -53,6 +53,7 @@ protected:
     std::string animState;   // Tên animation đang dùng
     bool dying;              // Đã chết và đang phát animation biến mất
     bool rewarded;           // Đã trao thưởng EXP/Vàng (tránh trao 2 lần)
+    bool goldDropped;        // true: đã bung hiệu ứng hạt vàng rơi ra thế giới
 
 public:
 
@@ -73,6 +74,8 @@ public:
     bool isDeathAnimFinished() const;
     bool isRewarded() const { return rewarded; }
     void markRewarded() { rewarded = true; }
+    bool isGoldDropped() const { return goldDropped; }
+    void setGoldDropped(bool val = true) { goldDropped = val; }
 
     // Bước tới ô đích nếu an toàn: walkable, không đè quái khác, không đè player,
     // và (với quái bộ) ô đích phải có sàn đỡ phía dưới
@@ -102,7 +105,7 @@ public:
     Monster(const std::string& name, const Position& pos, int hp, int attack, int defense,
             int expReward, int goldReward,
             int aggroRange = 5, int patrolRange = 3, bool flying = false);
-    virtual ~Monster() override = default;
+    virtual ~Monster() override;
 
     // AI theo lượt — mỗi loài quái tự triển khai hành vi riêng (Polymorphism)
     void act(Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) override = 0;
@@ -116,6 +119,15 @@ public:
     const Position& getHomePos() const { return homePos; }
     bool isFacingRight() const { return facingRight; }
     bool isFlying() const { return flying; }
+
+    // Thành viên tĩnh (Static Members - Slide 36-39 Chương 3)
+    static int getActiveMonsterCount() { return activeMonsterCount; }
+    static int getTotalMonstersDefeated() { return totalMonstersDefeated; }
+    static void resetStats() { activeMonsterCount = 0; totalMonstersDefeated = 0; }
+
+protected:
+    static int activeMonsterCount;
+    static int totalMonstersDefeated;
 };
 
 #endif // MONSTER_H

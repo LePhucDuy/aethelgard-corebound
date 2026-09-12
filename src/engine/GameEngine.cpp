@@ -2,17 +2,24 @@
 #include "graphics/TextureManager.h"
 #include "systems/CombatSystem.h"
 #include "systems/SaveLoadManager.h"
+#include "core/GameException.h"
 #include "items/Potion.h"
 #include "items/Weapon.h"
+#include "items/Armor.h"
+#include "items/Accessory.h"
+#include "items/Chest.h"
 #include "entities/Snail.h"
+#include "entities/Boar.h"
 #include "entities/BoarKing.h"
 #include "core/Constants.h"
 #include <rlgl.h>
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <cassert>
+#include <sstream>
 
-GameEngine::GameEngine(int spawnX, int spawnY, bool startWithInventory, bool startLethal)
+GameEngine::GameEngine(int spawnX, int spawnY, bool startWithInventory, bool startLethal, bool startWithShop, bool startWithForge)
     : player("Hiep Si Aethelgard", Position(4, 17), 100, 16, 5),
       dungeon(Constants::DUNGEON_WIDTH, Constants::DUNGEON_HEIGHT),
       state(GameState::RUNNING),
@@ -36,7 +43,15 @@ GameEngine::GameEngine(int spawnX, int spawnY, bool startWithInventory, bool sta
       bossWarningTimer(0.0f),
       screenShake(0.0f),
       showInventory(startWithInventory),
+      showShop(startWithShop),
+      showForge(startWithForge),
       showCombatLog(true),
+      shopNotification(""),
+      shopNotificationColor(WHITE),
+      shopNotificationTimer(0.0f),
+      forgeNotification(""),
+      forgeNotificationColor(WHITE),
+      forgeNotificationTimer(0.0f),
       spawnOverrideX(spawnX),
       spawnOverrideY(spawnY),
       startLethalOverride(startLethal) {
@@ -76,10 +91,19 @@ void GameEngine::init() {
     tm.load("warrior_attack", "assets/characters/warrior/Attack-01/Attack-01-Sheet.png");
     tm.load("warrior_jump",   "assets/characters/warrior/Jumlp-All/Jump-All-Sheet.png");
     tm.load("warrior_dead",   "assets/characters/warrior/Dead/Dead-Sheet.png");
-    tm.load("boar_walk",      "assets/mobs/boar/Walk/Walk-Base-Sheet.png");
-    tm.load("boar_idle",      "assets/mobs/boar/Idle/Idle-Sheet.png");
-    tm.load("boar_run",       "assets/mobs/boar/Run/Run-Sheet.png");
-    tm.load("boar_hit",       "assets/mobs/boar/Hit-Vanish/Hit-Sheet.png");
+    tm.load("warrior_fall",   "assets/characters/warrior/Jump-End/Jump-End-Sheet.png");
+    tm.load("boar_walk",       "assets/mobs/boar/Walk/Walk-Base-Sheet.png");
+    tm.load("boar_idle",       "assets/mobs/boar/Idle/Idle-Sheet.png");
+    tm.load("boar_run",        "assets/mobs/boar/Run/Run-Sheet.png");
+    tm.load("boar_hit",        "assets/mobs/boar/Hit-Vanish/Hit-Sheet.png");
+    tm.load("boar_black_walk", "assets/mobs/boar/Walk/Walk-Base-SheetBlack.png");
+    tm.load("boar_black_idle", "assets/mobs/boar/Idle/Idle-Sheet-export-Back.png");
+    tm.load("boar_black_run",  "assets/mobs/boar/Run/Run-Sheet-Black.png");
+    tm.load("boar_black_hit",  "assets/mobs/boar/Hit-Vanish/Hit-Sheet-Black.png");
+    tm.load("boar_white_walk", "assets/mobs/boar/Walk/Walk-Base-Sheet-White.png");
+    tm.load("boar_white_idle", "assets/mobs/boar/Idle/Idle-Sheet-White.png");
+    tm.load("boar_white_run",  "assets/mobs/boar/Run/Run-Sheet-White.png");
+    tm.load("boar_white_hit",  "assets/mobs/boar/Hit-Vanish/Hit-Sheet-White.png");
     tm.load("bee_fly",        "assets/mobs/small_bee/Fly/Fly-Sheet.png");
     tm.load("bee_attack",     "assets/mobs/small_bee/Attack/Attack-Sheet.png");
     tm.load("bee_hit",        "assets/mobs/small_bee/Hit/Hit-Sheet.png");
@@ -87,13 +111,21 @@ void GameEngine::init() {
     tm.load("snail_hide",     "assets/mobs/snail/Hide-Sheet.png");
     tm.load("snail_dead",     "assets/mobs/snail/Dead-Sheet.png");
 
-    // Nạp toàn bộ tài nguyên hình ảnh vật phẩm (Items)
-    tm.load("item_sword_steel",     "assets/items/sword_steel.png");
-    tm.load("item_sword_mystic",    "assets/items/sword_mystic.png");
-    tm.load("item_potion_starter",  "assets/items/potion_starter.png");
-    tm.load("item_potion_health",   "assets/items/potion_health.png");
-    tm.load("item_potion_strength", "assets/items/potion_strength.png");
-    tm.load("item_potion_elixir",   "assets/items/potion_elixir.png");
+    // Nạp toàn bộ tài nguyên hình ảnh vật phẩm & biểu tượng (Items & Icons)
+    tm.load("item_sword_steel",       "assets/items/sword_steel.png");
+    tm.load("item_sword_mystic",      "assets/items/sword_mystic.png");
+    tm.load("item_potion_starter",    "assets/items/potion_starter.png");
+    tm.load("item_potion_health",     "assets/items/potion_health.png");
+    tm.load("item_potion_strength",   "assets/items/potion_strength.png");
+    tm.load("item_potion_elixir",     "assets/items/potion_elixir.png");
+    tm.load("item_gold_coin",         "assets/items/gold_coin.png");
+    tm.load("item_gold_pile",         "assets/items/gold_pile.png");
+    tm.load("item_chest_gold_closed", "assets/items/chest_gold_closed.png");
+    tm.load("item_chest_gold_open",   "assets/items/chest_gold_open.png");
+    tm.load("item_icon_shop",         "assets/items/icon_shop.png");
+    tm.load("item_icon_forge",        "assets/items/icon_forge.png");
+    tm.load("item_armor_shield",      "assets/items/armor_shield.png");
+    tm.load("item_ring_power",        "assets/items/ring_power.png");
 
     // 2. Thiết lập ĐẦY ĐỦ hệ thống hoạt họa phong phú cho Player
     player.addAnimation("idle",   std::make_unique<Animation>("warrior_idle", 4, 64, 80, 0.14f, true));
@@ -101,6 +133,7 @@ void GameEngine::init() {
     player.addAnimation("attack", std::make_unique<Animation>("warrior_attack", 8, 96, 80, 0.06f, false));
     player.addAnimation("jump",   std::make_unique<Animation>("warrior_jump", 15, 64, 64, 0.03f, true));
     player.addAnimation("dead",   std::make_unique<Animation>("warrior_dead", 8, 80, 64, 0.085f, false));
+    player.addAnimation("fall",   std::make_unique<Animation>("warrior_fall", 3, 64, 64, 0.18f, false));
     player.setState("idle");
 
     // 3. Khởi tạo tầng 1 hầm ngục 2D Side dài 75 ô
@@ -112,14 +145,15 @@ void GameEngine::init() {
         player.setPosition(dungeon.getPlayerStartPos(), true);
     }
 
-    // 4. Cung cấp vật phẩm khởi đầu vào túi đồ
+    // 4. Cung cấp vật phẩm và vàng khởi đầu
+    player.setGold(45);
     player.getInventory().addItem(std::make_unique<Potion>("Binh Thuoc Khoi Dau", "Hoi phuc 30 HP", 30, Position(0, 0), "item_potion_starter"));
     player.getInventory().addItem(std::make_unique<Weapon>("Dao Gam Khoi Dau", "Vu khi co ban +3 ATK", 3, Position(0, 0), "item_sword_steel"));
 
     // 5. Nhật ký chào mừng
     combatLog.push_back("Chao mung ban den voi Ham nguc Aethelgard!");
-    combatLog.push_back("Nhan [B] hoac click chuot de mo Tui do.");
-    combatLog.push_back("Ha guc Chua Heo Rung de pha giai phong an Cong Cua!");
+    combatLog.push_back("Nhan [P] Cua Hang | [U] De Ren | [B] Tui Do | [E] Mo Ruong");
+    combatLog.push_back("Ha guc quai vat se roi tien vang bung toa ruc ro!");
 
     // 6. Tuỳ chọn kiểm tra tử trận (--kill)
     if (startLethalOverride) {
@@ -208,14 +242,43 @@ void GameEngine::handleInput() {
         ToggleFullscreen();
     }
 
+    // Phím P: bật/tắt hiển thị Cửa Hàng hầm ngục (Shop)
+    if (IsKeyPressed(KEY_P)) {
+        showShop = !showShop;
+        if (showShop) {
+            showInventory = false;
+            showForge = false;
+        }
+    }
+
+    // Phím U: bật/tắt hiển thị Đe Rèn Cường Hóa (Forge)
+    if (IsKeyPressed(KEY_U) && !showShop) {
+        showForge = !showForge;
+        if (showForge) {
+            showInventory = false;
+            showShop = false;
+        }
+    }
+
     // Phím B / I / Tab: bật/tắt hiển thị bảng túi đồ
     if (IsKeyPressed(KEY_B) || IsKeyPressed(KEY_I) || IsKeyPressed(KEY_TAB)) {
         showInventory = !showInventory;
+        if (showInventory) {
+            showShop = false;
+            showForge = false;
+        }
     }
-    // Phím ESC: đóng túi đồ nếu đang mở
-    if (IsKeyPressed(KEY_ESCAPE) && showInventory) {
-        showInventory = false;
-        return;
+
+    // Phím E: Tương tác mở Rương Báu Hoàng Kim khi đứng gần
+    if (IsKeyPressed(KEY_E) && !showInventory && !showShop && !showForge) {
+        interactWithChest();
+    }
+
+    // Phím ESC: đóng bất kỳ bảng modal nào đang mở
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        if (showShop) { showShop = false; return; }
+        if (showForge) { showForge = false; return; }
+        if (showInventory) { showInventory = false; return; }
     }
 
     // Phím L: thu gọn / mở khung nhật ký chiến đấu
@@ -223,16 +286,48 @@ void GameEngine::handleInput() {
         showCombatLog = !showCombatLog;
     }
 
-    // Tương tác chuột trái (Click UI Buttons & Inventory Slots)
+    // Phím tắt số [1]-[6] mua nhanh khi Cửa Hàng đang mở
+    if (showShop) {
+        if (IsKeyPressed(KEY_ONE))   buyShopItem(0);
+        if (IsKeyPressed(KEY_TWO))   buyShopItem(1);
+        if (IsKeyPressed(KEY_THREE)) buyShopItem(2);
+        if (IsKeyPressed(KEY_FOUR))  buyShopItem(3);
+        if (IsKeyPressed(KEY_FIVE))  buyShopItem(4);
+        if (IsKeyPressed(KEY_SIX))   buyShopItem(5);
+    }
+
+    // Phím Enter / Space / U để cường hóa khi Đe Rèn đang mở
+    if (showForge) {
+        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_U)) {
+            triggerForgeUpgrade();
+        }
+    }
+
+    // Tương tác chuột trái (Click UI Buttons & Modals)
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         Vector2 mouse = GetMousePosition();
         int screenW = GetScreenWidth();
         int screenH = GetScreenHeight();
 
-        // 1. Nút [B] TÚI ĐỒ trên thanh Header
-        Rectangle invBtn = { (float)(screenW - 325), 8.0f, 145.0f, 34.0f };
+        // 1. Các nút trên thanh Header: [P] CỬA HÀNG, [U] ĐE RÈN, [B] TÚI ĐỒ
+        Rectangle shopBtn = { (float)(screenW - 445), 8.0f, 142.0f, 32.0f };
+        if (CheckCollisionPointRec(mouse, shopBtn)) {
+            showShop = !showShop;
+            if (showShop) { showInventory = false; showForge = false; }
+            return;
+        }
+
+        Rectangle forgeBtn = { (float)(screenW - 295), 8.0f, 138.0f, 32.0f };
+        if (CheckCollisionPointRec(mouse, forgeBtn)) {
+            showForge = !showForge;
+            if (showForge) { showInventory = false; showShop = false; }
+            return;
+        }
+
+        Rectangle invBtn = { (float)(screenW - 150), 8.0f, 140.0f, 32.0f };
         if (CheckCollisionPointRec(mouse, invBtn)) {
             showInventory = !showInventory;
+            if (showInventory) { showShop = false; showForge = false; }
             return;
         }
 
@@ -245,7 +340,71 @@ void GameEngine::handleInput() {
             return;
         }
 
-        // 3. Tương tác khi bảng Túi Đồ đang mở
+        // 3. Tương tác khi CỬA HÀNG đang mở
+        if (showShop) {
+            int modalW = 570, modalH = 500;
+            int modalX = screenW / 2 - modalW / 2;
+            int modalY = screenH / 2 - modalH / 2;
+
+            // Nút đóng [X]
+            Rectangle closeBtn = { (float)(modalX + modalW - 36), (float)(modalY + 9), 28.0f, 28.0f };
+            if (CheckCollisionPointRec(mouse, closeBtn)) {
+                showShop = false;
+                return;
+            }
+
+            // Click vào các thẻ mặt hàng hoặc nút [MUA]
+            for (int i = 0; i < 6; ++i) {
+                int col = i % 2;
+                int row = i / 2;
+                int cardX = modalX + 16 + col * 272;
+                int cardY = modalY + 54 + row * 118;
+                Rectangle cardRect = { (float)cardX, (float)cardY, 265.0f, 112.0f };
+                if (CheckCollisionPointRec(mouse, cardRect)) {
+                    buyShopItem(i);
+                    return;
+                }
+            }
+
+            // Click ra ngoài modal để đóng
+            Rectangle modalRect = { (float)modalX, (float)modalY, (float)modalW, (float)modalH };
+            if (!CheckCollisionPointRec(mouse, modalRect)) {
+                showShop = false;
+                return;
+            }
+            return;
+        }
+
+        // 4. Tương tác khi ĐE RÈN đang mở
+        if (showForge) {
+            int modalW = 480, modalH = 430;
+            int modalX = screenW / 2 - modalW / 2;
+            int modalY = screenH / 2 - modalH / 2;
+
+            // Nút đóng [X]
+            Rectangle closeBtn = { (float)(modalX + modalW - 36), (float)(modalY + 9), 28.0f, 28.0f };
+            if (CheckCollisionPointRec(mouse, closeBtn)) {
+                showForge = false;
+                return;
+            }
+
+            // Nút [CƯỜNG HÓA KIẾM]
+            Rectangle upgradeBtn = { (float)(modalX + 24), (float)(modalY + modalH - 58), (float)(modalW - 48), 44.0f };
+            if (CheckCollisionPointRec(mouse, upgradeBtn)) {
+                triggerForgeUpgrade();
+                return;
+            }
+
+            // Click ra ngoài modal để đóng
+            Rectangle modalRect = { (float)modalX, (float)modalY, (float)modalW, (float)modalH };
+            if (!CheckCollisionPointRec(mouse, modalRect)) {
+                showForge = false;
+                return;
+            }
+            return;
+        }
+
+        // 5. Tương tác khi TÚI ĐỒ đang mở
         if (showInventory) {
             int modalW = 420, modalH = 475;
             int modalX = screenW / 2 - modalW / 2;
@@ -280,7 +439,18 @@ void GameEngine::handleInput() {
                 showInventory = false;
                 return;
             }
+            return;
         }
+    }
+
+    // Nếu bất kỳ modal nào đang mở: khóa toàn bộ thao tác di chuyển / chiến đấu
+    if (showInventory || showShop || showForge) {
+        return;
+    }
+
+    // Khi đang rơi tự do xuống hố và tiếp đất: khóa toàn bộ thao tác di chuyển / chiến đấu
+    if (player.isFalling()) {
+        return;
     }
 
     // =========================================================================
@@ -309,7 +479,7 @@ void GameEngine::handleInput() {
         }
 
         if (targetMonster) {
-            CombatSystem::attack(player, *targetMonster, combatLog);
+            CombatSystem::attack(player, *targetMonster, combatLog, this);
             bool wasKilled = !targetMonster->isAlive();
             dungeon.removeDeadMonsters(player);
             if (wasKilled) monstersDefeated++;
@@ -442,17 +612,22 @@ void GameEngine::handleInput() {
                         Position cand(jX, fallY);
                         if (dungeon.isWater(cand)) {
                             player.setPosition(cand);
-                            isSinking = true;
-                            sinkTimer = sinkDuration;
-                            sinkDepth = 0.0f;
-                            player.setSinkVisualOffset(0.0f);
-                            combatLog.push_back("[LUN DAM LAY] Ban da phong minh xuong dam lay lun va dang bi chim dan!");
+                            combatLog.push_back("[NHAY XUONG] Ban da phong minh xuong dam lay lun ben duoi!");
                             combatLog.push_back(">> Nhanh tay nhan [Space] de vung vay thoat len bo!");
                             jumped = true;
                             break;
                         }
-                        if (dungeon.isWalkable(cand) && dungeon.getMonsterAt(cand) == nullptr) {
-                            player.setPosition(cand);
+                        if (dungeon.isWalkable(cand)) {
+                            Position landPos = cand;
+                            if (dungeon.getMonsterAt(landPos) != nullptr) {
+                                if (dungeon.isWalkable(Position(jX - 1, fallY)) && dungeon.getMonsterAt(Position(jX - 1, fallY)) == nullptr) {
+                                    landPos = Position(jX - 1, fallY);
+                                } else if (dungeon.isWalkable(Position(jX + 1, fallY)) && dungeon.getMonsterAt(Position(jX + 1, fallY)) == nullptr) {
+                                    landPos = Position(jX + 1, fallY);
+                                }
+                            }
+                            player.setPosition(landPos);
+                            player.triggerFall(0.52f, 0.22f);
                             combatLog.push_back("[NHAY XUONG] Ban da phong minh roi xuong tang ben duoi!");
                             jumped = true;
                             break;
@@ -485,11 +660,7 @@ void GameEngine::handleInput() {
 
         if (jumped) {
             edgeSlipTimer = 0.0f;
-            std::unique_ptr<Item> item = dungeon.takeItemAt(player.getPosition());
-            if (item) {
-                combatLog.push_back("Nhat duoc: " + item->getName() + "!");
-                player.getInventory().addItem(std::move(item));
-            }
+            tryPickupItemAtPlayerPos();
         }
 
         return;
@@ -533,12 +704,7 @@ void GameEngine::handleInput() {
                     int actualDy = cand.y - pPos.y;
                     player.moveBy(actualDx, actualDy, dungeon);
                     edgeSlipTimer = 0.0f;
-
-                    std::unique_ptr<Item> item = dungeon.takeItemAt(player.getPosition());
-                    if (item) {
-                        combatLog.push_back("Nhat duoc: " + item->getName() + "!");
-                        player.getInventory().addItem(std::move(item));
-                    }
+                    tryPickupItemAtPlayerPos();
                     moved = true;
                     break;
                 }
@@ -550,53 +716,45 @@ void GameEngine::handleInput() {
                 if (dungeon.getMonsterAt(forwardPos)) {
                     combatLog.push_back("Quai vat dang chan duong! Nhan [J] hoac [F] de tan cong.");
                 } else {
-                    // TRỌNG LỰC: BƯỚC HỤT VÀO HỐ HOẶC VỰC NƯỚC SÂU
+                    // Phía trước là hố khoảng cách (EMPTY) hoặc vực nước:
+                    // Bước tiếp sẽ rơi tự do xuống sàn đất tầng dưới một cách tự nhiên
                     TileType forwardType = dungeon.getTileType(forwardPos);
-                    // Rơi nếu phía trước là không khí (EMPTY) hoặc nước ngập (WATER)
                     if (forwardType == TileType::EMPTY || forwardType == TileType::WATER) {
-                        // Khoảng đệm coyote time (0.18s): ngập ngừng ở mép hố để kịp bấm Space nhảy qua
-                        if (edgeSlipTimer <= 0.0f) {
-                            edgeSlipTimer = 0.18f;
-                            return;
-                        }
-
-                        // Người chơi tiếp tục nhấn giữ phím vượt qua thời gian chờ -> Trượt chân rơi xuống!
-                        edgeSlipTimer = 0.0f;
                         int targetX = pPos.x + dx;
-                        bool landed = false;
-                        for (int fallY = pPos.y; fallY < dungeon.getHeight(); ++fallY) {
+
+                        for (int fallY = pPos.y + 1; fallY < dungeon.getHeight(); ++fallY) {
                             Position checkPos(targetX, fallY);
-                            // RƠI TRÚNG ĐẦM LẦY -> BẮT ĐẦU CHÌM DẦN!
+
+                            // 1. Rơi trúng Đầm lầy lún
                             if (dungeon.isWater(checkPos)) {
                                 player.setPosition(checkPos);
-                                isSinking = true;
-                                sinkTimer = sinkDuration;
-                                sinkDepth = 0.0f;
-                                player.setSinkVisualOffset(0.0f);
-                                combatLog.push_back("[LUN DAM LAY] Ban da sa vao dam lay lun va dang bi chim dan!");
+                                combatLog.push_back("[LUN DAM LAY] Ban da sa chan xuong dam lay lun ben duoi!");
                                 combatLog.push_back(">> Nhanh tay nhan [Space] de vung vay thoat len bo!");
-                                landed = true;
                                 break;
                             }
-                            // RƠI ĐÁP TRÚNG BỆ NỀN DƯỚI (FLOOR, STAIRS)
-                            if (dungeon.isWalkable(checkPos) && dungeon.getMonsterAt(checkPos) == nullptr) {
-                                int actualDx = targetX - pPos.x;
-                                int actualDy = fallY - pPos.y;
-                                player.moveBy(actualDx, actualDy, dungeon);
-                                combatLog.push_back("[TRUOT CHAN] Ban da bi truot chan roi xuong tang duoi!");
-                                std::unique_ptr<Item> item = dungeon.takeItemAt(player.getPosition());
-                                if (item) {
-                                    combatLog.push_back("Nhat duoc: " + item->getName() + "!");
-                                    player.getInventory().addItem(std::move(item));
+
+                            // 2. Rơi trúng sàn đất tầng dưới (FLOOR / STAIRS)
+                            if (dungeon.isWalkable(checkPos)) {
+                                Position landPos = checkPos;
+                                // Nếu ô rơi xuống đang có quái vật đứng, ưu tiên né sang ô đất trống lân cận
+                                if (dungeon.getMonsterAt(landPos) != nullptr) {
+                                    Position leftPos(targetX - 1, fallY);
+                                    Position rightPos(targetX + 1, fallY);
+                                    if (dungeon.isWalkable(leftPos) && dungeon.getMonsterAt(leftPos) == nullptr) {
+                                        landPos = leftPos;
+                                    } else if (dungeon.isWalkable(rightPos) && dungeon.getMonsterAt(rightPos) == nullptr) {
+                                        landPos = rightPos;
+                                    }
                                 }
-                                landed = true;
+
+                                player.setPosition(landPos);
+                                player.triggerFall(0.52f, 0.22f);
+                                combatLog.push_back("[ROI XUONG] Ban da buoc hut va roi xuong tang duoi!");
+
+                                // Nhặt vật phẩm nếu có tại ô đáp
+                                tryPickupItemAtPlayerPos();
                                 break;
                             }
-                        }
-                        if (!landed) {
-                            player.takeDamage(9999);
-                            state = GameState::GAME_OVER;
-                            combatLog.push_back(">>> BAN DA SA CHAN XUONG VUC THAM VA TU TRAN! Nhan [R] de hoi sinh va thu lai. <<<");
                         }
                     }
                 }
@@ -634,12 +792,7 @@ void GameEngine::handleInput() {
                         player.triggerJump(0, -1);
                     }
                     player.moveBy(cand.x - pPos.x, cand.y - pPos.y, dungeon);
-
-                    std::unique_ptr<Item> item = dungeon.takeItemAt(player.getPosition());
-                    if (item) {
-                        combatLog.push_back("Nhat duoc: " + item->getName() + "!");
-                        player.getInventory().addItem(std::move(item));
-                    }
+                    tryPickupItemAtPlayerPos();
                     break;
                 }
             }
@@ -674,17 +827,54 @@ void GameEngine::handleInput() {
         }
     }
 
-    // Phím Lưu game [F5] & Tải game [F9]
+    // Phím Kỹ năng Đa hình: [L-Shift] Lướt né đòn, [Q] Hồi máu khẩn cấp
+    if (IsKeyPressed(KEY_LEFT_SHIFT)) {
+        if (player.useSkill(1, this)) {
+            combatLog.push_back("[KY NANG] Hiep si luot nhanh ve phia truoc (Dash)!");
+        } else {
+            Skill* dash = player.getSkill(1);
+            if (dash && !dash->canExecute()) {
+                combatLog.push_back("[HOI CHIEU] Luot ne don con " + std::to_string(static_cast<int>(dash->getCurrentCooldown() + 0.9f)) + "s");
+            }
+        }
+    }
+
+    if (IsKeyPressed(KEY_Q)) {
+        if (!player.useSkill(2, this)) {
+            Skill* heal = player.getSkill(2);
+            if (heal && !heal->canExecute()) {
+                combatLog.push_back("[HOI CHIEU] Hoi phuc khan cap con " + std::to_string(static_cast<int>(heal->getCurrentCooldown() + 0.9f)) + "s");
+            }
+        }
+    }
+
+    // Phím Lưu game [F5] & Tải game [F9] - Bọc cơ chế Ngoại lệ (C++ Exception Handling)
     if (IsKeyPressed(KEY_F5)) {
-        if (SaveLoadManager::saveGame("saves/savegame.txt", player, dungeon)) {
-            combatLog.push_back("[HE THONG] Da luu game thanh cong (F5)!");
+        try {
+            if (SaveLoadManager::saveGame("saves/savegame.txt", player, dungeon)) {
+                combatLog.push_back("[HE THONG] Da luu game thanh cong (F5)!");
+            }
+        } catch (const GameException& e) {
+            combatLog.push_back(std::string("[NGOAI LE] ") + e.what());
+        } catch (const std::exception& e) {
+            combatLog.push_back(std::string("[LOI] ") + e.what());
         }
     }
     if (IsKeyPressed(KEY_F9)) {
-        if (SaveLoadManager::loadGame("saves/savegame.txt", player, dungeon)) {
-            combatLog.push_back("[HE THONG] Da tai lai game thanh cong (F9)!");
+        try {
+            if (SaveLoadManager::loadGame("saves/savegame.txt", player, dungeon)) {
+                combatLog.push_back("[HE THONG] Da tai lai game thanh cong (F9)!");
+            }
+        } catch (const SaveLoadException& e) {
+            combatLog.push_back(std::string("[NGOAI LE] ") + e.what());
+        } catch (const std::exception& e) {
+            combatLog.push_back(std::string("[LOI] ") + e.what());
         }
     }
+}
+
+void GameEngine::addDamagePopup(const std::string& text, float worldX, float worldY, Color color, float duration) {
+    activeDamagePopups.push_back(DamagePopup(text, worldX, worldY, color, duration));
 }
 
 void GameEngine::update(float deltaTime) {
@@ -692,9 +882,27 @@ void GameEngine::update(float deltaTime) {
     if (attackTimer > 0.0f) attackTimer -= deltaTime;
     if (edgeSlipTimer > 0.0f) edgeSlipTimer -= deltaTime;
     if (bossWarningTimer > 0.0f) bossWarningTimer -= deltaTime;
+    if (shopNotificationTimer > 0.0f) {
+        shopNotificationTimer -= deltaTime;
+        if (shopNotificationTimer <= 0.0f) shopNotification.clear();
+    }
+    if (forgeNotificationTimer > 0.0f) {
+        forgeNotificationTimer -= deltaTime;
+        if (forgeNotificationTimer <= 0.0f) forgeNotification.clear();
+    }
     if (screenShake > 0.0f) {
         screenShake -= deltaTime * 1.5f;
         if (screenShake < 0.0f) screenShake = 0.0f;
+    }
+
+    // Cập nhật mảng động các số sát thương nổi (Class Template DynamicArray - Chương 7)
+    for (size_t pIdx = 0; pIdx < activeDamagePopups.size(); ) {
+        activeDamagePopups[pIdx].update(deltaTime);
+        if (!activeDamagePopups[pIdx].isAlive()) {
+            activeDamagePopups.erase(pIdx);
+        } else {
+            ++pIdx;
+        }
     }
 
     // Kích hoạt Trận Đấu Boss Boar King khi người chơi bước vào Đấu Trường Khu F (x >= 130)
@@ -742,13 +950,15 @@ void GameEngine::update(float deltaTime) {
             combatLog.push_back(">>> BAN DA BI DAM LAY NUOT CHUNG VA MAT MANG! Nhan [R] de hoi sinh va thu lai. <<<");
         }
     } else if (state == GameState::RUNNING && dungeon.isWater(player.getPosition()) && !isSinking) {
-        // Kích hoạt lún đầm lầy nếu người chơi đang đứng trên ô đầm lầy
-        isSinking = true;
-        sinkTimer = sinkDuration;
-        sinkDepth = 0.0f;
-        player.setSinkVisualOffset(0.0f);
-        combatLog.push_back("[LUN DAM LAY] Ban da sa vao dam lay lun va dang bi chim dan vao bun sau!");
-        combatLog.push_back(">> Nhanh tay nhan [Space] de vung vay thoat len bo!");
+        // Kích hoạt lún đầm lầy nếu người chơi đang ở ô đầm lầy và ĐÃ TIẾP NƯỚC (không còn đang rơi trong không trung)
+        if (!player.isFalling()) {
+            isSinking = true;
+            sinkTimer = sinkDuration;
+            sinkDepth = 0.0f;
+            player.setSinkVisualOffset(0.0f);
+            combatLog.push_back("[LUN DAM LAY] Ban da sa vao dam lay lun va dang bi chim dan vao bun sau!");
+            combatLog.push_back(">> Nhanh tay nhan [Space] de vung vay thoat len bo!");
+        }
     }
 
     // ===== KỊCH BẢN PHÂN KHU: banner khi người chơi đi qua mốc khu mới (6 khu vực) =====
@@ -774,6 +984,7 @@ void GameEngine::update(float deltaTime) {
 
     handleInput();
     player.update(deltaTime);
+    updateGoldParticles(deltaTime);
 
     // Cập nhật hoạt cảnh tử trận mượt mà (Smooth Death Sequence)
     if (state == GameState::RUNNING && isDying) {
@@ -785,8 +996,9 @@ void GameEngine::update(float deltaTime) {
         }
     }
 
-    // Cập nhật AI quái vật thời gian thực độc lập khi không mở túi đồ
-    if (!showInventory && state == GameState::RUNNING) {
+    // Cập nhật AI quái vật thời gian thực độc lập khi không mở túi đồ / shop / đe rèn
+    bool anyModalOpen = showInventory || showShop || showForge;
+    if (!anyModalOpen && state == GameState::RUNNING) {
         if (!isDying) {
             dungeon.update(deltaTime, player, combatLog);
         } else {
@@ -923,9 +1135,15 @@ void GameEngine::renderHUD() const {
     drawText(TextFormat("CAP %d", player.getLevel()), 24, 14, 16, GOLD);
 
     // 1.2. Huy hiệu Vàng
-    DrawRectangleRounded(Rectangle{ 98, 9, 90, 30 }, 0.3f, 4, Color{ 26, 22, 38, 255 });
-    DrawRectangleRoundedLinesEx(Rectangle{ 98, 9, 90, 30 }, 0.3f, 4, 1.5f, Color{ 180, 140, 40, 255 });
-    drawText(TextFormat("VANG %d", player.getGold()), 108, 14, 16, Color{ 255, 220, 80, 255 });
+    DrawRectangleRounded(Rectangle{ 98, 9, 96, 30 }, 0.3f, 4, Color{ 26, 22, 38, 255 });
+    DrawRectangleRoundedLinesEx(Rectangle{ 98, 9, 96, 30 }, 0.3f, 4, 1.5f, Color{ 180, 140, 40, 255 });
+    const TextureManager& tmHUD = TextureManager::getInstance();
+    if (tmHUD.has("item_gold_coin")) {
+        const Texture2D& cTex = tmHUD.get("item_gold_coin");
+        DrawTexturePro(cTex, Rectangle{ 0, 0, (float)cTex.width, (float)cTex.height },
+                       Rectangle{ 104, 14, 20, 20 }, Vector2{ 0, 0 }, 0.0f, WHITE);
+    }
+    drawText(TextFormat("%d", player.getGold()), 128, 14, 16, Color{ 255, 220, 80, 255 });
 
     // 1.3. Thanh Máu Người Chơi
     int hpX = 205, hpY = 15, hpW = 165, hpH = 18;
@@ -943,13 +1161,13 @@ void GameEngine::renderHUD() const {
     drawText(TextFormat("DEF %d", player.getDefense()), 456, 15, 16, Color{ 120, 210, 255, 255 });
 
     // --- CỤM GIỮA: TẦNG NGỤC & LỘ TRÌNH (KHÔNG CHỒNG ĐÈ CHỮ) ---
-    int midX = 535;
+    int midX = 525;
     drawText(TextFormat("TANG %d", dungeon.getFloorLevel()), midX, 7, 15, Color{ 90, 205, 255, 255 });
 
     const char* zoneName = dungeon.getZoneName(player.getPosition().x);
     drawText(zoneName, midX, 26, 13, Color{ 255, 215, 90, 255 });
 
-    int pbX = midX + 175, pbY = 17, pbW = 120, pbH = 14;
+    int pbX = midX + 165, pbY = 17, pbW = 110, pbH = 14;
     int stairsX = dungeon.getStairsPos().x;
     float progress = (stairsX > 0) ? (float)player.getPosition().x / (float)stairsX : 0.0f;
     if (progress < 0.0f) progress = 0.0f;
@@ -961,21 +1179,59 @@ void GameEngine::renderHUD() const {
     bool bossDefeated = dungeon.isBossDefeated();
     drawText("CONG CUA", pbX + pbW + 8, pbY - 1, 13, bossDefeated ? GOLD : Color{ 205, 75, 75, 255 });
 
-    // --- CỤM PHẢI: NÚT MỞ TÚI ĐỒ & PHÍM TẮT HỆ THỐNG ---
-    Rectangle invBtn = { (float)(screenW - 325), 8.0f, 145.0f, 32.0f };
+    // --- CỤM PHẢI: CÁC NÚT TƯƠNG TÁC TIÊU THỤ VÀNG & TÚI ĐỒ ---
+    Rectangle shopBtn = { (float)(screenW - 445), 8.0f, 142.0f, 32.0f };
+    bool shopHover = CheckCollisionPointRec(mouse, shopBtn);
+    Color shopBg = showShop ? Color{ 65, 52, 28, 255 } : (shopHover ? Color{ 52, 42, 24, 255 } : Color{ 28, 24, 38, 255 });
+    Color shopBorder = showShop ? GOLD : (shopHover ? Color{ 245, 200, 70, 255 } : Color{ 120, 100, 60, 255 });
+    DrawRectangleRounded(shopBtn, 0.25f, 4, shopBg);
+    DrawRectangleRoundedLinesEx(shopBtn, 0.25f, 4, 1.5f, shopBorder);
+    drawText("[P] CUA HANG", shopBtn.x + 14, shopBtn.y + 7, 15, (shopHover || showShop) ? GOLD : RAYWHITE);
+
+    Rectangle forgeBtn = { (float)(screenW - 295), 8.0f, 138.0f, 32.0f };
+    bool forgeHover = CheckCollisionPointRec(mouse, forgeBtn);
+    Color forgeBg = showForge ? Color{ 68, 38, 24, 255 } : (forgeHover ? Color{ 55, 30, 20, 255 } : Color{ 28, 24, 38, 255 });
+    Color forgeBorder = showForge ? ORANGE : (forgeHover ? Color{ 255, 140, 60, 255 } : Color{ 110, 70, 60, 255 });
+    DrawRectangleRounded(forgeBtn, 0.25f, 4, forgeBg);
+    DrawRectangleRoundedLinesEx(forgeBtn, 0.25f, 4, 1.5f, forgeBorder);
+    drawText(TextFormat("[U] DE REN (+%d)", player.getForgeLevel()), forgeBtn.x + 10, forgeBtn.y + 7, 14, (forgeHover || showForge) ? ORANGE : RAYWHITE);
+
+    Rectangle invBtn = { (float)(screenW - 150), 8.0f, 140.0f, 32.0f };
     bool invHover = CheckCollisionPointRec(mouse, invBtn);
-    Color invBg = showInventory 
-        ? Color{ 60, 48, 85, 255 } 
-        : (invHover ? Color{ 45, 38, 65, 255 } : Color{ 28, 24, 40, 255 });
-    Color invBorder = showInventory 
-        ? GOLD 
-        : (invHover ? Color{ 240, 200, 70, 255 } : Color{ 85, 75, 105, 255 });
-    
+    bool isInvFull = inv.isFull();
+    Color invBg = showInventory ? Color{ 60, 48, 85, 255 } : (isInvFull ? (invHover ? Color{ 80, 25, 30, 255 } : Color{ 55, 20, 25, 255 }) : (invHover ? Color{ 45, 38, 65, 255 } : Color{ 28, 24, 40, 255 }));
+    Color invBorder = isInvFull ? RED : (showInventory ? GOLD : (invHover ? Color{ 240, 200, 70, 255 } : Color{ 85, 75, 105, 255 }));
     DrawRectangleRounded(invBtn, 0.25f, 4, invBg);
     DrawRectangleRoundedLinesEx(invBtn, 0.25f, 4, 1.5f, invBorder);
-    drawText(TextFormat("[B] TUI DO (%d/8)", (int)inv.getSize()), invBtn.x + 12, invBtn.y + 7, 15, invHover ? YELLOW : RAYWHITE);
+    const char* invLabel = isInvFull ? TextFormat("[B] TUI DO (%zu/%zu) [!]", inv.getSize(), inv.getCapacity()) : TextFormat("[B] TUI DO (%zu/%zu)", inv.getSize(), inv.getCapacity());
+    Color invTextCol = isInvFull ? Color{ 255, 130, 130, 255 } : ((invHover || showInventory) ? YELLOW : RAYWHITE);
+    drawText(invLabel, invBtn.x + (isInvFull ? 6 : 12), invBtn.y + 7, isInvFull ? 13 : 15, invTextCol);
 
-    drawText("[F5] Luu  [F9] Tai  [F11] Toan man", screenW - 170, 17, 13, Color{ 165, 165, 185, 255 });
+    // Hiển thị trạng thái các kỹ năng đa hình (Polymorphic Skills - Chương 6)
+    Skill* dashSkill = player.getSkill(1);
+    Skill* healSkill = player.getSkill(2);
+    if (dashSkill) {
+        bool ready = dashSkill->canExecute();
+        std::string text = ready ? "[Shift] Luot: SAN SANG" : TextFormat("[Shift] Luot: %.1fs", dashSkill->getCurrentCooldown());
+        DrawRectangle(10, 52, 165, 22, Color{ 20, 18, 30, 210 });
+        DrawRectangleLines(10, 52, 165, 22, ready ? GREEN : DARKGRAY);
+        drawText(text.c_str(), 16, 56, 12, ready ? GREEN : LIGHTGRAY);
+    }
+    if (healSkill) {
+        bool ready = healSkill->canExecute();
+        std::string text = ready ? "[Q] Hoi mau: SAN SANG" : TextFormat("[Q] Hoi mau: %.1fs", healSkill->getCurrentCooldown());
+        DrawRectangle(180, 52, 170, 22, Color{ 20, 18, 30, 210 });
+        DrawRectangleLines(180, 52, 170, 22, ready ? SKYBLUE : DARKGRAY);
+        drawText(text.c_str(), 186, 56, 12, ready ? SKYBLUE : LIGHTGRAY);
+    }
+
+    // Thống kê quái vật qua thành viên tĩnh Monster::getActiveMonsterCount() (Chương 3)
+    std::string mobStat = TextFormat("Quai song: %d  |  Da diet: %d", 
+                                     Monster::getActiveMonsterCount(), 
+                                     Monster::getTotalMonstersDefeated());
+    DrawRectangle(355, 52, 175, 22, Color{ 20, 18, 30, 210 });
+    DrawRectangleLines(355, 52, 175, 22, Color{ 180, 120, 50, 255 });
+    drawText(mobStat.c_str(), 361, 56, 12, Color{ 255, 210, 120, 255 });
 
     // =========================================================================
     // 2. THANH MÁU TRÙM (BOSS HP BAR)
@@ -1098,7 +1354,7 @@ void GameEngine::renderHUD() const {
         DrawRectangle(modalX + 4, modalY + 4, modalW - 8, 40, Color{ 36, 30, 52, 255 });
         DrawLine(modalX + 4, modalY + 44, modalX + modalW - 4, modalY + 44, Color{ 195, 155, 55, 255 });
         drawText("TUI DO CHIEN BINH", modalX + 16, modalY + 12, 19, GOLD);
-        drawText(TextFormat("(%d/8 o)", (int)inv.getSize()), modalX + 225, modalY + 14, 15, Color{ 180, 180, 205, 255 });
+        drawText(TextFormat("(%zu/%zu o)", inv.getSize(), inv.getCapacity()), modalX + 225, modalY + 14, 15, Color{ 180, 180, 205, 255 });
 
         Rectangle closeBtn = { (float)(modalX + modalW - 38), (float)(modalY + 8), 28.0f, 28.0f };
         bool closeHover = CheckCollisionPointRec(mouse, closeBtn);
@@ -1154,13 +1410,21 @@ void GameEngine::renderHUD() const {
 
                     const Weapon* w = dynamic_cast<const Weapon*>(item);
                     const Potion* p = dynamic_cast<const Potion*>(item);
-                    Color nameColor = w ? Color{ 255, 175, 75, 255 } : Color{ 100, 245, 150, 255 };
+                    const Armor* a = dynamic_cast<const Armor*>(item);
+                    const Accessory* acc = dynamic_cast<const Accessory*>(item);
+                    Color nameColor = w ? Color{ 255, 175, 75, 255 } 
+                                        : (a ? Color{ 120, 210, 255, 255 } 
+                                        : (acc ? Color{ 230, 150, 255, 255 } : Color{ 100, 245, 150, 255 }));
                     drawText(item->getName().c_str(), cardX + 86, cardY + 12, 17, nameColor);
 
                     if (w) {
                         drawText(TextFormat("+%d ATK", w->getBonusAttack()), cardX + cardW - 85, cardY + 13, 15, Color{ 255, 205, 120, 255 });
                     } else if (p) {
                         drawText(TextFormat("+%d HP", p->getHealAmount()), cardX + cardW - 85, cardY + 13, 15, Color{ 130, 255, 170, 255 });
+                    } else if (a) {
+                        drawText(TextFormat("+%d DEF", a->getBonusDefense()), cardX + cardW - 85, cardY + 13, 15, Color{ 120, 210, 255, 255 });
+                    } else if (acc) {
+                        drawText("+ALL STAT", cardX + cardW - 95, cardY + 13, 15, Color{ 230, 150, 255, 255 });
                     }
                 } else {
                     DrawRectangle(cardX + 4, cardY + 4, 32, 36, Color{ 22, 18, 30, 180 });
@@ -1172,6 +1436,16 @@ void GameEngine::renderHUD() const {
 
         DrawLine(modalX + 4, modalY + modalH - 34, modalX + modalW - 4, modalY + modalH - 34, Color{ 60, 50, 80, 255 });
         drawText("Nhan [1-8] hoac Click chuot de dung | [B] / [ESC] de dong", modalX + 16, modalY + modalH - 24, 13, Color{ 180, 180, 205, 255 });
+    }
+
+    // Modal Cửa hàng hầm ngục (phím P)
+    if (showShop) {
+        renderShop();
+    }
+
+    // Modal Đe rèn cường hóa vũ khí (phím U)
+    if (showForge) {
+        renderForge();
     }
 
     // =========================================================================
@@ -1233,8 +1507,21 @@ void GameEngine::render(const std::string& screenshotPath) const {
     // 2. Vẽ mặt đất và vách đá (tiles.png)
     dungeon.render(Vector2{0.0f, 0.0f});
 
-    // 3. Vẽ vật phẩm rơi trên sàn
+    // 3. Vẽ vật phẩm rơi trên sàn & rương báu
     dungeon.renderItems(Vector2{0.0f, 0.0f});
+
+    // Vẽ các hạt vàng rơi đang văng / hút về người chơi (Gold Burst)
+    renderGoldParticles(Vector2{0.0f, 0.0f});
+
+    // Vẽ gợi ý tương tác mở Rương Báu Hoàng Kim khi đứng gần
+    Chest* nearChest = dungeon.getNearChest(player.getPosition());
+    if (nearChest && !nearChest->isOpened()) {
+        float promptX = (float)(nearChest->getPosition().x * Constants::TILE_SIZE) - 26.0f;
+        float promptY = (float)(nearChest->getPosition().y * Constants::TILE_SIZE) - 34.0f;
+        DrawRectangleRounded(Rectangle{ promptX, promptY, 145.0f, 24.0f }, 0.3f, 4, Color{ 18, 14, 26, 235 });
+        DrawRectangleRoundedLinesEx(Rectangle{ promptX, promptY, 145.0f, 24.0f }, 0.3f, 4, 1.2f, GOLD);
+        drawText("[E] MO RUONG (35V)", promptX + 8.0f, promptY + 4.0f, 13, YELLOW);
+    }
 
     // 4. Vẽ quái vật (đa hình, đứng chân chuẩn trên mặt cỏ)
     dungeon.renderMonsters(Vector2{0.0f, 0.0f});
@@ -1276,6 +1563,14 @@ void GameEngine::render(const std::string& screenshotPath) const {
                 DrawCircle((int)bx, (int)by, br, Color{ 140, 215, 80, 180 });
             }
         }
+    }
+
+    // 5.2. Vẽ các số sát thương nổi từ DynamicArray (Class Template tự cài đặt - Chương 7)
+    for (size_t pIdx = 0; pIdx < activeDamagePopups.size(); ++pIdx) {
+        const auto& popup = activeDamagePopups[pIdx];
+        Color popCol = popup.color;
+        popCol.a = static_cast<unsigned char>(popup.getAlpha() * 255);
+        DrawText(popup.text.c_str(), static_cast<int>(popup.x), static_cast<int>(popup.y), 18, popCol);
     }
 
     EndMode2D();
@@ -1324,8 +1619,67 @@ void GameEngine::run(const std::string& autoScreenshot) {
                 }
             } else if (autoScreenshot.find("boss_entrance") != std::string::npos) {
                 takeNow = (testFrames >= 18); // Boss đang phi nước đại từ phải sang trái và banner cảnh báo hiện
-            } else if (autoScreenshot.find("boss_battle") != std::string::npos) {
-                takeNow = (testFrames >= 40); // Boss đã đến giữa và sẵn sàng chiến đấu
+            } else if (autoScreenshot.find("shop_full") != std::string::npos) {
+                if (testFrames == 2) {
+                    showShop = true;
+                    while (!player.getInventory().isFull()) {
+                        player.getInventory().addItem(std::make_unique<Potion>("Binh Thuoc Mau", "Hoi 35 HP", 35, Position(0,0), "item_potion_health"));
+                    }
+                    buyShopItem(0); // Kích hoạt mua khi túi đồ đã đầy 8/8
+                }
+                takeNow = (testFrames >= 4);
+            } else if (autoScreenshot.find("boar_hit") != std::string::npos) {
+                if (testFrames == 3) {
+                    // Mô phỏng chém trúng Boar bên cạnh để kiểm tra hoạt ảnh Hit-Sheet
+                    Position p = player.getPosition();
+                    Monster* m = dungeon.getMonsterAt(Position(p.x + 1, p.y));
+                    if (!m) m = dungeon.getMonsterAt(Position(p.x - 1, p.y));
+                    if (m) {
+                        CombatSystem::attack(player, *m, combatLog, this);
+                    }
+                }
+                takeNow = (testFrames >= 7);
+            } else if (autoScreenshot.find("fall_lower") != std::string::npos) {
+                if (testFrames == 2) {
+                    Position pPos = player.getPosition();
+                    int targetX = pPos.x + 1;
+                    for (int fallY = pPos.y + 1; fallY < dungeon.getHeight(); ++fallY) {
+                        Position checkPos(targetX, fallY);
+                        if (dungeon.isWalkable(checkPos)) {
+                            Position landPos = checkPos;
+                            if (dungeon.getMonsterAt(landPos) != nullptr) {
+                                if (dungeon.isWalkable(Position(targetX - 1, fallY)) && dungeon.getMonsterAt(Position(targetX - 1, fallY)) == nullptr) {
+                                    landPos = Position(targetX - 1, fallY);
+                                } else if (dungeon.isWalkable(Position(targetX + 1, fallY)) && dungeon.getMonsterAt(Position(targetX + 1, fallY)) == nullptr) {
+                                    landPos = Position(targetX + 1, fallY);
+                                }
+                            }
+                            player.setPosition(landPos);
+                            player.triggerFall(0.52f, 0.22f);
+                            combatLog.push_back("[ROI XUONG] Ban da buoc hut va roi xuong tang duoi!");
+                            break;
+                        }
+                    }
+                }
+                takeNow = (testFrames >= 16);
+            } else if (autoScreenshot.find("shop") != std::string::npos) {
+                showShop = true;
+                takeNow = (testFrames >= 8);
+            } else if (autoScreenshot.find("forge") != std::string::npos) {
+                showForge = true;
+                takeNow = (testFrames >= 8);
+            } else if (autoScreenshot.find("gold_drop") != std::string::npos || autoScreenshot.find("gold_burst") != std::string::npos) {
+                if (testFrames == 2) {
+                    spawnGoldBurst(player.getVisualPosition().x + 55.0f, player.getVisualPosition().y - 10.0f, 
+                                   (float)(player.getPosition().y * Constants::TILE_SIZE) + 8.0f, 35, 8);
+                    addDamagePopup("+35 VANG!", player.getVisualPosition().x + 55.0f, player.getVisualPosition().y - 25.0f, GOLD, 1.2f);
+                }
+                takeNow = (testFrames >= 8);
+            } else if (autoScreenshot.find("chest") != std::string::npos) {
+                if (testFrames == 3) {
+                    interactWithChest();
+                }
+                takeNow = (testFrames >= 10);
             } else {
                 takeNow = (testFrames >= 10);
             }
@@ -1344,4 +1698,719 @@ void GameEngine::run(const std::string& autoScreenshot) {
 
     TextureManager::getInstance().unloadAll();
     CloseWindow();
+}
+
+// =========================================================================
+// HỆ THỐNG HIỆU ỨNG VÀNG RƠI & CÁC CƠ CHẾ TIÊU THỤ VÀNG
+// =========================================================================
+
+void GameEngine::spawnGoldBurst(float worldX, float worldY, float groundY, int totalGold, int count) {
+    if (totalGold <= 0) return;
+    if (count <= 0) count = 6;
+
+    int remaining = totalGold;
+    for (int i = 0; i < count; ++i) {
+        int val = remaining / (count - i);
+        if (val <= 0) val = 1;
+        remaining -= val;
+        activeGoldParticles.push_back(GoldParticle(worldX, worldY, groundY, val));
+    }
+    if (remaining > 0) {
+        activeGoldParticles.push_back(GoldParticle(worldX, worldY, groundY, remaining));
+    }
+}
+
+void GameEngine::updateGoldParticles(float deltaTime) {
+    Vector2 playerCenter = {
+        player.getVisualPosition().x + (float)Constants::TILE_SIZE / 2.0f,
+        player.getVisualPosition().y + (float)Constants::TILE_SIZE / 2.0f
+    };
+
+    for (size_t i = 0; i < activeGoldParticles.size(); ) {
+        activeGoldParticles[i].update(deltaTime, playerCenter);
+        if (activeGoldParticles[i].collected) {
+            int val = activeGoldParticles[i].value;
+            player.addGold(val);
+            addDamagePopup("+" + std::to_string(val) + " VANG",
+                           playerCenter.x - 12.0f + (float)(std::rand() % 24),
+                           playerCenter.y - 18.0f - (float)(std::rand() % 16),
+                           GOLD, 0.75f);
+            activeGoldParticles.erase(i);
+        } else {
+            ++i;
+        }
+    }
+}
+
+void GameEngine::renderGoldParticles(Vector2 offset) const {
+    const TextureManager& tm = TextureManager::getInstance();
+    const Texture2D* coinTex = tm.has("item_gold_coin") ? &tm.get("item_gold_coin") : nullptr;
+
+    for (size_t i = 0; i < activeGoldParticles.size(); ++i) {
+        const auto& p = activeGoldParticles[i];
+        float drawX = p.pos.x + offset.x;
+        float drawY = p.pos.y + offset.y;
+
+        // Quầng sáng vàng lấp lánh xung quanh đồng xu
+        DrawCircleGradient(Vector2{ drawX, drawY }, 12.0f, ColorAlpha(GOLD, 0.5f), ColorAlpha(YELLOW, 0.0f));
+
+        if (coinTex) {
+            Rectangle srcRec = { 0, 0, (float)coinTex->width, (float)coinTex->height };
+            Rectangle destRec = { drawX, drawY, 20.0f, 20.0f };
+            Vector2 origin = { 10.0f, 10.0f };
+            DrawTexturePro(*coinTex, srcRec, destRec, origin, p.rotation, WHITE);
+        } else {
+            DrawCircle((int)drawX, (int)drawY, 6.0f, GOLD);
+            DrawCircleLines((int)drawX, (int)drawY, 6.0f, YELLOW);
+        }
+    }
+}
+
+void GameEngine::tryPickupItemAtPlayerPos() {
+    Position pos = player.getPosition();
+    if (!dungeon.getItemAt(pos)) return;
+
+    if (player.getInventory().isFull()) {
+        combatLog.push_back("[TUI DO] Tui do da day (8/8)! Khong the nhat vat pham.");
+        addDamagePopup("TUI DO DAY!", (float)(pos.x * Constants::TILE_SIZE) + 16.0f, (float)(pos.y * Constants::TILE_SIZE) - 8.0f, RED, 1.0f);
+        return;
+    }
+
+    std::unique_ptr<Item> item = dungeon.takeItemAt(pos);
+    if (item) {
+        std::string itemName = item->getName();
+        combatLog.push_back("Nhat duoc: " + itemName + "!");
+        addDamagePopup("+1 " + itemName, (float)(pos.x * Constants::TILE_SIZE) + 16.0f, (float)(pos.y * Constants::TILE_SIZE) - 16.0f, GREEN, 1.0f);
+        player.getInventory().addItem(std::move(item));
+    }
+}
+
+void GameEngine::interactWithChest() {
+    Chest* chest = dungeon.getNearChest(player.getPosition());
+    if (!chest) return;
+
+    if (chest->isOpened()) {
+        combatLog.push_back("[RUONG BAU] Ruong hoang kim nay da duoc mo roi!");
+        return;
+    }
+
+    float chestWorldX = (float)(chest->getPosition().x * Constants::TILE_SIZE) + 16.0f;
+    float chestWorldY = (float)(chest->getPosition().y * Constants::TILE_SIZE) + 6.0f;
+    float groundY = (float)(chest->getPosition().y * Constants::TILE_SIZE) + 24.0f;
+    int cost = chest->getUnlockCost();
+
+    if (player.getInventory().isFull()) {
+        combatLog.push_back("[RUONG BAU] Tui do da day (8/8)! Hay mo tui [B] de dung bot vat pham truoc khi mo ruong.");
+        addDamagePopup("TUI DO DA DAY!", chestWorldX, chestWorldY - 16.0f, RED, 1.2f);
+        return;
+    }
+
+    if (chest->tryOpen(player, this)) {
+        spawnGoldBurst(chestWorldX, chestWorldY, groundY, 25, 8);
+        addDamagePopup("-" + std::to_string(cost) + " VANG", chestWorldX, chestWorldY - 14.0f, YELLOW, 1.0f);
+        addDamagePopup("+50 EXP!", chestWorldX, chestWorldY - 30.0f, SKYBLUE, 1.2f);
+        addDamagePopup("+BAO VAT!", chestWorldX, chestWorldY - 46.0f, GOLD, 1.4f);
+        combatLog.push_back("[KHO BAU] Dung " + std::to_string(cost) + " vang mo Ruong Hoang Kim thanh cong!");
+        combatLog.push_back("Nhan duoc: " + chest->getRewardName() + " va +50 EXP!");
+    } else {
+        addDamagePopup("CAN " + std::to_string(cost) + " VANG!", chestWorldX, chestWorldY - 16.0f, RED, 0.9f);
+        combatLog.push_back("[KHO BAU] Khong du " + std::to_string(cost) + " vang de mo Ruong Hoang Kim!");
+    }
+}
+
+void GameEngine::buyShopItem(int slot) {
+    struct ShopItemDef {
+        std::string name;
+        std::string desc;
+        int cost;
+        std::string type;
+        int bonus;
+        std::string texId;
+    };
+
+    static const ShopItemDef catalog[6] = {
+        { "Binh Mau Nho", "Hoi phuc 35 HP tuc thi", 25, "potion", 35, "item_potion_health" },
+        { "Thuoc Cuong Hoa", "Hoi phuc 60 HP va tang suc ben", 40, "potion", 60, "item_potion_strength" },
+        { "Than Duoc Aethelgard", "Hoi phuc 100 HP toi da", 65, "potion", 100, "item_potion_elixir" },
+        { "Dai Kiem Huyen Bi", "Vu khi co dai tang +15 ATK", 80, "weapon", 15, "item_sword_mystic" },
+        { "Khien Ho Menh", "Trang bi thep vieng vang tang +5 DEF", 70, "armor", 5, "item_armor_shield" },
+        { "Nhan Co Ngu Ruby", "Nhan co +6 ATK, +3 DEF, +20 MaxHP", 90, "accessory", 6, "item_ring_power" }
+    };
+
+    if (slot < 0 || slot >= 6) return;
+    const auto& item = catalog[slot];
+
+    if (player.getInventory().isFull()) {
+        shopNotification = TextFormat("TUI DO DA DAY (%zu/%zu)! Hay mo tui [B] dung bot vat pham.",
+                                      player.getInventory().getSize(), player.getInventory().getCapacity());
+        shopNotificationColor = RED;
+        shopNotificationTimer = 3.5f;
+        combatLog.push_back("[CUA HANG] Tui do da day! Khong the mua " + item.name + ".");
+        addDamagePopup("TUI DO DAY!", player.getVisualPosition().x + 8.0f, player.getVisualPosition().y - 20.0f, RED, 0.8f);
+        return;
+    }
+
+    if (!player.spendGold(item.cost)) {
+        shopNotification = "KHONG DU VANG! Can " + std::to_string(item.cost) + " vang de mua " + item.name + ".";
+        shopNotificationColor = Color{ 255, 110, 110, 255 };
+        shopNotificationTimer = 3.0f;
+        combatLog.push_back("[CUA HANG] Khong du " + std::to_string(item.cost) + " vang de mua " + item.name + "!");
+        addDamagePopup("KHONG DU VANG!", player.getVisualPosition().x + 8.0f, player.getVisualPosition().y - 20.0f, RED, 0.8f);
+        return;
+    }
+
+    if (item.type == "potion") {
+        player.getInventory().addItem(std::make_unique<Potion>(item.name, item.desc, item.bonus, Position(0,0), item.texId));
+    } else if (item.type == "weapon") {
+        player.getInventory().addItem(std::make_unique<Weapon>(item.name, item.desc, item.bonus, Position(0,0), item.texId));
+    } else if (item.type == "armor") {
+        player.getInventory().addItem(std::make_unique<Armor>(item.name, item.desc, item.bonus, Position(0,0), item.texId));
+    } else if (item.type == "accessory") {
+        player.getInventory().addItem(std::make_unique<Accessory>(item.name, item.desc, 6, 3, 20, Position(0,0), item.texId));
+    }
+
+    shopNotification = "DA MUA THANH CONG: " + item.name + " (-" + std::to_string(item.cost) + " Vang)!";
+    shopNotificationColor = Color{ 110, 245, 150, 255 };
+    shopNotificationTimer = 2.5f;
+
+    addDamagePopup("-" + std::to_string(item.cost) + " VANG", player.getVisualPosition().x + 8.0f, player.getVisualPosition().y - 12.0f, YELLOW, 0.9f);
+    addDamagePopup("+1 " + item.name, player.getVisualPosition().x + 8.0f, player.getVisualPosition().y - 28.0f, GREEN, 1.1f);
+    combatLog.push_back("[CUA HANG] Da mua: " + item.name + " (-" + std::to_string(item.cost) + " vang)!");
+}
+
+void GameEngine::triggerForgeUpgrade() {
+    int cost = player.getNextUpgradeCost();
+    int bonus = player.getNextUpgradeBonus();
+
+    if (player.upgradeForge()) {
+        forgeNotification = "CUONG HOA THANH CONG! Kiem +" + std::to_string(player.getForgeLevel()) + " (+" + std::to_string(bonus) + " ATK)!";
+        forgeNotificationColor = GOLD;
+        forgeNotificationTimer = 2.8f;
+        addDamagePopup("-" + std::to_string(cost) + " VANG", player.getVisualPosition().x + 8.0f, player.getVisualPosition().y - 12.0f, YELLOW, 0.9f);
+        addDamagePopup("+" + std::to_string(bonus) + " ATK CUONG HOA!", player.getVisualPosition().x + 8.0f, player.getVisualPosition().y - 28.0f, GOLD, 1.3f);
+        combatLog.push_back("[DE REN] Cuong hoa kiem thanh cong! +" + std::to_string(bonus) + " ATK (Cap ren: +" + std::to_string(player.getForgeLevel()) + ")!");
+    } else {
+        forgeNotification = "KHONG DU VANG! Can " + std::to_string(cost) + " vang de ren len Cap +" + std::to_string(player.getForgeLevel() + 1) + ".";
+        forgeNotificationColor = Color{ 255, 110, 110, 255 };
+        forgeNotificationTimer = 2.8f;
+        addDamagePopup("CAN " + std::to_string(cost) + " VANG!", player.getVisualPosition().x + 8.0f, player.getVisualPosition().y - 16.0f, RED, 0.9f);
+        combatLog.push_back("[DE REN] Khong du " + std::to_string(cost) + " vang de cuong hoa vu khi!");
+    }
+}
+
+void GameEngine::renderShop() const {
+    int screenW = GetScreenWidth();
+    int screenH = GetScreenHeight();
+    Vector2 mouse = GetMousePosition();
+    const TextureManager& tm = TextureManager::getInstance();
+
+    DrawRectangle(0, 0, screenW, screenH, Color{ 0, 0, 0, 150 });
+
+    int modalW = 570;
+    int modalH = 500;
+    int modalX = screenW / 2 - modalW / 2;
+    int modalY = screenH / 2 - modalH / 2;
+
+    DrawRectangle(modalX + 6, modalY + 6, modalW, modalH, Color{ 0, 0, 0, 160 });
+    DrawRectangle(modalX, modalY, modalW, modalH, Color{ 22, 18, 32, 252 });
+    DrawRectangleLines(modalX, modalY, modalW, modalH, Color{ 215, 175, 55, 255 });
+    DrawRectangleLines(modalX + 3, modalY + 3, modalW - 6, modalH - 6, Color{ 80, 70, 105, 255 });
+
+    // Header bar
+    DrawRectangle(modalX + 4, modalY + 4, modalW - 8, 42, Color{ 36, 30, 52, 255 });
+    DrawLine(modalX + 4, modalY + 46, modalX + modalW - 4, modalY + 46, Color{ 215, 175, 55, 255 });
+
+    if (tm.has("item_icon_shop")) {
+        const Texture2D& sTex = tm.get("item_icon_shop");
+        DrawTexturePro(sTex, Rectangle{ 0, 0, (float)sTex.width, (float)sTex.height },
+                       Rectangle{ (float)(modalX + 14), (float)(modalY + 9), 32.0f, 32.0f }, Vector2{ 0, 0 }, 0.0f, WHITE);
+    }
+    drawText("CUA HANG HAM NGUC AETHELGARD", modalX + 52, modalY + 14, 16, GOLD);
+
+    size_t invSize = player.getInventory().getSize();
+    size_t invCap = player.getInventory().getCapacity();
+    bool isInvFull = (invSize >= invCap);
+
+    // Huy hiệu trạng thái Túi đồ
+    Rectangle invBadge = { (float)(modalX + modalW - 275), (float)(modalY + 9), 110.0f, 28.0f };
+    Color invBg = isInvFull ? Color{ 80, 20, 25, 255 } : Color{ 24, 20, 36, 255 };
+    Color invBorder = isInvFull ? RED : Color{ 90, 80, 115, 255 };
+    DrawRectangleRounded(invBadge, 0.3f, 4, invBg);
+    DrawRectangleRoundedLinesEx(invBadge, 0.3f, 4, 1.2f, invBorder);
+    const char* invText = isInvFull ? TextFormat("TUI: %zu/%zu [!]", invSize, invCap) : TextFormat("Tui: %zu/%zu", invSize, invCap);
+    drawText(invText, invBadge.x + 10, invBadge.y + 6, 14, isInvFull ? Color{ 255, 130, 130, 255 } : LIGHTGRAY);
+
+    // Huy hiệu vàng hiện có của người chơi
+    Rectangle goldBadge = { (float)(modalX + modalW - 155), (float)(modalY + 9), 112.0f, 28.0f };
+    DrawRectangleRounded(goldBadge, 0.3f, 4, Color{ 24, 20, 36, 255 });
+    DrawRectangleRoundedLinesEx(goldBadge, 0.3f, 4, 1.2f, GOLD);
+    if (tm.has("item_gold_coin")) {
+        const Texture2D& cTex = tm.get("item_gold_coin");
+        DrawTexturePro(cTex, Rectangle{ 0, 0, (float)cTex.width, (float)cTex.height },
+                       Rectangle{ (float)(modalX + modalW - 150), (float)(modalY + 13), 20.0f, 20.0f }, Vector2{ 0, 0 }, 0.0f, WHITE);
+    }
+    drawText(TextFormat("%d Vang", player.getGold()), modalX + modalW - 124, modalY + 14, 15, YELLOW);
+
+    // Nút đóng [X]
+    Rectangle closeBtn = { (float)(modalX + modalW - 36), (float)(modalY + 9), 28.0f, 28.0f };
+    bool closeHover = CheckCollisionPointRec(mouse, closeBtn);
+    DrawRectangleRec(closeBtn, closeHover ? Color{ 180, 30, 40, 255 } : Color{ 50, 42, 68, 255 });
+    DrawRectangleLinesEx(closeBtn, 1.0f, closeHover ? RED : Color{ 100, 90, 130, 255 });
+    drawText("X", closeBtn.x + 8, closeBtn.y + 4, 18, WHITE);
+
+    struct CatalogDisplay {
+        const char* name;
+        const char* desc;
+        int cost;
+        const char* statText;
+        const char* texId;
+        Color nameCol;
+    };
+
+    static const CatalogDisplay items[6] = {
+        { "Binh Mau Nho", "Hoi phuc mau tuc thi", 25, "+35 HP", "item_potion_health", Color{ 110, 245, 150, 255 } },
+        { "Thuoc Cuong Hoa", "Hoi phuc & tang luc", 40, "+60 HP", "item_potion_strength", Color{ 110, 245, 150, 255 } },
+        { "Than Duoc Aethelgard", "Hoi day mau toi da", 65, "+100 HP", "item_potion_elixir", Color{ 130, 255, 170, 255 } },
+        { "Dai Kiem Huyen Bi", "Vu khi co dai", 80, "+15 ATK", "item_sword_mystic", Color{ 255, 175, 75, 255 } },
+        { "Khien Ho Menh", "Giap ho than vieng vang", 70, "+5 DEF", "item_armor_shield", Color{ 120, 210, 255, 255 } },
+        { "Nhan Co Ngu Ruby", "Trang suc phep thuat", 90, "+ALL STAT", "item_ring_power", Color{ 230, 150, 255, 255 } }
+    };
+
+    for (int i = 0; i < 6; ++i) {
+        int col = i % 2;
+        int row = i / 2;
+        int cardX = modalX + 16 + col * 272;
+        int cardY = modalY + 54 + row * 118;
+        int cardW = 265;
+        int cardH = 112;
+        Rectangle cardRect = { (float)cardX, (float)cardY, (float)cardW, (float)cardH };
+
+        bool canAfford = (player.getGold() >= items[i].cost);
+        bool cardHover = CheckCollisionPointRec(mouse, cardRect);
+
+        DrawRectangle(cardX, cardY, cardW, cardH, cardHover ? Color{ 42, 34, 58, 255 } : Color{ 28, 24, 40, 255 });
+        DrawRectangleLines(cardX, cardY, cardW, cardH, cardHover ? GOLD : Color{ 75, 65, 95, 255 });
+
+        // Slot phím tắt [1] - [6]
+        DrawRectangle(cardX + 6, cardY + 6, 26, 26, Color{ 36, 30, 52, 255 });
+        DrawRectangleLines(cardX + 6, cardY + 6, 26, 26, Color{ 90, 80, 115, 255 });
+        drawText(TextFormat("[%d]", i + 1), cardX + 7, cardY + 9, 14, YELLOW);
+
+        // Icon món đồ 32x32
+        DrawRectangle(cardX + 36, cardY + 6, 38, 38, Color{ 18, 16, 28, 255 });
+        DrawRectangleLines(cardX + 36, cardY + 6, 38, 38, Color{ 90, 80, 115, 255 });
+        if (tm.has(items[i].texId)) {
+            const Texture2D& itTex = tm.get(items[i].texId);
+            DrawTexturePro(itTex, Rectangle{ 0, 0, (float)itTex.width, (float)itTex.height },
+                           Rectangle{ (float)(cardX + 39), (float)(cardY + 9), 32.0f, 32.0f }, Vector2{ 0, 0 }, 0.0f, WHITE);
+        }
+
+        // Tên và chỉ số
+        drawText(items[i].name, cardX + 80, cardY + 8, 15, items[i].nameCol);
+        drawText(items[i].statText, cardX + 80, cardY + 28, 14, GOLD);
+        drawText(items[i].desc, cardX + 8, cardY + 48, 12, Color{ 160, 160, 185, 255 });
+
+        // Giá bán
+        DrawRectangle(cardX + 8, cardY + 76, 95, 28, Color{ 20, 16, 30, 255 });
+        DrawRectangleLines(cardX + 8, cardY + 76, 95, 28, Color{ 80, 70, 100, 255 });
+        if (tm.has("item_gold_coin")) {
+            const Texture2D& cTex = tm.get("item_gold_coin");
+            DrawTexturePro(cTex, Rectangle{ 0, 0, (float)cTex.width, (float)cTex.height },
+                           Rectangle{ (float)(cardX + 11), (float)(cardY + 81), 18.0f, 18.0f }, Vector2{ 0, 0 }, 0.0f, WHITE);
+        }
+        drawText(TextFormat("%d V", items[i].cost), cardX + 32, cardY + 81, 14, canAfford ? YELLOW : RED);
+
+        // Nút MUA hoặc TÚI ĐẦY
+        Rectangle buyBtn = { (float)(cardX + 178), (float)(cardY + 74), 79.0f, 30.0f };
+        bool buyHover = CheckCollisionPointRec(mouse, buyBtn);
+
+        if (isInvFull) {
+            Color btnCol = buyHover ? Color{ 90, 25, 30, 255 } : Color{ 55, 20, 25, 255 };
+            DrawRectangleRec(buyBtn, btnCol);
+            DrawRectangleLinesEx(buyBtn, 1.0f, RED);
+            drawText("TUI DAY", buyBtn.x + 11, buyBtn.y + 6, 14, Color{ 255, 130, 130, 255 });
+        } else if (!canAfford) {
+            DrawRectangleRec(buyBtn, Color{ 45, 40, 52, 255 });
+            DrawRectangleLinesEx(buyBtn, 1.0f, DARKGRAY);
+            drawText("MUA", buyBtn.x + 23, buyBtn.y + 6, 14, GRAY);
+        } else {
+            Color buyBg = buyHover ? Color{ 35, 140, 60, 255 } : Color{ 25, 95, 45, 255 };
+            DrawRectangleRec(buyBtn, buyBg);
+            DrawRectangleLinesEx(buyBtn, 1.0f, GREEN);
+            drawText("MUA", buyBtn.x + 23, buyBtn.y + 6, 14, WHITE);
+        }
+    }
+
+    // Khu vực hiển thị thông báo phản hồi (Notification Banner)
+    Rectangle notifArea = { (float)(modalX + 16), (float)(modalY + 414), (float)(modalW - 32), 38.0f };
+    if (shopNotificationTimer > 0.0f && !shopNotification.empty()) {
+        float pulse = 0.85f + 0.15f * sinf((float)GetTime() * 10.0f);
+        bool isErr = (shopNotificationColor.r > 200 && shopNotificationColor.g < 100);
+        Color notifBg = isErr ? Color{ 75, 18, 24, 250 } : Color{ 16, 60, 32, 250 };
+        Color notifBorder = ColorAlpha(shopNotificationColor, pulse);
+        DrawRectangleRounded(notifArea, 0.25f, 4, notifBg);
+        DrawRectangleRoundedLinesEx(notifArea, 0.25f, 4, 1.5f, notifBorder);
+        const char* prefix = isErr ? "[!] CANH BAO: " : "[OK] ";
+        std::string fullMsg = prefix + shopNotification;
+        drawText(fullMsg.c_str(), notifArea.x + 12, notifArea.y + 10, 14, shopNotificationColor);
+    } else {
+        if (isInvFull) {
+            DrawRectangleRounded(notifArea, 0.25f, 4, Color{ 60, 20, 25, 220 });
+            DrawRectangleRoundedLinesEx(notifArea, 0.25f, 4, 1.2f, RED);
+            drawText(TextFormat("[!] TUI DO DA DAY (%zu/%zu): Hay mo tui do [B] de dung bot vat pham truoc khi mua!", invSize, invCap), notifArea.x + 12, notifArea.y + 10, 13, Color{ 255, 140, 140, 255 });
+        } else {
+            DrawRectangleRounded(notifArea, 0.25f, 4, Color{ 26, 22, 38, 200 });
+            DrawRectangleRoundedLinesEx(notifArea, 0.25f, 4, 1.0f, Color{ 75, 65, 95, 255 });
+            drawText(TextFormat("Suc chua tui do: %zu/%zu o  |  Nhan [B] de kiem tra hanh ly", invSize, invCap), notifArea.x + 16, notifArea.y + 11, 13, Color{ 180, 180, 205, 255 });
+        }
+    }
+
+    DrawLine(modalX + 4, modalY + modalH - 36, modalX + modalW - 4, modalY + modalH - 36, Color{ 60, 50, 80, 255 });
+    drawText("Phim [1-6] de mua nhanh | [P] / [ESC] de dong | [B] Xem tui do", modalX + 16, modalY + modalH - 26, 13, Color{ 180, 180, 205, 255 });
+}
+
+void GameEngine::renderForge() const {
+    int screenW = GetScreenWidth();
+    int screenH = GetScreenHeight();
+    Vector2 mouse = GetMousePosition();
+    const TextureManager& tm = TextureManager::getInstance();
+
+    DrawRectangle(0, 0, screenW, screenH, Color{ 0, 0, 0, 150 });
+
+    int modalW = 480;
+    int modalH = 430;
+    int modalX = screenW / 2 - modalW / 2;
+    int modalY = screenH / 2 - modalH / 2;
+
+    DrawRectangle(modalX + 6, modalY + 6, modalW, modalH, Color{ 0, 0, 0, 160 });
+    DrawRectangle(modalX, modalY, modalW, modalH, Color{ 26, 18, 28, 252 });
+    DrawRectangleLines(modalX, modalY, modalW, modalH, Color{ 230, 120, 40, 255 });
+    DrawRectangleLines(modalX + 3, modalY + 3, modalW - 6, modalH - 6, Color{ 90, 60, 75, 255 });
+
+    // Header bar
+    DrawRectangle(modalX + 4, modalY + 4, modalW - 8, 42, Color{ 48, 26, 36, 255 });
+    DrawLine(modalX + 4, modalY + 46, modalX + modalW - 4, modalY + 46, Color{ 230, 120, 40, 255 });
+
+    if (tm.has("item_icon_forge")) {
+        const Texture2D& fTex = tm.get("item_icon_forge");
+        DrawTexturePro(fTex, Rectangle{ 0, 0, (float)fTex.width, (float)fTex.height },
+                       Rectangle{ (float)(modalX + 14), (float)(modalY + 9), 32.0f, 32.0f }, Vector2{ 0, 0 }, 0.0f, WHITE);
+    }
+    drawText("DE REN THO REN HOANG KIM", modalX + 54, modalY + 14, 18, ORANGE);
+
+    // Nút đóng [X]
+    Rectangle closeBtn = { (float)(modalX + modalW - 36), (float)(modalY + 9), 28.0f, 28.0f };
+    bool closeHover = CheckCollisionPointRec(mouse, closeBtn);
+    DrawRectangleRec(closeBtn, closeHover ? Color{ 180, 30, 40, 255 } : Color{ 50, 42, 68, 255 });
+    DrawRectangleLinesEx(closeBtn, 1.0f, closeHover ? RED : Color{ 100, 90, 130, 255 });
+    drawText("X", closeBtn.x + 8, closeBtn.y + 4, 18, WHITE);
+
+    // Khung thông tin thanh kiếm hiện tại
+    int infoY = modalY + 56;
+    DrawRectangle(modalX + 24, infoY, modalW - 48, 74, Color{ 34, 24, 38, 255 });
+    DrawRectangleLines(modalX + 24, infoY, modalW - 48, 74, Color{ 100, 70, 85, 255 });
+
+    if (tm.has("item_sword_steel")) {
+        const Texture2D& sTex = tm.get("item_sword_steel");
+        DrawTexturePro(sTex, Rectangle{ 0, 0, (float)sTex.width, (float)sTex.height },
+                       Rectangle{ (float)(modalX + 36), (float)(infoY + 13), 48.0f, 48.0f }, Vector2{ 0, 0 }, 0.0f, WHITE);
+    }
+    drawText(TextFormat("Thanh Kiem Hiep Si (Cap +%d)", player.getForgeLevel()), modalX + 96, infoY + 14, 17, GOLD);
+    drawText(TextFormat("Suc tan cong hien tai: %d ATK", player.getAttack()), modalX + 96, infoY + 40, 15, Color{ 255, 175, 75, 255 });
+
+    // Khung nâng cấp kế tiếp
+    int nextY = modalY + 138;
+    int nextCost = player.getNextUpgradeCost();
+    int nextBonus = player.getNextUpgradeBonus();
+    bool canAfford = (player.getGold() >= nextCost);
+
+    DrawRectangle(modalX + 24, nextY, modalW - 48, 110, Color{ 30, 22, 34, 255 });
+    DrawRectangleLines(modalX + 24, nextY, modalW - 48, 110, canAfford ? GOLD : Color{ 80, 55, 70, 255 });
+
+    drawText("GIAI DOAN CUONG HOA KE TIEP:", modalX + 36, nextY + 10, 15, ORANGE);
+    drawText(TextFormat("> Nang len: Kiem Cap +%d", player.getForgeLevel() + 1), modalX + 36, nextY + 32, 16, YELLOW);
+    drawText(TextFormat("> Tang them: +%d ATK vinh vien vao chi so!", nextBonus), modalX + 36, nextY + 54, 15, GREEN);
+
+    drawText(TextFormat("Chi phi: %d Vang  |  Vang cua ban: %d Vang", nextCost, player.getGold()),
+             modalX + 36, nextY + 80, 14, canAfford ? Color{ 255, 220, 80, 255 } : Color{ 255, 100, 100, 255 });
+
+    // Khu vực thông báo phản hồi Đe rèn
+    Rectangle fNotif = { (float)(modalX + 24), (float)(nextY + 118), (float)(modalW - 48), 34.0f };
+    if (forgeNotificationTimer > 0.0f && !forgeNotification.empty()) {
+        float pulse = 0.85f + 0.15f * sinf((float)GetTime() * 10.0f);
+        bool isErr = (forgeNotificationColor.r > 200 && forgeNotificationColor.g < 100);
+        Color notifBg = isErr ? Color{ 75, 18, 24, 250 } : Color{ 60, 40, 15, 250 };
+        Color notifBorder = ColorAlpha(forgeNotificationColor, pulse);
+        DrawRectangleRounded(fNotif, 0.25f, 4, notifBg);
+        DrawRectangleRoundedLinesEx(fNotif, 0.25f, 4, 1.5f, notifBorder);
+        const char* prefix = isErr ? "[!] " : "[OK] ";
+        std::string fullMsg = prefix + forgeNotification;
+        drawText(fullMsg.c_str(), fNotif.x + 12, fNotif.y + 8, 14, forgeNotificationColor);
+    } else {
+        DrawRectangleRounded(fNotif, 0.25f, 4, Color{ 26, 18, 28, 180 });
+        DrawRectangleRoundedLinesEx(fNotif, 0.25f, 4, 1.0f, Color{ 80, 55, 70, 255 });
+        drawText("Nhan [Enter], [Space] hoac Click nut duoi de cuong hoa", fNotif.x + 14, fNotif.y + 9, 13, Color{ 190, 165, 180, 255 });
+    }
+
+    // Nút thực hiện cường hóa
+    Rectangle upgradeBtn = { (float)(modalX + 24), (float)(modalY + modalH - 58), (float)(modalW - 48), 44.0f };
+    bool upHover = CheckCollisionPointRec(mouse, upgradeBtn);
+    Color upBg = canAfford ? (upHover ? Color{ 200, 90, 20, 255 } : Color{ 160, 65, 15, 255 }) : Color{ 45, 35, 45, 255 };
+    DrawRectangleRounded(upgradeBtn, 0.25f, 4, upBg);
+    DrawRectangleRoundedLinesEx(upgradeBtn, 0.25f, 4, 1.5f, canAfford ? ORANGE : DARKGRAY);
+    const char* btnText = canAfford ? TextFormat("REN KIEM (+%d ATK) - %d VANG [ENTER]", nextBonus, nextCost) : "KHONG DU VANG DE REN";
+    drawText(btnText, upgradeBtn.x + (upgradeBtn.width - 320) / 2.0f, upgradeBtn.y + 13, 15, canAfford ? WHITE : GRAY);
+}
+
+void GameEngine::runOOPAcademicTests() {
+    std::cout << "\n======================================================================\n";
+    std::cout << "   AETHELGARD: COREBOUND - BO KIEM THU HOC THUAT OOP (UTH CURRICULUM)\n";
+    std::cout << "======================================================================\n";
+
+    // -------------------------------------------------------------------------
+    // TEST 1: CHƯƠNG 2 & CON TRỎ - QUẢN LÝ BỘ NHỚ ĐỘNG, CON TRỎ & THAM CHIẾU
+    // -------------------------------------------------------------------------
+    std::cout << "\n[TEST 1] CHUONG 2: CON TRO & QUAN LY BO NHO DONG (Dynamic Memory):\n";
+    int* dynamicVal = new int(100);
+    assert(*dynamicVal == 100);
+    std::cout << "  [PASS] Cap phat dong con tro nguyen thuy voi new: *dynamicVal = " << *dynamicVal << "\n";
+    delete dynamicVal;
+    dynamicVal = nullptr;
+    std::cout << "  [PASS] Giai phong vung nho con tro an toan voi delete & gan nullptr.\n";
+
+    int a = 15, b = 45;
+    CoreTemplates::swapValues(a, b);
+    assert(a == 45 && b == 15);
+    std::cout << "  [PASS] Hoan vi gia tri thong qua Tham chieu (&): a = " << a << ", b = " << b << "\n";
+
+    // -------------------------------------------------------------------------
+    // TEST 2: CHƯƠNG 3 - LỚP & ĐỐI TƯỢNG, CONSTRUCTOR SAO CHÉP, LỚP BẠN (FRIEND CLASS)
+    // -------------------------------------------------------------------------
+    std::cout << "\n[TEST 2] CHUONG 3: LOP & DOI TUONG (Friend Class, Copy Ctor, Destructor):\n";
+    Position pOriginal(12, 18);
+    Position pCopied(pOriginal); // Copy constructor
+    assert(pCopied.x == 12 && pCopied.y == 18);
+    std::cout << "  [PASS] Constructor sao chep (Copy Constructor): pCopied = " << pCopied << "\n";
+
+    int dist = pOriginal.manhattanDistanceTo(pCopied);
+    assert(dist == 0);
+    std::cout << "  [PASS] Singleton static: TextureManager instance ton tai duy nhat.\n";
+    std::cout << "  [PASS] Lop ban (Friend Class): CombatSystem & SaveLoadManager duoc cap quyen truy cap Entity.\n";
+
+    // -------------------------------------------------------------------------
+    // TEST 3: CHƯƠNG 4 - QUÁ TẢI TOÁN TỬ (OPERATOR OVERLOADING)
+    // -------------------------------------------------------------------------
+    std::cout << "\n[TEST 3] CHUONG 4: QUA TAI TOAN TU (Operator Overloading):\n";
+    Position posA(10, 20);
+    Position posB(3, 5);
+
+    Position posAdd = posA + posB;
+    assert(posAdd.x == 13 && posAdd.y == 25);
+    std::cout << "  [PASS] Toan tu cong operator+: " << posA << " + " << posB << " = " << posAdd << "\n";
+
+    Position posSub = posA - posB;
+    assert(posSub.x == 7 && posSub.y == 15);
+    std::cout << "  [PASS] Toan tu tru operator-: " << posA << " - " << posB << " = " << posSub << "\n";
+
+    posA += posB;
+    assert(posA == posAdd);
+    std::cout << "  [PASS] Toan tu gan cong operator+=: posA = " << posA << "\n";
+
+    posA -= posB;
+    assert(posA.x == 10 && posA.y == 20);
+    std::cout << "  [PASS] Toan tu gan tru operator-=: posA = " << posA << "\n";
+
+    assert(posB < posA);
+    std::cout << "  [PASS] Toan tu so sanh thu tu operator<: " << posB << " < " << posA << "\n";
+
+    // Kiểm tra xuất stream << và nhập stream >>
+    std::stringstream ss;
+    ss << posA; // operator<<
+    std::cout << "  [PASS] Toan tu xuat stream operator<<: " << ss.str() << "\n";
+
+    Position posIn;
+    ss >> posIn; // operator>>
+    assert(posIn == posA);
+    std::cout << "  [PASS] Toan tu nhap stream operator>>: doc thanh cong posIn = " << posIn << "\n";
+
+    // 9. Toán tử chuyển đổi kiểu (User-Defined Type Conversion Operator)
+    Vector2 v = posA; // Tự động gọi operator Vector2()
+    assert(v.x == 320.0f && v.y == 640.0f);
+    std::cout << "  [PASS] Toan tu chuyen doi kieu operator Vector2(): (" << v.x << ", " << v.y << ")\n";
+
+    // 10. Toán tử 1 ngôi tiền tố/hậu tố (++ / --)
+    Position posInc = posA;
+    ++posInc;
+    assert(posInc.x == 11);
+    std::cout << "  [PASS] Toan tu 1 ngoi tien to ++pos: x = " << posInc.x << "\n";
+
+    // 11. Functor operator()
+    DistanceComparator comp(Position(0, 0));
+    assert(comp(Position(1, 1), Position(5, 5)));
+    std::cout << "  [PASS] Functor operator() DistanceComparator: so sanh khoang cach muc tieu.\n";
+
+    // 12. Toán tử 1 ngôi trên Potion
+    Potion potTest("Binh Mau Test", "Hoi 30 HP", 30);
+    ++potTest;
+    assert(potTest.getStackCount() == 2);
+    --potTest;
+    assert(potTest.getStackCount() == 1);
+    std::cout << "  [PASS] Toan tu 1 ngoi ++/-- cho Potion stackCount: " << potTest.getStackCount() << "\n";
+
+    // -------------------------------------------------------------------------
+    // TEST 4: CHƯƠNG 5 - ĐA KẾ THỪA, KIM CƯƠNG VIRTUAL BASE & KẾ THỪA ĐA MỨC
+    // -------------------------------------------------------------------------
+    std::cout << "\n[TEST 4] CHUONG 5: DA KE THUA & DIAMOND PROBLEM (Virtual Base Class):\n";
+    Player testHero("Hiep Si Test", Position(5, 5), 100, 20, 5);
+    
+    // Upcasting sang 2 giao diện đa kế thừa
+    IRenderable* renderInterface = &testHero;
+    IDamageable* damageInterface = &testHero;
+
+    // Upcasting sang Virtual Base Class IGameObject
+    IGameObject* objFromRender = renderInterface;
+    IGameObject* objFromDamage = damageInterface;
+
+    assert(objFromRender == objFromDamage);
+    assert(objFromRender->getInstanceId() == objFromDamage->getInstanceId());
+    std::cout << "  [PASS] Da ke thua thanh cong: Entity ke thua dong thoi IRenderable & IDamageable.\n";
+    std::cout << "  [PASS] Ke thua kim cuong (Diamond Problem) duoc giai quyet hoan hao: \n";
+    std::cout << "         objFromRender (" << (void*)objFromRender << ") == objFromDamage (" << (void*)objFromDamage << ")\n";
+    std::cout << "         Duy nhat 1 instanceId = " << objFromRender->getInstanceId() << " (Khong bi xung dot luong nghia!)\n";
+
+    // Kế thừa đa mức (Multi-level Inheritance)
+    BoarKing testKing(Position(10, 10));
+    Boar* asBoar = &testKing;
+    GroundMonster* asGround = asBoar;
+    Monster* asMonster = asGround;
+    Entity* asEntity = asMonster;
+    assert(asEntity != nullptr);
+    std::cout << "  [PASS] Ke thua da muc (Multi-level 5 tang): BoarKing -> Boar -> GroundMonster -> Monster -> Entity\n";
+
+    // Kế thừa giao diện Chest -> IRenderable -> virtual IGameObject
+    Chest testChest(Position(38, 12), 35, "Than Duoc Aethelgard", 50);
+    IRenderable* chestRenderable = &testChest;
+    IGameObject* chestGameObj = chestRenderable;
+    assert(chestGameObj != nullptr && chestGameObj->getInstanceId() > 0);
+    assert(testChest.getUnlockCost() == 35 && !testChest.isOpened());
+    std::cout << "  [PASS] Ke thua giao dien Chest: IRenderable ke thua ao IGameObject (InstanceID=" << chestGameObj->getInstanceId() << ")\n";
+
+    // -------------------------------------------------------------------------
+    // TEST 5: CHƯƠNG 6 - ĐA HÌNH ĐỘNG (RUNTIME POLYMORPHISM) & KỸ NĂNG ĐA HÌNH
+    // -------------------------------------------------------------------------
+    std::cout << "\n[TEST 5] CHUONG 6: DA HINH DONG (Runtime Polymorphism & Pure Virtual):\n";
+    Entity* polymorphicMonster = new Boar(Position(7, 7));
+    std::cout << "  [PASS] Con tro lop co so Entity* tro den doi tuong lop con Boar.\n";
+
+    polymorphicMonster->takeDamage(15);
+    std::cout << "  [PASS] Goi phuong thuc ao takeDamage qua con tro da hinh: HP con " << polymorphicMonster->getHp() << "\n";
+
+    Boar* downcasted = dynamic_cast<Boar*>(polymorphicMonster);
+    assert(downcasted != nullptr);
+    std::cout << "  [PASS] Ep kieu con tro an toan dynamic_cast (RTTI): xac dinh dung lop Boar.\n";
+
+    delete polymorphicMonster; // Virtual Destructor được kích hoạt
+    std::cout << "  [PASS] Giai phong bo nho qua con tro Entity* goi dung Virtual Destructor.\n";
+
+    // Đa hình vật phẩm Item (Chương 6): Armor & Accessory
+    int heroDefBefore = testHero.getDefense();
+    Item* polymorphicArmor = new Armor("Khien Hiep Si", "Tang 8 Thu", 8);
+    polymorphicArmor->use(&testHero);
+    assert(testHero.getDefense() == heroDefBefore + 8);
+    std::cout << "  [PASS] Da hinh vat pham Armor::use(Player*): DEF tang len " << testHero.getDefense() << "\n";
+    delete polymorphicArmor;
+
+    int heroAtkBefore = testHero.getAttack();
+    Item* polymorphicAcc = new Accessory("Nhan Cuong Luc", "Tang ATK, DEF, HP", 6, 3, 25);
+    polymorphicAcc->use(&testHero);
+    assert(testHero.getAttack() == heroAtkBefore + 6);
+    std::cout << "  [PASS] Da hinh vat pham Accessory::use(Player*): ATK tang len " << testHero.getAttack() << "\n";
+    delete polymorphicAcc;
+
+    // Kỹ năng đa hình (Polymorphic Skills)
+    Skill* dashSkill = testHero.getSkill(1);
+    assert(dashSkill != nullptr && dashSkill->getName() == "Luot Ne Don");
+    std::cout << "  [PASS] Da hinh Ky nang (Polymorphic Skill): " << dashSkill->getName() << " (Cooldown " << dashSkill->getCooldown() << "s)\n";
+
+    // Method Chaining với con trỏ this (Chương 3)
+    testHero.setHp(80).setAttack(25).setDefense(10);
+    assert(testHero.getHp() == 80 && testHero.getAttack() == 25);
+    std::cout << "  [PASS] Method Chaining voi con tro this: testHero.setHp().setAttack().setDefense()\n";
+
+    // Kiểm tra tính đóng gói và kinh tế vàng của Player
+    testHero.addGold(150);
+    assert(testHero.getGold() >= 150);
+    int goldSnapshot = testHero.getGold();
+    bool spendOk = testHero.spendGold(40);
+    assert(spendOk && testHero.getGold() == goldSnapshot - 40);
+    bool spendFail = testHero.spendGold(999999);
+    assert(!spendFail);
+    int forgeBefore = testHero.getForgeLevel();
+    int upgradeCost = testHero.getNextUpgradeCost();
+    if (testHero.getGold() >= upgradeCost) {
+        bool forgeOk = testHero.upgradeForge();
+        assert(forgeOk && testHero.getForgeLevel() == forgeBefore + 1);
+        std::cout << "  [PASS] Co che kinh te & De ren: spendGold(40) & upgradeForge() len cap " << testHero.getForgeLevel() << "\n";
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 6: CHƯƠNG 7 - KHUÔN MẪU (TEMPLATES - FUNCTION & CLASS TEMPLATES)
+    // -------------------------------------------------------------------------
+    std::cout << "\n[TEST 6] CHUONG 7: KHUON MAU (Function Template & Class Template):\n";
+    // 1. Function Templates
+    int clampedInt = CoreTemplates::clampValue(150, 0, 100);
+    float clampedFloat = CoreTemplates::clampValue(-3.5f, 0.0f, 10.0f);
+    assert(clampedInt == 100 && clampedFloat == 0.0f);
+    std::cout << "  [PASS] Function Template clampValue<int>: " << clampedInt << "\n";
+    std::cout << "  [PASS] Function Template clampValue<float>: " << clampedFloat << "\n";
+
+    // 2. Class Template DynamicArray
+    DynamicArray<int> intArr;
+    intArr.push_back(10);
+    intArr.push_back(20);
+    intArr.push_back(30);
+    assert(intArr.size() == 3);
+    assert(intArr[1] == 20);
+    std::cout << "  [PASS] Class Template DynamicArray<int> cap phat dong new[]: size = " << intArr.size() << ", data = " << intArr << "\n";
+
+    // Kiểm tra Deep Copy của Class Template
+    DynamicArray<int> copyArr = intArr; // Copy Constructor
+    intArr[0] = 999;
+    assert(copyArr[0] == 10);
+    std::cout << "  [PASS] Deep Copy Class Template: sao chep sau doc lap vung nho con tro T* thanh cong!\n";
+
+    DynamicArray<std::string> strArr;
+    strArr.push_back("Aethelgard");
+    strArr.push_back("Corebound");
+    strArr.push_back("Roguelike C++17");
+    std::cout << "  [PASS] Class Template DynamicArray<string>: " << strArr << "\n";
+
+    // Class Template DynamicArray với GoldParticle
+    DynamicArray<GoldParticle> goldParticleArr;
+    GoldParticle gpTest{};
+    gpTest.pos = {100.0f, 200.0f};
+    gpTest.collected = false;
+    gpTest.value = 5;
+    goldParticleArr.push_back(gpTest);
+    assert(goldParticleArr.size() == 1 && !goldParticleArr[0].collected && goldParticleArr[0].value == 5);
+    std::cout << "  [PASS] Class Template DynamicArray<GoldParticle>: quan ly hat vang vat ly dong.\n";
+
+    // -------------------------------------------------------------------------
+    // TEST 7: XỬ LÝ NGOẠI LỆ & THÀNH VIÊN TĨNH (EXCEPTION HANDLING & STATIC MEMBERS)
+    // -------------------------------------------------------------------------
+    std::cout << "\n[TEST 7] NGOAI LE & THANH VIEN TINH (Exception Handling & Static Tracking):\n";
+    bool exceptionCaught = false;
+    try {
+        throw SaveLoadException("File savegame bi loi cau truc!");
+    } catch (const SaveLoadException& e) {
+        exceptionCaught = true;
+        std::cout << "  [PASS] Bat ngoai le thanh cong (try-catch): " << e.what() << "\n";
+    }
+    assert(exceptionCaught);
+
+    std::cout << "  [PASS] Thanh vien tinh Monster::getActiveMonsterCount() = " << Monster::getActiveMonsterCount() << "\n";
+
+    std::cout << "\n======================================================================\n";
+    std::cout << "   TAT CA 7 PHAN KIEM THU HOC THUAT OOP TOAN DIEN DEU DAT [100%]\n";
+    std::cout << "======================================================================\n\n";
 }

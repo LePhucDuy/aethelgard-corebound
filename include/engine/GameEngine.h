@@ -3,9 +3,20 @@
 
 #include <vector>
 #include <string>
-#include <raylib.h>
+#include "core/Position.h"
+#include "core/DynamicArray.h"
+#include "core/Templates.h"
 #include "entities/Player.h"
+#include "graphics/DamagePopup.h"
+#include "graphics/GoldParticle.h"
+#include "items/Armor.h"
+#include "items/Accessory.h"
+#include "items/Chest.h"
 #include "map/Dungeon.h"
+#include <vector>
+#include <string>
+#include <memory>
+#include <raylib.h>
 
 /**
  * @brief Định danh trạng thái tổng thể của trò chơi.
@@ -31,6 +42,9 @@ private:
     Dungeon dungeon;
     GameState state;
     std::vector<std::string> combatLog;
+    DynamicArray<std::string> templateCombatLog; // Ứng dụng Class Template tự xây dựng (Chương 7)
+    mutable DynamicArray<DamagePopup> activeDamagePopups; // Mảng động quản lý số sát thương nổi thời gian thực (Chương 7)
+    mutable DynamicArray<GoldParticle> activeGoldParticles; // Mảng động quản lý các hạt vàng rơi khi quái chết (Chương 7)
     Camera2D camera;
     Font fontMain;
     float moveTimer;
@@ -61,9 +75,20 @@ private:
     float bossWarningTimer;        // Thời gian đếm ngược hiển thị cảnh báo trùm
     float screenShake;             // Cường độ rung màn hình (Screen Shake)
 
-    // Trạng thái giao diện
+    // Trạng thái giao diện & Tiêu thụ vàng
     bool showInventory;            // true: đang mở bảng túi đồ (phím B/I/Tab hoặc click chuột)
+    bool showShop;                 // true: đang mở cửa hàng hầm ngục (phím P hoặc click chuột)
+    bool showForge;                // true: đang mở đe rèn cường hóa (phím U hoặc click chuột)
     bool showCombatLog;            // true: đang mở khung nhật ký chiến đấu (phím L)
+
+    // Thông báo phản hồi tức thì trên các cửa sổ giao diện (Shop, Forge)
+    std::string shopNotification;
+    Color shopNotificationColor;
+    float shopNotificationTimer;
+
+    std::string forgeNotification;
+    Color forgeNotificationColor;
+    float forgeNotificationTimer;
 
     // Ghi đè vị trí xuất phát (tuỳ chọn, phục vụ debug/test từng khu: --spawn X Y)
     int spawnOverrideX;
@@ -74,8 +99,18 @@ private:
     void renderHUD() const;
     void drawText(const char* text, float posX, float posY, float fontSize, Color color) const;
 
+    // Quản lý hiệu ứng vàng rơi và các cơ chế tiêu thụ vàng
+    void updateGoldParticles(float deltaTime);
+    void renderGoldParticles(Vector2 offset) const;
+    void renderShop() const;
+    void renderForge() const;
+    void buyShopItem(int slot);
+    void triggerForgeUpgrade();
+    void interactWithChest();
+    void tryPickupItemAtPlayerPos();
+
 public:
-    GameEngine(int spawnX = -1, int spawnY = -1, bool startWithInventory = false, bool startLethal = false);
+    GameEngine(int spawnX = -1, int spawnY = -1, bool startWithInventory = false, bool startLethal = false, bool startWithShop = false, bool startWithForge = false);
     ~GameEngine();
 
     // Khởi tạo các tài nguyên (Textures, Animations, Floor 1)
@@ -89,6 +124,21 @@ public:
 
     // Vòng lặp chính của game (hỗ trợ chụp ảnh tự động khi truyền đường dẫn)
     void run(const std::string& autoScreenshot = "");
+
+    // Quản lý số sát thương nổi thời gian thực (Class Template DynamicArray - Chương 7)
+    void addDamagePopup(const std::string& text, float worldX, float worldY, Color color = YELLOW, float duration = 0.8f);
+
+    // Hiệu ứng bung tỏa hạt vàng rơi ra từ thân quái vật (Gold Burst & Magnet Attract)
+    void spawnGoldBurst(float worldX, float worldY, float groundY, int totalGold, int count = 6);
+
+    Dungeon& getDungeon() { return dungeon; }
+    const Dungeon& getDungeon() const { return dungeon; }
+    Player& getPlayer() { return player; }
+    const Player& getPlayer() const { return player; }
+    std::vector<std::string>& getCombatLog() { return combatLog; }
+
+    // Hàm tự kiểm thử học thuật cho toàn bộ 7 chương OOP của trường UTH
+    static void runOOPAcademicTests();
 };
 
 #endif // GAME_ENGINE_H
