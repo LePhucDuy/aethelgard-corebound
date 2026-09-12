@@ -92,9 +92,9 @@ void GameEngine::init() {
     dungeon.generate(1);
     // Vị trí xuất phát: ghi đè bởi --spawn (debug) nếu có, ngược lại dùng điểm start của map
     if (spawnOverrideX >= 0 && spawnOverrideY >= 0) {
-        player.setPosition(Position(spawnOverrideX, spawnOverrideY));
+        player.setPosition(Position(spawnOverrideX, spawnOverrideY), true);
     } else {
-        player.setPosition(dungeon.getPlayerStartPos());
+        player.setPosition(dungeon.getPlayerStartPos(), true);
     }
 
     // 4. Cung cấp vật phẩm khởi đầu vào túi đồ
@@ -175,7 +175,7 @@ void GameEngine::handleInput() {
 
         // 3. Tương tác khi bảng Túi Đồ đang mở
         if (showInventory) {
-            int modalW = 400, modalH = 430;
+            int modalW = 420, modalH = 475;
             int modalX = screenW / 2 - modalW / 2;
             int modalY = screenH / 2 - modalH / 2 - 15;
 
@@ -190,8 +190,8 @@ void GameEngine::handleInput() {
             Inventory& inv = player.getInventory();
             for (size_t i = 0; i < 8; ++i) {
                 int cardX = modalX + 16;
-                int cardY = modalY + 54 + (int)i * 42;
-                Rectangle cardRect = { (float)cardX, (float)cardY, (float)(modalW - 32), 36.0f };
+                int cardY = modalY + 52 + (int)i * 48;
+                Rectangle cardRect = { (float)cardX, (float)cardY, (float)(modalW - 32), 44.0f };
                 if (CheckCollisionPointRec(mouse, cardRect)) {
                     if (i < inv.getSize() && inv[i] != nullptr) {
                         const Item* item = inv[i];
@@ -571,11 +571,12 @@ void GameEngine::update(float deltaTime) {
     float topWorldY = 6.0f * (float)Constants::TILE_SIZE;
     float groundBottomY = 19.0f * (float)Constants::TILE_SIZE;
     // Đoạn nội dung BẮT BUỘC phải lọt khung: từ ĐỈNH ĐẦU player tới ĐÁY mặt đất.
-    // (Neo chân mới: foot = pos.y*TILE + 6 + trim*scale, đầu = foot - fH*1.8.)
+    // (Neo chân mới: foot = pVisual.y + 6 + trim*scale, đầu = foot - fH*1.8.)
+    const Vector2& pVisual = player.getVisualPosition();
     const Animation* animH = player.getCurrentAnimation();
     float playerFHW = animH ? (float)animH->getFrameHeight() : 80.0f;
     float playerTrimW = (playerFHW > 70.0f) ? 12.0f : 6.0f; // 80px -> 12, 64px -> 6
-    float playerFootW = (float)(player.getPosition().y * Constants::TILE_SIZE) + 6.0f + playerTrimW * 1.8f;
+    float playerFootW = pVisual.y + 6.0f + playerTrimW * 1.8f;
     float playerHeadW = playerFootW - playerFHW * 1.8f;
     float needTop = (playerHeadW < topWorldY) ? playerHeadW : topWorldY;
     float needBottom = groundBottomY + (float)Constants::TILE_SIZE;
@@ -589,10 +590,10 @@ void GameEngine::update(float deltaTime) {
         }
     }
 
-    // 1. Camera Target X: bám theo người chơi trên suốt 75 ô ngang của tầng ngục
+    // 1. Camera Target X: bám theo tọa độ hiển thị mượt mà của người chơi
     float screenW = (float)GetScreenWidth();
     float worldWidth = (float)(Constants::DUNGEON_WIDTH * Constants::TILE_SIZE);
-    float targetX = (float)(player.getPosition().x * Constants::TILE_SIZE + Constants::TILE_SIZE / 2);
+    float targetX = pVisual.x + (float)Constants::TILE_SIZE / 2.0f;
 
     // Kẹp chặt camera target X để màn hình không bao giờ trôi ra ngoài biên trái (x < 0) hoặc biên phải
     float halfViewW = (screenW / 2.0f) / camera.zoom;
@@ -603,7 +604,7 @@ void GameEngine::update(float deltaTime) {
     // Deadzone dọc: player di chuyển trong vùng này thì camera Y đứng yên
     // (không giật); chỉ pan khi player vượt biên trên/dưới của deadzone.
     float halfViewH = (activeHeight / 2.0f) / camera.zoom;
-    float desiredTargetY = (float)(player.getPosition().y * Constants::TILE_SIZE);
+    float desiredTargetY = pVisual.y;
     float prevTargetY = camera.target.y;
     if (prevTargetY < topWorldY) prevTargetY = (topWorldY + groundBottomY) / 2.0f;
     if (prevTargetY > groundBottomY) prevTargetY = (topWorldY + groundBottomY) / 2.0f;
@@ -800,8 +801,8 @@ void GameEngine::renderHUD() const {
     if (showInventory) {
         DrawRectangle(0, 0, screenW, screenH, Color{ 0, 0, 0, 130 });
 
-        int modalW = 400;
-        int modalH = 430;
+        int modalW = 420;
+        int modalH = 475;
         int modalX = screenW / 2 - modalW / 2;
         int modalY = screenH / 2 - modalH / 2 - 15;
 
@@ -814,7 +815,7 @@ void GameEngine::renderHUD() const {
         DrawRectangle(modalX + 4, modalY + 4, modalW - 8, 40, Color{ 36, 30, 52, 255 });
         DrawLine(modalX + 4, modalY + 44, modalX + modalW - 4, modalY + 44, Color{ 195, 155, 55, 255 });
         drawText("TUI DO CHIEN BINH", modalX + 16, modalY + 12, 19, GOLD);
-        drawText(TextFormat("(%d/8 o)", (int)inv.getSize()), modalX + 215, modalY + 14, 15, Color{ 180, 180, 205, 255 });
+        drawText(TextFormat("(%d/8 o)", (int)inv.getSize()), modalX + 225, modalY + 14, 15, Color{ 180, 180, 205, 255 });
 
         Rectangle closeBtn = { (float)(modalX + modalW - 38), (float)(modalY + 8), 28.0f, 28.0f };
         bool closeHover = CheckCollisionPointRec(mouse, closeBtn);
@@ -823,15 +824,15 @@ void GameEngine::renderHUD() const {
         drawText("X", closeBtn.x + 8, closeBtn.y + 4, 18, WHITE);
 
         if (inv.isEmpty()) {
-            drawText("Tui do dang trong!", modalX + 120, modalY + 140, 18, GRAY);
+            drawText("Tui do dang trong!", modalX + 130, modalY + 160, 18, GRAY);
             drawText("Hay kham pha ham nguc de thu thap vu khi va binh thuoc.", 
-                     modalX + 24, modalY + 180, 14, Color{ 150, 150, 170, 255 });
+                     modalX + 34, modalY + 200, 14, Color{ 150, 150, 170, 255 });
         } else {
             for (size_t i = 0; i < 8; ++i) {
                 int cardX = modalX + 16;
-                int cardY = modalY + 54 + (int)i * 42;
+                int cardY = modalY + 52 + (int)i * 48;
                 int cardW = modalW - 32;
-                int cardH = 36;
+                int cardH = 44;
                 Rectangle cardRect = { (float)cardX, (float)cardY, (float)cardW, (float)cardH };
                 bool isOccupied = (i < inv.getSize() && inv[i] != nullptr);
 
@@ -850,35 +851,38 @@ void GameEngine::renderHUD() const {
                 if (isOccupied) {
                     const Item* item = inv[i];
 
-                    DrawRectangle(cardX + 4, cardY + 4, 28, 28, Color{ 38, 32, 54, 255 });
-                    DrawRectangleLines(cardX + 4, cardY + 4, 28, 28, Color{ 90, 80, 115, 255 });
-                    drawText(TextFormat("[%d]", (int)(i + 1)), cardX + 8, cardY + 8, 15, YELLOW);
+                    // Khung số thứ tự phím tắt [1]-[8]
+                    DrawRectangle(cardX + 4, cardY + 4, 32, 36, Color{ 38, 32, 54, 255 });
+                    DrawRectangleLines(cardX + 4, cardY + 4, 32, 36, Color{ 90, 80, 115, 255 });
+                    drawText(TextFormat("[%d]", (int)(i + 1)), cardX + 6, cardY + 12, 16, YELLOW);
 
-                    DrawRectangle(cardX + 36, cardY + 4, 28, 28, Color{ 20, 16, 30, 255 });
-                    DrawRectangleLines(cardX + 36, cardY + 4, 28, 28, Color{ 90, 80, 115, 255 });
+                    // Khung ảnh icon to rõ ràng (36x36)
+                    DrawRectangle(cardX + 40, cardY + 4, 36, 36, Color{ 20, 16, 30, 255 });
+                    DrawRectangleLines(cardX + 40, cardY + 4, 36, 36, Color{ 90, 80, 115, 255 });
 
+                    // Texture phóng to chuẩn pixel-art 32x32 sắc nét
                     const std::string& texId = item->getTextureId();
                     if (TextureManager::getInstance().has(texId)) {
                         const Texture2D& iconTex = TextureManager::getInstance().get(texId);
                         Rectangle srcRec = { 0, 0, (float)iconTex.width, (float)iconTex.height };
-                        Rectangle destRec = { (float)(cardX + 38), (float)(cardY + 6), 24.0f, 24.0f };
+                        Rectangle destRec = { (float)(cardX + 42), (float)(cardY + 6), 32.0f, 32.0f };
                         DrawTexturePro(iconTex, srcRec, destRec, Vector2{ 0, 0 }, 0.0f, WHITE);
                     }
 
                     const Weapon* w = dynamic_cast<const Weapon*>(item);
                     const Potion* p = dynamic_cast<const Potion*>(item);
                     Color nameColor = w ? Color{ 255, 175, 75, 255 } : Color{ 100, 245, 150, 255 };
-                    drawText(item->getName().c_str(), cardX + 72, cardY + 8, 16, nameColor);
+                    drawText(item->getName().c_str(), cardX + 86, cardY + 12, 17, nameColor);
 
                     if (w) {
-                        drawText(TextFormat("+%d ATK", w->getBonusAttack()), cardX + cardW - 80, cardY + 9, 14, Color{ 255, 205, 120, 255 });
+                        drawText(TextFormat("+%d ATK", w->getBonusAttack()), cardX + cardW - 85, cardY + 13, 15, Color{ 255, 205, 120, 255 });
                     } else if (p) {
-                        drawText(TextFormat("+%d HP", p->getHealAmount()), cardX + cardW - 80, cardY + 9, 14, Color{ 130, 255, 170, 255 });
+                        drawText(TextFormat("+%d HP", p->getHealAmount()), cardX + cardW - 85, cardY + 13, 15, Color{ 130, 255, 170, 255 });
                     }
                 } else {
-                    DrawRectangle(cardX + 4, cardY + 4, 28, 28, Color{ 22, 18, 30, 180 });
-                    drawText(TextFormat("[%d]", (int)(i + 1)), cardX + 8, cardY + 8, 15, DARKGRAY);
-                    drawText("(O trong)", cardX + 44, cardY + 9, 14, Color{ 80, 75, 95, 255 });
+                    DrawRectangle(cardX + 4, cardY + 4, 32, 36, Color{ 22, 18, 30, 180 });
+                    drawText(TextFormat("[%d]", (int)(i + 1)), cardX + 6, cardY + 12, 16, DARKGRAY);
+                    drawText("(O trong)", cardX + 48, cardY + 13, 15, Color{ 80, 75, 95, 255 });
                 }
             }
         }

@@ -65,8 +65,8 @@ void Monster::render(float scale, Vector2 offset) const {
     constexpr float FOOT_SINK = 6.0f;
     constexpr float TRIM_BOTTOM = 2.0f;
     Vector2 screenPos = {
-        (float)(pos.x * Constants::TILE_SIZE) + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
-        (float)(pos.y * Constants::TILE_SIZE) - fHeight + (flying ? 0.0f : (FOOT_SINK + TRIM_BOTTOM * scale)) + offset.y
+        visualPos.x + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
+        visualPos.y - fHeight + (flying ? 0.0f : (FOOT_SINK + TRIM_BOTTOM * scale)) + offset.y
     };
 
     Color tint = WHITE;

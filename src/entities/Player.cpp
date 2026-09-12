@@ -94,6 +94,8 @@ void Player::triggerJump(int dx, int dy) {
 }
 
 void Player::update(float deltaTime) {
+    Entity::update(deltaTime);
+
     if (!alive) {
         if (anims.find("dead") != anims.end()) {
             currentState = "dead";
@@ -181,8 +183,8 @@ void Player::render(float scale, Vector2 offset) const {
         jumpLift = jumpVisualLift * std::sin(progress * 3.14159265f);
     }
     Vector2 screenPos = {
-        (float)(pos.x * Constants::TILE_SIZE) + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
-        (float)(pos.y * Constants::TILE_SIZE) + FOOT_SINK - refHeight + trimBottom * scale + offset.y
+        visualPos.x + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
+        visualPos.y + FOOT_SINK - refHeight + trimBottom * scale + offset.y
             - jumpLift
     };
 

@@ -145,8 +145,8 @@ void BoarKing::render(float scale, Vector2 offset) const {
     constexpr float TRIM_BOTTOM = 2.0f;
 
     Vector2 screenPos = {
-        (float)(pos.x * Constants::TILE_SIZE) + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
-        (float)(pos.y * Constants::TILE_SIZE) + FOOT_SINK + TRIM_BOTTOM * s - fHeight + offset.y
+        visualPos.x + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
+        visualPos.y + FOOT_SINK + TRIM_BOTTOM * s - fHeight + offset.y
     };
 
     Color tint = Color{ 255, 225, 160, 255 };

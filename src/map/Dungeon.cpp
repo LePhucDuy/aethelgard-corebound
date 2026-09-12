@@ -440,41 +440,40 @@ void Dungeon::renderItems(Vector2 offset) const {
     for (auto& item : groundItems) {
         if (item && item->isOnGround()) {
             Position p = item->getPosition();
-            int screenX = (int)(offset.x + (float)(p.x * Constants::TILE_SIZE) + 8);
-            int screenY = (int)(offset.y + (float)(p.y * Constants::TILE_SIZE) - 18);
-            
-            DrawCircle(screenX + 8, screenY + 8, 9.0f, Color{ 255, 215, 0, 190 });
-            DrawCircle(screenX + 8, screenY + 8, 6.0f, GOLD);
-            DrawText("?", screenX + 5, screenY + 1, 14, BLACK);
             float baseX = offset.x + (float)(p.x * Constants::TILE_SIZE);
             float baseY = offset.y + (float)(p.y * Constants::TILE_SIZE);
 
             // 1. Bóng đổ (Shadow) mờ nhẹ ngay trên bề mặt sàn gạch/cỏ
-            DrawEllipse((int)(baseX + 16), (int)(baseY + 1), 10, 4, Color{ 0, 0, 0, 95 });
+            DrawEllipse((int)(baseX + 16), (int)(baseY + 2), 14, 5, Color{ 0, 0, 0, 120 });
 
             // 2. Hiệu ứng lơ lửng nhấp nhô nhẹ nhàng (Floating / bobbing animation)
-            float bobOffset = sinf(timeSec * 3.5f + (float)p.x * 0.8f) * 3.0f;
+            float bobOffset = sinf(timeSec * 3.5f + (float)p.x * 0.8f) * 4.0f;
 
-            // 3. Vòng hào quang sáng dưới chân vật phẩm rơi
-            Color auraColor = (dynamic_cast<const Weapon*>(item.get())) 
-                ? Color{ 255, 200, 80, 80 } 
-                : Color{ 100, 255, 160, 80 };
-            DrawCircleLines((int)(baseX + 16), (int)(baseY + 1), 12.0f + sinf(timeSec * 4.0f) * 1.5f, auraColor);
+            // 3. Vầng hào quang phát sáng đa sắc (Golden cho vũ khí, Emerald cho bình thuốc)
+            bool isWeapon = (dynamic_cast<const Weapon*>(item.get()) != nullptr);
+            Color auraColor = isWeapon 
+                ? Color{ 255, 205, 80, (unsigned char)(70 + 30 * sinf(timeSec * 4.0f)) } 
+                : Color{ 90, 240, 160, (unsigned char)(70 + 30 * sinf(timeSec * 4.0f)) };
+            Color auraCenter = isWeapon ? Color{ 255, 220, 100, 90 } : Color{ 100, 255, 170, 90 };
+            
+            DrawCircleGradient(Vector2{ baseX + 16.0f, baseY - 14.0f + bobOffset }, 20.0f + 2.0f * sinf(timeSec * 3.0f), auraCenter, Color{ 0, 0, 0, 0 });
+            DrawCircleLines((int)(baseX + 16), (int)(baseY + 2), 15.0f + sinf(timeSec * 4.0f) * 2.0f, auraColor);
 
-            // 4. Vẽ Texture của vật phẩm nổi thanh thoát phía trên mặt cỏ (28x28)
+            // 4. Vẽ Texture của vật phẩm to rõ ràng (40x40 - tăng từ 28x28)
+            constexpr float ITEM_SIZE = 40.0f;
+            float itemX = baseX + ((float)Constants::TILE_SIZE - ITEM_SIZE) / 2.0f;
+            float itemY = baseY - ITEM_SIZE + 4.0f + bobOffset;
+
             const std::string& texId = item->getTextureId();
             if (tm.has(texId)) {
                 const Texture2D& tex = tm.get(texId);
                 Rectangle srcRec = { 0, 0, (float)tex.width, (float)tex.height };
-                Rectangle destRec = { baseX + 2, baseY - 27.0f + bobOffset, 28.0f, 28.0f };
+                Rectangle destRec = { itemX, itemY, ITEM_SIZE, ITEM_SIZE };
                 DrawTexturePro(tex, srcRec, destRec, Vector2{ 0, 0 }, 0.0f, WHITE);
             } else {
                 // Fallback nếu chưa có texture
-                int screenX = (int)(baseX + 8);
-                int screenY = (int)(baseY - 26 + bobOffset);
-                DrawCircle(screenX + 8, screenY + 8, 9.0f, Color{ 255, 215, 0, 190 });
-                DrawCircle(screenX + 8, screenY + 8, 6.0f, GOLD);
-                DrawText("?", screenX + 5, screenY + 1, 14, BLACK);
+                DrawCircle((int)(baseX + 16), (int)(itemY + ITEM_SIZE / 2.0f), 12.0f, GOLD);
+                DrawText("?", (int)(baseX + 12), (int)(itemY + ITEM_SIZE / 2.0f - 7.0f), 16, BLACK);
             }
         }
     }
@@ -486,11 +485,10 @@ void Dungeon::renderMonsters(Vector2 offset) const {
             // Đứng vững chãi ngay trên mặt cỏ
             monster->render(1.8f, offset);
 
-            Position p = monster->getPosition();
-            float barX = offset.x + (float)(p.x * Constants::TILE_SIZE);
-            // Thanh máu nổi ngay trên đầu sprite (neo chân mới: pos.y*TILE + 6, không +1 ô)
-            float barY = offset.y + (float)(p.y * Constants::TILE_SIZE)
-                       - 1.8f * 32.0f - 8.0f;
+            const Vector2& vPos = monster->getVisualPosition();
+            float barX = offset.x + vPos.x;
+            // Thanh máu nổi ngay trên đầu sprite bám theo tọa độ visualPos lướt mượt
+            float barY = offset.y + vPos.y - 1.8f * 32.0f - 8.0f;
             float hpPercent = (float)monster->getHp() / (float)monster->getMaxHp();
 
             DrawRectangle((int)barX, (int)barY, Constants::TILE_SIZE, 4, RED);

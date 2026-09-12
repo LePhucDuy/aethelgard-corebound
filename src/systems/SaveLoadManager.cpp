@@ -129,7 +129,7 @@ bool SaveLoadManager::loadGame(const std::string& filePath, Player& player, Dung
     inFile.close();
 
     // Khôi phục toàn bộ chỉ số cho người chơi
-    player.setPosition(Position(posX, posY));
+    player.setPosition(Position(posX, posY), true);
     player.setLevel(level);
     player.setMaxHp(maxHp);
     player.setHp(hp);

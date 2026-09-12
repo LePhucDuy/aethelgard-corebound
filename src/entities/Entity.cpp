@@ -3,7 +3,14 @@
 #include <algorithm>
 
 Entity::Entity(const std::string& name, const Position& pos, int hp, int attack, int defense)
-    : name(name), pos(pos), hp(hp), maxHp(hp), attack(attack), defense(defense), alive(true), currentAnim(nullptr) {}
+    : name(name), pos(pos),
+      visualPos{ (float)(pos.x * Constants::TILE_SIZE), (float)(pos.y * Constants::TILE_SIZE) },
+      moveLerpSpeed(20.0f),
+      hp(hp), maxHp(hp), attack(attack), defense(defense), alive(true), currentAnim(nullptr) {}
+
+void Entity::resetVisualPosition() {
+    visualPos = { (float)(pos.x * Constants::TILE_SIZE), (float)(pos.y * Constants::TILE_SIZE) };
+}
 
 void Entity::takeDamage(int amount) {
     // Sát thương thực tế = lượng dame trừ đi chỉ số phòng thủ (tối thiểu chịu 1 sát thương)
@@ -25,6 +32,16 @@ void Entity::update(float deltaTime) {
     if (currentAnim) {
         currentAnim->update(deltaTime);
     }
+
+    // Nội suy mượt mà tọa độ hiển thị (Visual LERP) theo thời gian thực độc lập với FPS
+    float targetX = (float)(pos.x * Constants::TILE_SIZE);
+    float targetY = (float)(pos.y * Constants::TILE_SIZE);
+    float t = 1.0f - std::exp(-moveLerpSpeed * deltaTime);
+    visualPos.x += (targetX - visualPos.x) * t;
+    visualPos.y += (targetY - visualPos.y) * t;
+
+    if (std::abs(visualPos.x - targetX) < 0.25f) visualPos.x = targetX;
+    if (std::abs(visualPos.y - targetY) < 0.25f) visualPos.y = targetY;
 }
 
 void Entity::render(float scale, Vector2 offset) const {
@@ -33,12 +50,11 @@ void Entity::render(float scale, Vector2 offset) const {
     float fWidth = (float)currentAnim->getFrameWidth() * scale;
     float fHeight = (float)currentAnim->getFrameHeight() * scale;
 
-    // QUY ƯỚC MỚI (đồng bộ Player/Monster): pos = ô FLOOR đang đứng, chân neo tại
-    // mép TRÊN ô đó + lún nhẹ 6px (pos.y * TILE + 6), không phải mép dưới.
+    // QUY ƯỚC MỚI: neo chân theo tọa độ visualPos lướt mượt
     constexpr float FOOT_SINK = 6.0f;
     Vector2 screenPos = {
-        (float)(pos.x * Constants::TILE_SIZE) + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
-        (float)(pos.y * Constants::TILE_SIZE) + FOOT_SINK - fHeight + offset.y
+        visualPos.x + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
+        visualPos.y + FOOT_SINK - fHeight + offset.y
     };
 
     currentAnim->draw(screenPos, scale);

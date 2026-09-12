@@ -41,6 +41,8 @@ class Entity {
 protected:
     std::string name;
     Position pos;
+    Vector2 visualPos;          // Tọa độ hiển thị mượt mà (world pixel)
+    float moveLerpSpeed = 20.0f; // Tốc độ trượt nội suy giữa các ô
     int hp;
     int maxHp;
     int attack;
@@ -70,7 +72,12 @@ public:
     // Getters & Setters
     const std::string& getName() const { return name; }
     const Position& getPosition() const { return pos; }
-    void setPosition(const Position& newPos) { pos = newPos; }
+    const Vector2& getVisualPosition() const { return visualPos; }
+    void resetVisualPosition();
+    void setPosition(const Position& newPos, bool snapVisual = false) { 
+        pos = newPos; 
+        if (snapVisual) resetVisualPosition();
+    }
 
     int getHp() const { return hp; }
     int getMaxHp() const { return maxHp; }
