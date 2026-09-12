@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <iostream>
+#include <cmath>
 
 Dungeon::Dungeon(int width, int height)
     : width(width), height(height), floorLevel(1),
@@ -180,18 +181,23 @@ void Dungeon::generate(int floor) {
     // =========================================================================
     groundItems.push_back(std::make_unique<Potion>(
         "Binh Mau Nho", "Hoi phuc 35 HP", 35, Position(8, 15)
+        "Binh Mau Nho", "Hoi phuc 35 HP", 35, Position(8, 15), "item_potion_health"
     ));
     groundItems.push_back(std::make_unique<Weapon>(
         "Thanh Kiem Thep", "Vu khi tang +8 ATK", 8, Position(22, 12)
+        "Thanh Kiem Thep", "Vu khi tang +8 ATK", 8, Position(22, 12), "item_sword_steel"
     ));
     groundItems.push_back(std::make_unique<Potion>(
         "Binh Thuoc Cuong Hoa", "Hoi phuc 60 HP", 60, Position(42, 9)
+        "Binh Thuoc Cuong Hoa", "Hoi phuc 60 HP", 60, Position(42, 9), "item_potion_strength"
     ));
     groundItems.push_back(std::make_unique<Weapon>(
         "Dai Kiem Huyen Bi", "Vu khi tang +15 ATK", 15, Position(60, 6)
+        "Dai Kiem Huyen Bi", "Vu khi tang +15 ATK", 15, Position(60, 6), "item_sword_mystic"
     ));
     groundItems.push_back(std::make_unique<Potion>(
         "Than Duoc Aethelgard", "Hoi phuc 100 HP", 100, Position(69, 6)
+        "Than Duoc Aethelgard", "Hoi phuc 100 HP", 100, Position(69, 6), "item_potion_elixir"
     ));
 
     std::cout << "[Dungeon] Sinh dia hinh 2D Side thanh cong: 75 o ngang cho Tang " << floorLevel << std::endl;
@@ -403,6 +409,9 @@ void Dungeon::render(Vector2 offset) const {
 }
 
 void Dungeon::renderItems(Vector2 offset) const {
+    const TextureManager& tm = TextureManager::getInstance();
+    float timeSec = (float)GetTime();
+
     for (auto& item : groundItems) {
         if (item && item->isOnGround()) {
             Position p = item->getPosition();
@@ -412,6 +421,36 @@ void Dungeon::renderItems(Vector2 offset) const {
             DrawCircle(screenX + 8, screenY + 8, 9.0f, Color{ 255, 215, 0, 190 });
             DrawCircle(screenX + 8, screenY + 8, 6.0f, GOLD);
             DrawText("?", screenX + 5, screenY + 1, 14, BLACK);
+            float baseX = offset.x + (float)(p.x * Constants::TILE_SIZE);
+            float baseY = offset.y + (float)(p.y * Constants::TILE_SIZE);
+
+            // 1. Bóng đổ (Shadow) mờ nhẹ ngay trên bề mặt sàn gạch/cỏ
+            DrawEllipse((int)(baseX + 16), (int)(baseY + 1), 10, 4, Color{ 0, 0, 0, 95 });
+
+            // 2. Hiệu ứng lơ lửng nhấp nhô nhẹ nhàng (Floating / bobbing animation)
+            float bobOffset = sinf(timeSec * 3.5f + (float)p.x * 0.8f) * 3.0f;
+
+            // 3. Vòng hào quang sáng dưới chân vật phẩm rơi
+            Color auraColor = (dynamic_cast<const Weapon*>(item.get())) 
+                ? Color{ 255, 200, 80, 80 } 
+                : Color{ 100, 255, 160, 80 };
+            DrawCircleLines((int)(baseX + 16), (int)(baseY + 1), 12.0f + sinf(timeSec * 4.0f) * 1.5f, auraColor);
+
+            // 4. Vẽ Texture của vật phẩm nổi thanh thoát phía trên mặt cỏ (28x28)
+            const std::string& texId = item->getTextureId();
+            if (tm.has(texId)) {
+                const Texture2D& tex = tm.get(texId);
+                Rectangle srcRec = { 0, 0, (float)tex.width, (float)tex.height };
+                Rectangle destRec = { baseX + 2, baseY - 27.0f + bobOffset, 28.0f, 28.0f };
+                DrawTexturePro(tex, srcRec, destRec, Vector2{ 0, 0 }, 0.0f, WHITE);
+            } else {
+                // Fallback nếu chưa có texture
+                int screenX = (int)(baseX + 8);
+                int screenY = (int)(baseY - 26 + bobOffset);
+                DrawCircle(screenX + 8, screenY + 8, 9.0f, Color{ 255, 215, 0, 190 });
+                DrawCircle(screenX + 8, screenY + 8, 6.0f, GOLD);
+                DrawText("?", screenX + 5, screenY + 1, 14, BLACK);
+            }
         }
     }
 }

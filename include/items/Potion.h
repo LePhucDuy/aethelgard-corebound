@@ -13,6 +13,7 @@ private:
 
 public:
     Potion(const std::string& name, const std::string& description, int healAmount, const Position& pos = {0, 0});
+    Potion(const std::string& name, const std::string& description, int healAmount, const Position& pos = {0, 0}, const std::string& textureId = "");
 
     // Override phương thức thuần ảo từ lớp cha Item (Polymorphism)
     bool use(Player* target) override;

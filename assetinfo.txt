@@ -4,3 +4,9 @@ assets/mobs/boar/Hit-Vanish/Hit-Sheet.png:     PNG image data, 192 x 32, 8-bit/c
 assets/mobs/small_bee/Attack/Attack-Sheet.png: PNG image data, 256 x 64, 8-bit/color RGBA, non-interlaced
 assets/mobs/small_bee/Hit/Hit-Sheet.png:       PNG image data, 256 x 64, 8-bit/color RGBA, non-interlaced
 assets/mobs/snail/Dead-Sheet.png:              PNG image data, 384 x 32, 8-bit/color RGBA, non-interlaced
+assets/items/sword_steel.png:                  PNG image data, 32 x 32, 8-bit/color RGBA, non-interlaced
+assets/items/sword_mystic.png:                 PNG image data, 32 x 32, 8-bit/color RGBA, non-interlaced
+assets/items/potion_starter.png:               PNG image data, 32 x 32, 8-bit/color RGBA, non-interlaced
+assets/items/potion_health.png:                PNG image data, 32 x 32, 8-bit/color RGBA, non-interlaced
+assets/items/potion_strength.png:              PNG image data, 32 x 32, 8-bit/color RGBA, non-interlaced
+assets/items/potion_elixir.png:                PNG image data, 32 x 32, 8-bit/color RGBA, non-interlaced

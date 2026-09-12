@@ -70,6 +70,14 @@ void GameEngine::init() {
     tm.load("snail_hide",     "assets/mobs/snail/Hide-Sheet.png");
     tm.load("snail_dead",     "assets/mobs/snail/Dead-Sheet.png");
 
+    // Nạp toàn bộ tài nguyên hình ảnh vật phẩm (Items)
+    tm.load("item_sword_steel",     "assets/items/sword_steel.png");
+    tm.load("item_sword_mystic",    "assets/items/sword_mystic.png");
+    tm.load("item_potion_starter",  "assets/items/potion_starter.png");
+    tm.load("item_potion_health",   "assets/items/potion_health.png");
+    tm.load("item_potion_strength", "assets/items/potion_strength.png");
+    tm.load("item_potion_elixir",   "assets/items/potion_elixir.png");
+
     // 2. Thiết lập ĐẦY ĐỦ hệ thống hoạt họa phong phú cho Player
     player.addAnimation("idle",   std::make_unique<Animation>("warrior_idle", 4, 64, 80, 0.14f, true));
     player.addAnimation("run",    std::make_unique<Animation>("warrior_run", 8, 80, 80, 0.08f, true));
@@ -89,6 +97,7 @@ void GameEngine::init() {
 
     // 4. Cung cấp vật phẩm khởi đầu vào túi đồ
     player.getInventory().addItem(std::make_unique<Potion>("Binh Thuoc Khoi Dau", "Hoi phuc 30 HP", 30));
+    player.getInventory().addItem(std::make_unique<Potion>("Binh Thuoc Khoi Dau", "Hoi phuc 30 HP", 30, Position(0, 0), "item_potion_starter"));
 
     // 5. Nhật ký chào mừng
     combatLog.push_back("=== CHAO MUNG DEN VOI AETHELGARD: COREBOUND ===");
@@ -619,22 +628,47 @@ void GameEngine::renderHUD() const {
     // 2. Bảng Túi đồ bên phải (Right Inventory Panel)
     int invW = 250;
     int invH = 280;
+    int invW = 270;
+    int invH = 295;
     int invX = screenW - invW - 16;
     int invY = 58;
     DrawRectangle(invX, invY, invW, invH, Color{ 18, 16, 28, 230 });
     DrawRectangleLines(invX, invY, invW, invH, DARKGRAY);
     drawText("TUI DO (Phim 1-9)", invX + 14, invY + 12, 19, YELLOW);
+    DrawRectangle(invX, invY, invW, invH, Color{ 18, 16, 28, 235 });
+    DrawRectangleLines(invX, invY, invW, invH, Color{ 80, 75, 95, 255 });
+    DrawRectangle(invX, invY, invW, 32, Color{ 28, 25, 42, 255 });
+    DrawRectangleLines(invX, invY, invW, 32, Color{ 70, 65, 85, 255 });
+    drawText("TUI DO (Phim 1-8)", invX + 14, invY + 8, 18, YELLOW);
 
     const Inventory& inv = player.getInventory();
     if (inv.isEmpty()) {
         drawText("(Tui do trong)", invX + 14, invY + 44, 17, GRAY);
+        drawText("(Tui do trong)", invX + 14, invY + 46, 17, GRAY);
     } else {
         for (size_t i = 0; i < inv.getSize() && i < 8; ++i) {
             const Item* item = inv[i];
             if (item) {
                 Color itemColor = (dynamic_cast<const Weapon*>(item)) ? ORANGE : GREEN;
+                int rowY = invY + 40 + (int)(i * 31);
+                
+                // Khung slot nhỏ cho item icon
+                DrawRectangle(invX + 12, rowY, 26, 26, Color{ 26, 24, 38, 255 });
+                DrawRectangleLines(invX + 12, rowY, 26, 26, Color{ 75, 70, 95, 255 });
+
+                // Vẽ icon texture 22x22 trong ô
+                const std::string& texId = item->getTextureId();
+                if (TextureManager::getInstance().has(texId)) {
+                    const Texture2D& iconTex = TextureManager::getInstance().get(texId);
+                    Rectangle srcRec = { 0, 0, (float)iconTex.width, (float)iconTex.height };
+                    Rectangle destRec = { (float)(invX + 14), (float)(rowY + 2), 22.0f, 22.0f };
+                    DrawTexturePro(iconTex, srcRec, destRec, Vector2{ 0, 0 }, 0.0f, WHITE);
+                }
+
+                Color itemColor = (dynamic_cast<const Weapon*>(item)) ? Color{ 255, 175, 75, 255 } : Color{ 110, 240, 150, 255 };
                 drawText(TextFormat("[%d] %s", (int)(i + 1), item->getName().c_str()), 
                          invX + 14, invY + 44 + (int)(i * 28), 17, itemColor);
+                         invX + 44, rowY + 5, 16, itemColor);
             }
         }
     }

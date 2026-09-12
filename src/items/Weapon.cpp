@@ -4,6 +4,8 @@
 
 Weapon::Weapon(const std::string& name, const std::string& description, int bonusAttack, const Position& pos)
     : Item(name, description, pos), bonusAttack(bonusAttack) {}
+Weapon::Weapon(const std::string& name, const std::string& description, int bonusAttack, const Position& pos, const std::string& textureId)
+    : Item(name, description, pos, textureId), bonusAttack(bonusAttack) {}
 
 bool Weapon::use(Player* target) {
     if (!target) return false;

@@ -42,10 +42,12 @@ bool SaveLoadManager::saveGame(const std::string& filePath, const Player& player
             const Weapon* w = dynamic_cast<const Weapon*>(item);
             if (w) {
                 outFile << "Item=" << w->getName() << "|" << w->getDescription() << "|WEAPON|" << w->getBonusAttack() << "\n";
+                outFile << "Item=" << w->getName() << "|" << w->getDescription() << "|WEAPON|" << w->getBonusAttack() << "|" << w->getTextureId() << "\n";
             } else {
                 const Potion* p = dynamic_cast<const Potion*>(item);
                 if (p) {
                     outFile << "Item=" << p->getName() << "|" << p->getDescription() << "|POTION|" << p->getHealAmount() << "\n";
+                    outFile << "Item=" << p->getName() << "|" << p->getDescription() << "|POTION|" << p->getHealAmount() << "|" << p->getTextureId() << "\n";
                 }
             }
         }
@@ -109,17 +111,22 @@ bool SaveLoadManager::loadGame(const std::string& filePath, Player& player, Dung
         } else if (section == "INVENTORY") {
             if (key == "Item") {
                 // Parse dạng: Name|Description|Type|Value
+                // Parse dạng: Name|Description|Type|Value[|TextureId]
                 std::stringstream ss(val);
                 std::string iName, iDesc, iType, iVal;
+                std::string iName, iDesc, iType, iVal, iTex;
                 std::getline(ss, iName, '|');
                 std::getline(ss, iDesc, '|');
                 std::getline(ss, iType, '|');
                 std::getline(ss, iVal, '|');
+                std::getline(ss, iTex, '|');
 
                 if (iType == "WEAPON") {
                     player.getInventory().addItem(std::make_unique<Weapon>(iName, iDesc, std::stoi(iVal)));
+                    player.getInventory().addItem(std::make_unique<Weapon>(iName, iDesc, std::stoi(iVal), Position(0, 0), iTex));
                 } else if (iType == "POTION") {
                     player.getInventory().addItem(std::make_unique<Potion>(iName, iDesc, std::stoi(iVal)));
+                    player.getInventory().addItem(std::make_unique<Potion>(iName, iDesc, std::stoi(iVal), Position(0, 0), iTex));
                 }
             }
         }
