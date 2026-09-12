@@ -99,7 +99,10 @@ void Player::update(float deltaTime) {
 
     if (!alive) {
         if (anims.find("dead") != anims.end()) {
-            currentState = "dead";
+            if (currentState != "dead") {
+                currentState = "dead";
+                anims["dead"]->reset();
+            }
             anims["dead"]->update(deltaTime);
         }
         return;
@@ -164,15 +167,16 @@ void Player::render(float scale, Vector2 offset) const {
 
     // CHUẨN HÓA ANCHOR — mọi state neo chung theo chiều cao tham chiếu REF_H = 80
     // (cao nhất họ Warrior): đáy LOGIC = pos.y*TILE + FOOT_SINK(6) + trim*scale.
-    // Jump/dead 64px KHÔNG tự neo theo fHeight riêng nữa (đó là lý do nhảy bị lún
-    // đúng 16px*scale) mà neo theo refHeight 80px + trim 6px của chính nó, nên
-    // bàn chân mọi state trùng khít nhau, hết lún khi nhảy.
     constexpr float REF_FRAME_H = 80.0f;
     constexpr float FOOT_SINK = 6.0f;
     float fWidth = (float)anim->getFrameWidth() * scale;
     float refHeight = REF_FRAME_H * scale;
     float trimBottom = 12.0f; // idle/run/attack 80px
-    if (currentState == "jump" || currentState == "dead") trimBottom = 6.0f;
+    if (currentState == "jump") {
+        trimBottom = 6.0f;
+    } else if (currentState == "dead") {
+        trimBottom = 27.0f; // Dead sheet 64px: khớp đáy bàn chân F0 và xác nằm F7 sát mặt đất
+    }
 
     // Parabol chuẩn: progress 0->1, lift = max * sin(pi*progress):
     // đầu cú nhảy nâng 0 -> giữa nâng cực đại 34px -> cuối về 0 (đáp đúng cỏ).
@@ -183,8 +187,15 @@ void Player::render(float scale, Vector2 offset) const {
         if (progress > 1.0f) progress = 1.0f;
         jumpLift = jumpVisualLift * std::sin(progress * 3.14159265f);
     }
+
+    // Căn chỉnh trục X khi chết để bàn chân không bị dịch chuyển đột ngột giữa Idle và Dead
+    float deadShiftX = 0.0f;
+    if (currentState == "dead") {
+        deadShiftX = facingRight ? (16.5f * scale) : (-16.5f * scale);
+    }
+
     Vector2 screenPos = {
-        visualPos.x + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + offset.x,
+        visualPos.x + ((float)Constants::TILE_SIZE - fWidth) / 2.0f + deadShiftX + offset.x,
         visualPos.y + FOOT_SINK - refHeight + trimBottom * scale + offset.y
             - jumpLift + sinkVisualOffset
     };
@@ -238,4 +249,7 @@ void Player::resetStats(const Position& startPos) {
     jumpVisualLift = 0.0f;
     sinkVisualOffset = 0.0f;
     facingRight = true;
+    for (auto& pair : anims) {
+        if (pair.second) pair.second->reset();
+    }
 }

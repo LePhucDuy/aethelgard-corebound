@@ -11,7 +11,7 @@
 #include <cmath>
 #include <algorithm>
 
-GameEngine::GameEngine(int spawnX, int spawnY, bool startWithInventory)
+GameEngine::GameEngine(int spawnX, int spawnY, bool startWithInventory, bool startLethal)
     : player("Hiep Si Aethelgard", Position(4, 17), 100, 16, 5),
       dungeon(Constants::DUNGEON_WIDTH, Constants::DUNGEON_HEIGHT),
       state(GameState::RUNNING),
@@ -24,6 +24,9 @@ GameEngine::GameEngine(int spawnX, int spawnY, bool startWithInventory)
       sinkTimer(0.0f),
       sinkDuration(1.6f),
       sinkDepth(0.0f),
+      isDying(false),
+      deathTimer(0.0f),
+      deathDuration(1.35f),
       currentZone(-1),
       bannerText(""),
       bannerTimer(0.0f),
@@ -31,7 +34,8 @@ GameEngine::GameEngine(int spawnX, int spawnY, bool startWithInventory)
       showInventory(startWithInventory),
       showCombatLog(true),
       spawnOverrideX(spawnX),
-      spawnOverrideY(spawnY) {
+      spawnOverrideY(spawnY),
+      startLethalOverride(startLethal) {
     camera.target = Vector2{ 0.0f, 12.5f * (float)Constants::TILE_SIZE };
     camera.offset = Vector2{ (float)Constants::SCREEN_WIDTH / 2.0f, (float)Constants::SCREEN_HEIGHT - 120.0f };
     camera.rotation = 0.0f;
@@ -92,7 +96,7 @@ void GameEngine::init() {
     player.addAnimation("run",    std::make_unique<Animation>("warrior_run", 8, 80, 80, 0.08f, true));
     player.addAnimation("attack", std::make_unique<Animation>("warrior_attack", 8, 96, 80, 0.06f, false));
     player.addAnimation("jump",   std::make_unique<Animation>("warrior_jump", 15, 64, 64, 0.03f, true));
-    player.addAnimation("dead",   std::make_unique<Animation>("warrior_dead", 10, 64, 64, 0.12f, false));
+    player.addAnimation("dead",   std::make_unique<Animation>("warrior_dead", 8, 80, 64, 0.085f, false));
     player.setState("idle");
 
     // 3. Khởi tạo tầng 1 hầm ngục 2D Side dài 75 ô
@@ -112,6 +116,11 @@ void GameEngine::init() {
     combatLog.push_back("Chao mung ban den voi Ham nguc Aethelgard!");
     combatLog.push_back("Nhan [B] hoac click chuot de mo Tui do.");
     combatLog.push_back("Ha guc Chua Heo Rung de pha giai phong an Cong Cua!");
+
+    // 6. Tuỳ chọn kiểm tra tử trận (--kill)
+    if (startLethalOverride) {
+        player.takeDamage(9999);
+    }
 }
 
 void GameEngine::drawText(const char* text, float posX, float posY, float fontSize, Color color) const {
@@ -137,8 +146,15 @@ void GameEngine::handleInput() {
             sinkTimer = 0.0f;
             sinkDepth = 0.0f;
             player.setSinkVisualOffset(0.0f);
+            isDying = false;
+            deathTimer = 0.0f;
             state = GameState::RUNNING;
         }
+        return;
+    }
+
+    // Nếu đang trong hoạt cảnh tử trận: khóa điều khiển hoàn toàn
+    if (isDying) {
         return;
     }
 
@@ -721,12 +737,33 @@ void GameEngine::update(float deltaTime) {
     handleInput();
     player.update(deltaTime);
 
-    // Cập nhật AI quái vật thời gian thực độc lập khi không mở túi đồ
-    if (!showInventory && state == GameState::RUNNING) {
-        dungeon.update(deltaTime, player, combatLog);
-        if (!player.isAlive()) {
+    // Cập nhật hoạt cảnh tử trận mượt mà (Smooth Death Sequence)
+    if (state == GameState::RUNNING && isDying) {
+        deathTimer -= deltaTime;
+        if (deathTimer <= 0.0f) {
+            isDying = false;
             state = GameState::GAME_OVER;
             combatLog.push_back(">>> BAN DA TU TRAN! Nhan [R] de hoi sinh va thu lai. <<<");
+        }
+    }
+
+    // Cập nhật AI quái vật thời gian thực độc lập khi không mở túi đồ
+    if (!showInventory && state == GameState::RUNNING) {
+        if (!isDying) {
+            dungeon.update(deltaTime, player, combatLog);
+        } else {
+            // Khi đang trong hoạt cảnh tử trận: quái vật chỉ diễn hoạt tại chỗ, không tấn công thêm
+            for (auto& monster : dungeon.getMonsters()) {
+                if (monster && monster->isAlive()) {
+                    monster->update(deltaTime);
+                }
+            }
+        }
+        if (!player.isAlive() && !isDying && !submergedInSwamp) {
+            isDying = true;
+            deathDuration = 1.35f;
+            deathTimer = deathDuration;
+            combatLog.push_back(">>> HIEP SI DA NGA XUONG! <<<");
         }
     } else {
         // Khi mở túi đồ hoặc tạm dừng: vẫn cập nhật khung hình chuyển động
@@ -1085,9 +1122,31 @@ void GameEngine::renderHUD() const {
     }
 
     // =========================================================================
-    // 5. MÀN HÌNH GAME OVER
+    // 5. HIỆU ỨNG TỬ TRẬN & MÀN HÌNH GAME OVER MƯỢT MÀ
     // =========================================================================
-    if (state == GameState::GAME_OVER) {
+    if (isDying) {
+        // Giai đoạn 1: Chớp viền đỏ kịch tính khi vừa ngã xuống (0.35s đầu)
+        if (deathTimer > deathDuration - 0.35f) {
+            float flashRatio = (deathTimer - (deathDuration - 0.35f)) / 0.35f;
+            unsigned char flashA = (unsigned char)(flashRatio * 90.0f);
+            DrawRectangle(0, 0, screenW, screenH, Color{ 180, 20, 20, flashA });
+        }
+        // Giai đoạn 2: Sau khi hoạt ảnh ngã chạm đất (khoảng 0.55s cuối), phủ mờ tối dần
+        if (deathTimer < 0.55f) {
+            float fadeProgress = 1.0f - (deathTimer / 0.55f);
+            unsigned char bgAlpha = (unsigned char)(fadeProgress * 200.0f);
+            DrawRectangle(0, 0, screenW, screenH, Color{ 0, 0, 0, bgAlpha });
+            if (fadeProgress > 0.4f) {
+                float textRatio = (fadeProgress - 0.4f) / 0.6f;
+                Color textRed = RED;
+                textRed.a = (unsigned char)(textRatio * 255.0f);
+                Color textWhite = RAYWHITE;
+                textWhite.a = (unsigned char)(textRatio * 255.0f);
+                drawText("BAN DA THAT TRAN!", screenW / 2 - 180, screenH / 2 - 40, 36, textRed);
+                drawText("Nhan phim [R] de hoi sinh va thu lai", screenW / 2 - 160, screenH / 2 + 20, 20, textWhite);
+            }
+        }
+    } else if (state == GameState::GAME_OVER) {
         DrawRectangle(0, 0, screenW, screenH, Color{ 0, 0, 0, 200 });
         drawText("BAN DA THAT TRAN!", screenW / 2 - 180, screenH / 2 - 40, 36, RED);
         drawText("Nhan phim [R] de hoi sinh va thu lai", screenW / 2 - 160, screenH / 2 + 20, 20, RAYWHITE);
@@ -1200,6 +1259,13 @@ void GameEngine::run(const std::string& autoScreenshot) {
                 if (state == GameState::GAME_OVER) {
                     gameOverFrames++;
                     if (gameOverFrames >= 3) {
+                        takeNow = true;
+                    }
+                }
+            } else if (autoScreenshot.find("dead") != std::string::npos || autoScreenshot.find("death") != std::string::npos) {
+                if (isDying || state == GameState::GAME_OVER) {
+                    gameOverFrames++;
+                    if (gameOverFrames >= 20) {
                         takeNow = true;
                     }
                 }
