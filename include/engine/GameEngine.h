@@ -43,6 +43,10 @@ private:
     float bannerTimer;             // Thời gian còn hiển thị banner
     int monstersDefeated;          // Số quái đã hạ (thống kê chiến thắng)
 
+    // Trạng thái giao diện
+    bool showInventory;            // true: đang mở bảng túi đồ (phím B/I/Tab hoặc click chuột)
+    bool showCombatLog;            // true: đang mở khung nhật ký chiến đấu (phím L)
+
     // Ghi đè vị trí xuất phát (tuỳ chọn, phục vụ debug/test từng khu: --spawn X Y)
     int spawnOverrideX;
     int spawnOverrideY;
@@ -53,7 +57,7 @@ private:
     void drawText(const char* text, float posX, float posY, float fontSize, Color color) const;
 
 public:
-    GameEngine(int spawnX = -1, int spawnY = -1);
+    GameEngine(int spawnX = -1, int spawnY = -1, bool startWithInventory = false);
     ~GameEngine();
 
     // Khởi tạo các tài nguyên (Textures, Animations, Floor 1)

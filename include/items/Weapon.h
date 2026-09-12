@@ -12,7 +12,6 @@ private:
     int bonusAttack;
 
 public:
-    Weapon(const std::string& name, const std::string& description, int bonusAttack, const Position& pos = {0, 0});
     Weapon(const std::string& name, const std::string& description, int bonusAttack, const Position& pos = {0, 0}, const std::string& textureId = "");
 
     // Override phương thức thuần ảo từ lớp cha Item (Polymorphism)

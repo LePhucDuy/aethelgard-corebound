@@ -110,10 +110,8 @@ bool SaveLoadManager::loadGame(const std::string& filePath, Player& player, Dung
             else if (key == "BossDefeated") bossDefeated = std::stoi(val);
         } else if (section == "INVENTORY") {
             if (key == "Item") {
-                // Parse dạng: Name|Description|Type|Value
                 // Parse dạng: Name|Description|Type|Value[|TextureId]
                 std::stringstream ss(val);
-                std::string iName, iDesc, iType, iVal;
                 std::string iName, iDesc, iType, iVal, iTex;
                 std::getline(ss, iName, '|');
                 std::getline(ss, iDesc, '|');
@@ -122,10 +120,8 @@ bool SaveLoadManager::loadGame(const std::string& filePath, Player& player, Dung
                 std::getline(ss, iTex, '|');
 
                 if (iType == "WEAPON") {
-                    player.getInventory().addItem(std::make_unique<Weapon>(iName, iDesc, std::stoi(iVal)));
                     player.getInventory().addItem(std::make_unique<Weapon>(iName, iDesc, std::stoi(iVal), Position(0, 0), iTex));
                 } else if (iType == "POTION") {
-                    player.getInventory().addItem(std::make_unique<Potion>(iName, iDesc, std::stoi(iVal)));
                     player.getInventory().addItem(std::make_unique<Potion>(iName, iDesc, std::stoi(iVal), Position(0, 0), iTex));
                 }
             }

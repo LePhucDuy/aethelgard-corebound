@@ -10,7 +10,7 @@
 #include <cmath>
 #include <algorithm>
 
-GameEngine::GameEngine(int spawnX, int spawnY)
+GameEngine::GameEngine(int spawnX, int spawnY, bool startWithInventory)
     : player("Hiep Si Aethelgard", Position(4, 17), 100, 16, 5),
       dungeon(Constants::DUNGEON_WIDTH, Constants::DUNGEON_HEIGHT),
       state(GameState::RUNNING),
@@ -21,10 +21,12 @@ GameEngine::GameEngine(int spawnX, int spawnY)
       bannerText(""),
       bannerTimer(0.0f),
       monstersDefeated(0),
+      showInventory(startWithInventory),
+      showCombatLog(true),
       spawnOverrideX(spawnX),
       spawnOverrideY(spawnY) {
     camera.target = Vector2{ 0.0f, 12.5f * (float)Constants::TILE_SIZE };
-    camera.offset = Vector2{ (float)Constants::SCREEN_WIDTH / 2.0f, (float)Constants::SCREEN_HEIGHT - 145.0f };
+    camera.offset = Vector2{ (float)Constants::SCREEN_WIDTH / 2.0f, (float)Constants::SCREEN_HEIGHT - 120.0f };
     camera.rotation = 0.0f;
     camera.zoom = 1.15f;
     fontMain.texture.id = 0;
@@ -96,15 +98,13 @@ void GameEngine::init() {
     }
 
     // 4. Cung cấp vật phẩm khởi đầu vào túi đồ
-    player.getInventory().addItem(std::make_unique<Potion>("Binh Thuoc Khoi Dau", "Hoi phuc 30 HP", 30));
     player.getInventory().addItem(std::make_unique<Potion>("Binh Thuoc Khoi Dau", "Hoi phuc 30 HP", 30, Position(0, 0), "item_potion_starter"));
+    player.getInventory().addItem(std::make_unique<Weapon>("Dao Gam Khoi Dau", "Vu khi co ban +3 ATK", 3, Position(0, 0), "item_sword_steel"));
 
     // 5. Nhật ký chào mừng
-    combatLog.push_back("=== CHAO MUNG DEN VOI AETHELGARD: COREBOUND ===");
-    combatLog.push_back("Giu phi: [A] [D] / Mui ten de Chay | [W] [S] de Leo");
-    combatLog.push_back("Tan cong: [J] hoac [F] | Nhay vuot chuong ngai: [Space]");
-    combatLog.push_back("Tui do: [1-9] | [F5]: Luu | [F9]: Tai | [F11]: Toan man hinh");
-    combatLog.push_back("Thu / Phong man hinh: Cuon chuot giua (Mouse Wheel)");
+    combatLog.push_back("Chao mung ban den voi Ham nguc Aethelgard!");
+    combatLog.push_back("Nhan [B] hoac click chuot de mo Tui do.");
+    combatLog.push_back("Ha guc Chua Heo Rung de pha giai phong an Cong Cua!");
 }
 
 void GameEngine::drawText(const char* text, float posX, float posY, float fontSize, Color color) const {
@@ -134,6 +134,82 @@ void GameEngine::handleInput() {
     // Phím Toàn màn hình [F11] hoặc [Alt + Enter]
     if (IsKeyPressed(KEY_F11) || ((IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) && IsKeyPressed(KEY_ENTER))) {
         ToggleFullscreen();
+    }
+
+    // Phím B / I / Tab: bật/tắt hiển thị bảng túi đồ
+    if (IsKeyPressed(KEY_B) || IsKeyPressed(KEY_I) || IsKeyPressed(KEY_TAB)) {
+        showInventory = !showInventory;
+    }
+    // Phím ESC: đóng túi đồ nếu đang mở
+    if (IsKeyPressed(KEY_ESCAPE) && showInventory) {
+        showInventory = false;
+        return;
+    }
+
+    // Phím L: thu gọn / mở khung nhật ký chiến đấu
+    if (IsKeyPressed(KEY_L)) {
+        showCombatLog = !showCombatLog;
+    }
+
+    // Tương tác chuột trái (Click UI Buttons & Inventory Slots)
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        Vector2 mouse = GetMousePosition();
+        int screenW = GetScreenWidth();
+        int screenH = GetScreenHeight();
+
+        // 1. Nút [B] TÚI ĐỒ trên thanh Header
+        Rectangle invBtn = { (float)(screenW - 325), 8.0f, 145.0f, 34.0f };
+        if (CheckCollisionPointRec(mouse, invBtn)) {
+            showInventory = !showInventory;
+            return;
+        }
+
+        // 2. Nút mở / thu gọn Nhật ký chiến đấu
+        int logH = showCombatLog ? 96 : 26;
+        int logY = screenH - logH;
+        Rectangle logToggleBtn = { 12.0f, (float)logY, 240.0f, 24.0f };
+        if (CheckCollisionPointRec(mouse, logToggleBtn)) {
+            showCombatLog = !showCombatLog;
+            return;
+        }
+
+        // 3. Tương tác khi bảng Túi Đồ đang mở
+        if (showInventory) {
+            int modalW = 400, modalH = 430;
+            int modalX = screenW / 2 - modalW / 2;
+            int modalY = screenH / 2 - modalH / 2 - 15;
+
+            // Nút đóng [X]
+            Rectangle closeBtn = { (float)(modalX + modalW - 38), (float)(modalY + 8), 28.0f, 28.0f };
+            if (CheckCollisionPointRec(mouse, closeBtn)) {
+                showInventory = false;
+                return;
+            }
+
+            // Click vào các ô slot 1-8 để dùng vật phẩm
+            Inventory& inv = player.getInventory();
+            for (size_t i = 0; i < 8; ++i) {
+                int cardX = modalX + 16;
+                int cardY = modalY + 54 + (int)i * 42;
+                Rectangle cardRect = { (float)cardX, (float)cardY, (float)(modalW - 32), 36.0f };
+                if (CheckCollisionPointRec(mouse, cardRect)) {
+                    if (i < inv.getSize() && inv[i] != nullptr) {
+                        const Item* item = inv[i];
+                        combatLog.push_back("Su dung: " + item->getName());
+                        inv.useItem(i, &player);
+                        processMonsterTurn();
+                    }
+                    return;
+                }
+            }
+
+            // Click ra ngoài cửa sổ Modal để đóng túi đồ
+            Rectangle modalRect = { (float)modalX, (float)modalY, (float)modalW, (float)modalH };
+            if (!CheckCollisionPointRec(mouse, modalRect)) {
+                showInventory = false;
+                return;
+            }
+        }
     }
 
     // =========================================================================
@@ -483,8 +559,9 @@ void GameEngine::update(float deltaTime) {
 
     // Căn chỉnh camera ghim chặt đáy mặt đất vào sát mép trên thanh Nhật ký chiến đấu
     // Tuyệt đối loại bỏ hoàn toàn 100% vùng trống / khoảng trống bên dưới!
-    float viewTop = 46.0f;
-    float viewBottom = (float)GetScreenHeight() - 145.0f;
+    float viewTop = 50.0f;
+    float curLogH = showCombatLog ? 96.0f : 26.0f;
+    float viewBottom = (float)GetScreenHeight() - curLogH - 22.0f;
     float activeHeight = viewBottom - viewTop;
 
     // Tự động tính toán mức zoom phù hợp với mọi độ phân giải màn hình (720p, 1080p, Toàn màn hình)
@@ -566,144 +643,123 @@ void GameEngine::update(float deltaTime) {
 void GameEngine::renderHUD() const {
     int screenW = GetScreenWidth();
     int screenH = GetScreenHeight();
+    Vector2 mouse = GetMousePosition();
+    const Inventory& inv = player.getInventory();
 
-    // 1. Thanh trạng thái phía trên (Top Header Bar)
-    DrawRectangle(0, 0, screenW, 46, Color{ 15, 13, 23, 240 });
-    DrawLine(0, 46, screenW, 46, DARKGRAY);
+    // =========================================================================
+    // 1. THANH TRẠNG THÁI TRÊN CÙNG (TOP HEADER BAR) - CHIỀU CAO 48px
+    // =========================================================================
+    DrawRectangle(0, 0, screenW, 48, Color{ 15, 13, 23, 245 });
+    DrawLine(0, 48, screenW, 48, Color{ 60, 52, 75, 255 });
+    DrawLine(0, 49, screenW, 49, Color{ 25, 20, 35, 180 });
 
-    // Tên & Cấp độ
-    drawText(TextFormat("Level %d | Vang: %d", player.getLevel(), player.getGold()), 16, 11, 20, GOLD);
+    // --- CỤM TRÁI: CẤP ĐỘ, VÀNG, THANH MÁU VÀ CÔNG/THỦ ---
+    // 1.1. Huy hiệu Cấp độ
+    DrawRectangleRounded(Rectangle{ 14, 9, 78, 30 }, 0.3f, 4, Color{ 26, 22, 38, 255 });
+    DrawRectangleRoundedLinesEx(Rectangle{ 14, 9, 78, 30 }, 0.3f, 4, 1.5f, Color{ 215, 165, 45, 255 });
+    drawText(TextFormat("CAP %d", player.getLevel()), 24, 14, 16, GOLD);
 
-    // Thanh máu HP
-    int hpBarX = 230;
-    int hpBarY = 10;
-    int hpBarW = 180;
-    int hpBarH = 26;
+    // 1.2. Huy hiệu Vàng
+    DrawRectangleRounded(Rectangle{ 98, 9, 90, 30 }, 0.3f, 4, Color{ 26, 22, 38, 255 });
+    DrawRectangleRoundedLinesEx(Rectangle{ 98, 9, 90, 30 }, 0.3f, 4, 1.5f, Color{ 180, 140, 40, 255 });
+    DrawCircle(112, 24, 6, GOLD);
+    DrawCircle(112, 24, 3, YELLOW);
+    drawText(TextFormat("%d", player.getGold()), 124, 14, 16, Color{ 255, 230, 110, 255 });
+
+    // 1.3. Thanh Máu HP (RPG Health Bar)
+    int hpX = 196, hpY = 9, hpW = 180, hpH = 30;
     float hpPercent = (float)player.getHp() / (float)player.getMaxHp();
-    DrawRectangle(hpBarX, hpBarY, hpBarW, hpBarH, RED);
-    DrawRectangle(hpBarX, hpBarY, (int)(hpBarW * hpPercent), hpBarH, GREEN);
-    DrawRectangleLines(hpBarX, hpBarY, hpBarW, hpBarH, RAYWHITE);
-    drawText(TextFormat("HP: %d/%d", player.getHp(), player.getMaxHp()), hpBarX + 40, hpBarY + 3, 17, BLACK);
+    if (hpPercent < 0.0f) hpPercent = 0.0f;
+    if (hpPercent > 1.0f) hpPercent = 1.0f;
 
-    // Chỉ số ATK, DEF, Tầng ngục
-    drawText(TextFormat("ATK: %d  DEF: %d", player.getAttack(), player.getDefense()), 430, 12, 19, RAYWHITE);
-    drawText(TextFormat("TANG HAM NGUC: %d", dungeon.getFloorLevel()), 630, 12, 19, SKYBLUE);
+    DrawRectangle(hpX, hpY, hpW, hpH, Color{ 35, 12, 16, 255 });
+    int fillW = (int)((hpW - 4) * hpPercent);
+    DrawRectangle(hpX + 2, hpY + 2, fillW, hpH - 4, Color{ 190, 25, 40, 255 });
+    DrawRectangle(hpX + 2, hpY + 2, fillW, (hpH - 4) / 2, Color{ 255, 90, 100, 140 });
+    DrawRectangleLines(hpX, hpY, hpW, hpH, Color{ 140, 50, 60, 255 });
+    DrawRectangleLines(hpX + 1, hpY + 1, hpW - 2, hpH - 2, Color{ 55, 18, 24, 255 });
+    drawText(TextFormat("HP %d/%d", player.getHp(), player.getMaxHp()), hpX + 44, hpY + 6, 16, WHITE);
 
-    // ===== Kịch bản: tên khu vực + thanh tiến trình lộ trình tới Cổng Cửa =====
+    // 1.4. Chỉ số Tấn công & Phòng ngự
+    drawText(TextFormat("ATK %d", player.getAttack()), 386, 15, 16, Color{ 255, 165, 70, 255 });
+    drawText(TextFormat("DEF %d", player.getDefense()), 456, 15, 16, Color{ 120, 210, 255, 255 });
+
+    // --- CỤM GIỮA: TẦNG NGỤC & LỘ TRÌNH (KHÔNG CHỒNG ĐÈ CHỮ) ---
+    int midX = 535;
+    drawText(TextFormat("TANG %d", dungeon.getFloorLevel()), midX, 7, 15, Color{ 90, 205, 255, 255 });
+
     const char* zoneName = dungeon.getZoneName(player.getPosition().x);
-    drawText(zoneName, 740, 8, 14, GOLD);
-    int pbX = 740, pbY = 30, pbW = 170, pbH = 10;
+    drawText(zoneName, midX, 26, 13, Color{ 255, 215, 90, 255 });
+
+    int pbX = midX + 175, pbY = 17, pbW = 120, pbH = 14;
     int stairsX = dungeon.getStairsPos().x;
     float progress = (stairsX > 0) ? (float)player.getPosition().x / (float)stairsX : 0.0f;
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
-    DrawRectangle(pbX, pbY, pbW, pbH, Color{ 40, 35, 55, 255 });
-    DrawRectangle(pbX, pbY, (int)(pbW * progress), pbH, GOLD);
-    DrawRectangleLines(pbX, pbY, pbW, pbH, RAYWHITE);
-    drawText("CONG CUA", pbX + pbW + 8, pbY - 3, 14, (dungeon.hasBoss() && !dungeon.isBossDefeated()) ? MAROON : GOLD);
 
-    // Phím tắt góc phải
-    drawText("[F5] Luu | [F9] Tai | [F11] Toan man hinh", screenW - 350, 13, 17, LIGHTGRAY);
+    DrawRectangle(pbX, pbY, pbW, pbH, Color{ 25, 20, 36, 255 });
+    DrawRectangle(pbX + 1, pbY + 1, (int)((pbW - 2) * progress), pbH - 2, Color{ 220, 165, 35, 255 });
+    DrawRectangleLines(pbX, pbY, pbW, pbH, Color{ 85, 75, 105, 255 });
+    bool bossDefeated = dungeon.isBossDefeated();
+    drawText("CONG CUA", pbX + pbW + 8, pbY - 1, 13, bossDefeated ? GOLD : Color{ 205, 75, 75, 255 });
 
-    // ===== Boss HP bar: hiện khi Boar King đang sống và ở gần người chơi =====
+    // --- CỤM PHẢI: NÚT MỞ TÚI ĐỒ & PHÍM TẮT HỆ THỐNG ---
+    Rectangle invBtn = { (float)(screenW - 325), 8.0f, 145.0f, 32.0f };
+    bool invHover = CheckCollisionPointRec(mouse, invBtn);
+    Color invBg = showInventory 
+        ? Color{ 60, 48, 85, 255 } 
+        : (invHover ? Color{ 45, 38, 65, 255 } : Color{ 28, 24, 40, 255 });
+    Color invBorder = showInventory 
+        ? GOLD 
+        : (invHover ? Color{ 240, 200, 70, 255 } : Color{ 85, 75, 105, 255 });
+    
+    DrawRectangleRounded(invBtn, 0.25f, 4, invBg);
+    DrawRectangleRoundedLinesEx(invBtn, 0.25f, 4, 1.5f, invBorder);
+    drawText(TextFormat("[B] TUI DO (%d/8)", (int)inv.getSize()), invBtn.x + 12, invBtn.y + 7, 15, invHover ? YELLOW : RAYWHITE);
+
+    drawText("[F5] Luu  [F9] Tai  [F11] Toan man", screenW - 170, 17, 13, Color{ 165, 165, 185, 255 });
+
+    // =========================================================================
+    // 2. THANH MÁU TRÙM (BOSS HP BAR)
+    // =========================================================================
     if (state == GameState::RUNNING) {
         Monster* boss = dungeon.getBossMonster();
         if (boss && boss->isAlive()) {
             Position pPos = player.getPosition();
             Position bPos = boss->getPosition();
             int cheb = std::max(std::abs(pPos.x - bPos.x), std::abs(pPos.y - bPos.y));
-            if (cheb <= 10) {
-                int bossBarX = screenW - 530, bossBarY = 58, bossBarW = 280, bossBarH = 20;
+            if (cheb <= 11) {
+                int bossBarW = 380, bossBarH = 18;
+                int bossBarX = screenW / 2 - bossBarW / 2;
+                int bossBarY = 56;
                 float bossHp = (float)boss->getHp() / (float)boss->getMaxHp();
-                DrawRectangle(bossBarX - 4, bossBarY - 4, bossBarW + 8, bossBarH + 22, Color{ 20, 10, 10, 220 });
-                drawText("BOAR KING - CHUA HEO RUNG", bossBarX, bossBarY - 2, 15, Color{ 255, 160, 90, 255 });
-                DrawRectangle(bossBarX, bossBarY + 16, bossBarW, bossBarH, RED);
-                DrawRectangle(bossBarX, bossBarY + 16, (int)(bossBarW * bossHp), bossBarH, Color{ 255, 120, 40, 255 });
-                DrawRectangleLines(bossBarX, bossBarY + 16, bossBarW, bossBarH, RAYWHITE);
-                drawText(TextFormat("HP: %d/%d", boss->getHp(), boss->getMaxHp()), bossBarX + 80, bossBarY + 20, 16, BLACK);
-            }
-        }
-    }
+                if (bossHp < 0.0f) bossHp = 0.0f;
+                if (bossHp > 1.0f) bossHp = 1.0f;
 
-    // 2. Bảng Túi đồ bên phải (Right Inventory Panel)
-    int invW = 250;
-    int invH = 280;
-    int invW = 270;
-    int invH = 295;
-    int invX = screenW - invW - 16;
-    int invY = 58;
-    DrawRectangle(invX, invY, invW, invH, Color{ 18, 16, 28, 230 });
-    DrawRectangleLines(invX, invY, invW, invH, DARKGRAY);
-    drawText("TUI DO (Phim 1-9)", invX + 14, invY + 12, 19, YELLOW);
-    DrawRectangle(invX, invY, invW, invH, Color{ 18, 16, 28, 235 });
-    DrawRectangleLines(invX, invY, invW, invH, Color{ 80, 75, 95, 255 });
-    DrawRectangle(invX, invY, invW, 32, Color{ 28, 25, 42, 255 });
-    DrawRectangleLines(invX, invY, invW, 32, Color{ 70, 65, 85, 255 });
-    drawText("TUI DO (Phim 1-8)", invX + 14, invY + 8, 18, YELLOW);
-
-    const Inventory& inv = player.getInventory();
-    if (inv.isEmpty()) {
-        drawText("(Tui do trong)", invX + 14, invY + 44, 17, GRAY);
-        drawText("(Tui do trong)", invX + 14, invY + 46, 17, GRAY);
-    } else {
-        for (size_t i = 0; i < inv.getSize() && i < 8; ++i) {
-            const Item* item = inv[i];
-            if (item) {
-                Color itemColor = (dynamic_cast<const Weapon*>(item)) ? ORANGE : GREEN;
-                int rowY = invY + 40 + (int)(i * 31);
+                DrawRectangle(bossBarX - 8, bossBarY - 6, bossBarW + 16, bossBarH + 28, Color{ 16, 12, 22, 235 });
+                DrawRectangleLines(bossBarX - 8, bossBarY - 6, bossBarW + 16, bossBarH + 28, Color{ 180, 130, 45, 255 });
                 
-                // Khung slot nhỏ cho item icon
-                DrawRectangle(invX + 12, rowY, 26, 26, Color{ 26, 24, 38, 255 });
-                DrawRectangleLines(invX + 12, rowY, 26, 26, Color{ 75, 70, 95, 255 });
-
-                // Vẽ icon texture 22x22 trong ô
-                const std::string& texId = item->getTextureId();
-                if (TextureManager::getInstance().has(texId)) {
-                    const Texture2D& iconTex = TextureManager::getInstance().get(texId);
-                    Rectangle srcRec = { 0, 0, (float)iconTex.width, (float)iconTex.height };
-                    Rectangle destRec = { (float)(invX + 14), (float)(rowY + 2), 22.0f, 22.0f };
-                    DrawTexturePro(iconTex, srcRec, destRec, Vector2{ 0, 0 }, 0.0f, WHITE);
-                }
-
-                Color itemColor = (dynamic_cast<const Weapon*>(item)) ? Color{ 255, 175, 75, 255 } : Color{ 110, 240, 150, 255 };
-                drawText(TextFormat("[%d] %s", (int)(i + 1), item->getName().c_str()), 
-                         invX + 14, invY + 44 + (int)(i * 28), 17, itemColor);
-                         invX + 44, rowY + 5, 16, itemColor);
+                drawText("BOAR KING - CHUA HEO RUNG", bossBarX + 60, bossBarY - 2, 15, Color{ 255, 170, 80, 255 });
+                
+                DrawRectangle(bossBarX, bossBarY + 18, bossBarW, bossBarH, Color{ 40, 15, 15, 255 });
+                int fillBossW = (int)((bossBarW - 4) * bossHp);
+                DrawRectangle(bossBarX + 2, bossBarY + 20, fillBossW, bossBarH - 4, Color{ 220, 60, 30, 255 });
+                DrawRectangle(bossBarX + 2, bossBarY + 20, fillBossW, (bossBarH - 4) / 2, Color{ 255, 120, 60, 160 });
+                DrawRectangleLines(bossBarX, bossBarY + 18, bossBarW, bossBarH, Color{ 130, 50, 40, 255 });
+                
+                drawText(TextFormat("HP: %d/%d", boss->getHp(), boss->getMaxHp()), bossBarX + bossBarW / 2 - 35, bossBarY + 19, 14, WHITE);
             }
         }
     }
 
-    // 3. Khung nhật ký chiến đấu phía dưới (Bottom Combat Log Panel)
-    int logH = 145;
-    int logY = screenH - logH;
-    DrawRectangle(0, logY, screenW, logH, Color{ 12, 10, 20, 245 });
-    DrawLine(0, logY, screenW, logY, DARKGRAY);
-    drawText("NHAT KY CHIEN DAU (Turn-based Log) - Giu phim de di chuyen lien tuc:", 16, logY + 8, 17, GOLD);
-
-    int maxLines = (logH - 36) / 21;
-    int startIdx = (int)combatLog.size() > maxLines ? (int)combatLog.size() - maxLines : 0;
-    for (size_t i = startIdx; i < combatLog.size(); ++i) {
-        Color logColor = RAYWHITE;
-        if (combatLog[i].find("tan cong") != std::string::npos) logColor = RED;
-        else if (combatLog[i].find("CHUC MUNG") != std::string::npos || combatLog[i].find("CHAO MUNG") != std::string::npos) logColor = YELLOW;
-        else if (combatLog[i].find("Nhat duoc") != std::string::npos) logColor = GREEN;
-        else if (combatLog[i].find("HE THONG") != std::string::npos) logColor = SKYBLUE;
-        drawText(combatLog[i].c_str(), 16, logY + 32 + (int)((i - startIdx) * 21), 16, logColor);
-    }
-
-    // 4. Màn hình Game Over
-    if (state == GameState::GAME_OVER) {
-        DrawRectangle(0, 0, screenW, screenH, Color{ 0, 0, 0, 200 });
-        drawText("BAN DA THAT TRAN!", screenW / 2 - 180, screenH / 2 - 40, 36, RED);
-        drawText("Nhan phim [R] de hoi sinh va thu lai", screenW / 2 - 160, screenH / 2 + 20, 20, RAYWHITE);
-    }
-
-    // 5. Banner khu vực (hiện giữa màn hình khi bước vào khu mới)
+    // =========================================================================
+    // 3. BANNER KHU VỰC (HIỂN THỊ KHI VÀO PHÂN KHU MỚI)
+    // =========================================================================
     if (state == GameState::RUNNING && bannerTimer > 0.0f) {
         float alpha = (bannerTimer > 3.0f) ? (3.5f - bannerTimer) * 2.0f
                                            : (bannerTimer < 0.5f ? bannerTimer * 2.0f : 1.0f);
         if (alpha > 1.0f) alpha = 1.0f;
-        Color bannerBg = Color{ 15, 13, 23, (unsigned char)(200 * alpha) };
+        Color bannerBg = Color{ 15, 13, 23, (unsigned char)(210 * alpha) };
         Color bannerFg = GOLD;
         bannerFg.a = (unsigned char)(255 * alpha);
         int bW = 720, bH = 64;
@@ -713,9 +769,153 @@ void GameEngine::renderHUD() const {
         drawText(bannerText.c_str(), screenW / 2 - (float)bW / 2 + 20, bY + 20, 20, bannerFg);
     }
 
-    // 6. Màn hình Chiến Thắng (Victory) — kết thúc kịch bản màn chơi
+    // =========================================================================
+    // 4. KHUNG NHẬT KÝ CHIẾN ĐẤU & DẢI HƯỚNG DẪN PHÍM TẮT DƯỚI ĐÁY MÀN HÌNH
+    // =========================================================================
+    int logH = showCombatLog ? 96 : 26;
+    int logY = screenH - logH;
+
+    int hintY = logY - 22;
+    DrawRectangle(0, hintY, screenW, 22, Color{ 14, 12, 20, 195 });
+    DrawLine(0, hintY, screenW, hintY, Color{ 45, 40, 60, 255 });
+    drawText("Phim: [A][D] Chay | [W][S] Leo | [Space] Nhay | [J][F] Danh | [B] Tui do | [1-8] Dung nhanh | [L] Nhat ky", 
+             16, hintY + 3, 14, Color{ 210, 210, 230, 230 });
+
+    DrawRectangle(0, logY, screenW, logH, Color{ 12, 10, 18, 225 });
+    DrawLine(0, logY, screenW, logY, Color{ 55, 50, 75, 255 });
+
+    if (!showCombatLog) {
+        drawText("[+] Nhan [L] hoac Click chuot de mo Nhat ky chien dau", 16, logY + 5, 14, Color{ 160, 160, 190, 255 });
+    } else {
+        drawText("[-] NHAT KY CHIEN DAU (Nhan [L] de thu gon):", 16, logY + 5, 14, GOLD);
+
+        int maxLines = 3;
+        int startIdx = (int)combatLog.size() > maxLines ? (int)combatLog.size() - maxLines : 0;
+        for (size_t i = startIdx; i < combatLog.size(); ++i) {
+            Color logColor = RAYWHITE;
+            if (combatLog[i].find("tan cong") != std::string::npos || combatLog[i].find("Sat thuong") != std::string::npos) 
+                logColor = Color{ 255, 110, 110, 255 };
+            else if (combatLog[i].find("CHUC MUNG") != std::string::npos || combatLog[i].find("CHAO MUNG") != std::string::npos || combatLog[i].find(">>>") != std::string::npos) 
+                logColor = Color{ 255, 215, 60, 255 };
+            else if (combatLog[i].find("Nhat duoc") != std::string::npos || combatLog[i].find("Hoi phuc") != std::string::npos) 
+                logColor = Color{ 110, 245, 150, 255 };
+            else if (combatLog[i].find("HE THONG") != std::string::npos) 
+                logColor = Color{ 110, 210, 255, 255 };
+
+            drawText(TextFormat("> %s", combatLog[i].c_str()), 18, logY + 26 + (int)((i - startIdx) * 22), 15, logColor);
+        }
+    }
+
+    // =========================================================================
+    // 4. BẢNG TÚI ĐỒ DẠNG MODAL (FANTASY RPG INVENTORY MODAL)
+    //    CHỈ HIỂN THỊ KHI showInventory == true!
+    // =========================================================================
+    if (showInventory) {
+        DrawRectangle(0, 0, screenW, screenH, Color{ 0, 0, 0, 130 });
+
+        int modalW = 400;
+        int modalH = 430;
+        int modalX = screenW / 2 - modalW / 2;
+        int modalY = screenH / 2 - modalH / 2 - 15;
+
+        DrawRectangle(modalX + 6, modalY + 6, modalW, modalH, Color{ 0, 0, 0, 150 });
+
+        DrawRectangle(modalX, modalY, modalW, modalH, Color{ 22, 19, 32, 250 });
+        DrawRectangleLines(modalX, modalY, modalW, modalH, Color{ 195, 155, 55, 255 });
+        DrawRectangleLines(modalX + 3, modalY + 3, modalW - 6, modalH - 6, Color{ 75, 65, 95, 255 });
+
+        DrawRectangle(modalX + 4, modalY + 4, modalW - 8, 40, Color{ 36, 30, 52, 255 });
+        DrawLine(modalX + 4, modalY + 44, modalX + modalW - 4, modalY + 44, Color{ 195, 155, 55, 255 });
+        drawText("TUI DO CHIEN BINH", modalX + 16, modalY + 12, 19, GOLD);
+        drawText(TextFormat("(%d/8 o)", (int)inv.getSize()), modalX + 215, modalY + 14, 15, Color{ 180, 180, 205, 255 });
+
+        Rectangle closeBtn = { (float)(modalX + modalW - 38), (float)(modalY + 8), 28.0f, 28.0f };
+        bool closeHover = CheckCollisionPointRec(mouse, closeBtn);
+        DrawRectangleRec(closeBtn, closeHover ? Color{ 180, 30, 40, 255 } : Color{ 50, 42, 68, 255 });
+        DrawRectangleLinesEx(closeBtn, 1.0f, closeHover ? RED : Color{ 100, 90, 130, 255 });
+        drawText("X", closeBtn.x + 8, closeBtn.y + 4, 18, WHITE);
+
+        if (inv.isEmpty()) {
+            drawText("Tui do dang trong!", modalX + 120, modalY + 140, 18, GRAY);
+            drawText("Hay kham pha ham nguc de thu thap vu khi va binh thuoc.", 
+                     modalX + 24, modalY + 180, 14, Color{ 150, 150, 170, 255 });
+        } else {
+            for (size_t i = 0; i < 8; ++i) {
+                int cardX = modalX + 16;
+                int cardY = modalY + 54 + (int)i * 42;
+                int cardW = modalW - 32;
+                int cardH = 36;
+                Rectangle cardRect = { (float)cardX, (float)cardY, (float)cardW, (float)cardH };
+                bool isOccupied = (i < inv.getSize() && inv[i] != nullptr);
+
+                bool cardHover = CheckCollisionPointRec(mouse, cardRect);
+
+                Color cardBg = isOccupied 
+                    ? (cardHover ? Color{ 48, 40, 68, 255 } : Color{ 28, 24, 40, 255 })
+                    : Color{ 18, 16, 26, 180 };
+                Color cardBorder = isOccupied
+                    ? (cardHover ? GOLD : Color{ 75, 68, 95, 255 })
+                    : Color{ 45, 40, 60, 180 };
+
+                DrawRectangle(cardX, cardY, cardW, cardH, cardBg);
+                DrawRectangleLines(cardX, cardY, cardW, cardH, cardBorder);
+
+                if (isOccupied) {
+                    const Item* item = inv[i];
+
+                    DrawRectangle(cardX + 4, cardY + 4, 28, 28, Color{ 38, 32, 54, 255 });
+                    DrawRectangleLines(cardX + 4, cardY + 4, 28, 28, Color{ 90, 80, 115, 255 });
+                    drawText(TextFormat("[%d]", (int)(i + 1)), cardX + 8, cardY + 8, 15, YELLOW);
+
+                    DrawRectangle(cardX + 36, cardY + 4, 28, 28, Color{ 20, 16, 30, 255 });
+                    DrawRectangleLines(cardX + 36, cardY + 4, 28, 28, Color{ 90, 80, 115, 255 });
+
+                    const std::string& texId = item->getTextureId();
+                    if (TextureManager::getInstance().has(texId)) {
+                        const Texture2D& iconTex = TextureManager::getInstance().get(texId);
+                        Rectangle srcRec = { 0, 0, (float)iconTex.width, (float)iconTex.height };
+                        Rectangle destRec = { (float)(cardX + 38), (float)(cardY + 6), 24.0f, 24.0f };
+                        DrawTexturePro(iconTex, srcRec, destRec, Vector2{ 0, 0 }, 0.0f, WHITE);
+                    }
+
+                    const Weapon* w = dynamic_cast<const Weapon*>(item);
+                    const Potion* p = dynamic_cast<const Potion*>(item);
+                    Color nameColor = w ? Color{ 255, 175, 75, 255 } : Color{ 100, 245, 150, 255 };
+                    drawText(item->getName().c_str(), cardX + 72, cardY + 8, 16, nameColor);
+
+                    if (w) {
+                        drawText(TextFormat("+%d ATK", w->getBonusAttack()), cardX + cardW - 80, cardY + 9, 14, Color{ 255, 205, 120, 255 });
+                    } else if (p) {
+                        drawText(TextFormat("+%d HP", p->getHealAmount()), cardX + cardW - 80, cardY + 9, 14, Color{ 130, 255, 170, 255 });
+                    }
+                } else {
+                    DrawRectangle(cardX + 4, cardY + 4, 28, 28, Color{ 22, 18, 30, 180 });
+                    drawText(TextFormat("[%d]", (int)(i + 1)), cardX + 8, cardY + 8, 15, DARKGRAY);
+                    drawText("(O trong)", cardX + 44, cardY + 9, 14, Color{ 80, 75, 95, 255 });
+                }
+            }
+        }
+
+        DrawLine(modalX + 4, modalY + modalH - 34, modalX + modalW - 4, modalY + modalH - 34, Color{ 60, 50, 80, 255 });
+        drawText("Nhan [1-8] hoac Click chuot de dung | [B] / [ESC] de dong", modalX + 16, modalY + modalH - 24, 13, Color{ 180, 180, 205, 255 });
+    }
+
+    // =========================================================================
+    // 5. MÀN HÌNH GAME OVER
+    // =========================================================================
+    if (state == GameState::GAME_OVER) {
+        DrawRectangle(0, 0, screenW, screenH, Color{ 0, 0, 0, 200 });
+        drawText("BAN DA THAT TRAN!", screenW / 2 - 180, screenH / 2 - 40, 36, RED);
+        drawText("Nhan phim [R] de hoi sinh va thu lai", screenW / 2 - 160, screenH / 2 + 20, 20, RAYWHITE);
+    }
+
+
+
+    // =========================================================================
+    // 7. MÀN HÌNH CHIẾN THẮNG (VICTORY)
+    // =========================================================================
     if (state == GameState::VICTORY) {
-        DrawRectangle(0, 0, screenW, screenH, Color{ 20, 15, 5, 215 });
+        DrawRectangle(0, 0, screenW, screenH, Color{ 20, 15, 5, 220 });
         drawText("CHIEN THANG!", screenW / 2 - 140, screenH / 2 - 110, 48, GOLD);
         drawText("Aethelgard duoc giai cuu - Cong cua Den Tho da mo", screenW / 2 - 230, screenH / 2 - 40, 22, RAYWHITE);
         drawText(TextFormat("Cap: %d   |   Vang: %d   |   Quai da ha guc: %d",

@@ -180,23 +180,18 @@ void Dungeon::generate(int floor) {
     // 4. SINH VẬT PHẨM TRÊN BẢN ĐỒ
     // =========================================================================
     groundItems.push_back(std::make_unique<Potion>(
-        "Binh Mau Nho", "Hoi phuc 35 HP", 35, Position(8, 15)
         "Binh Mau Nho", "Hoi phuc 35 HP", 35, Position(8, 15), "item_potion_health"
     ));
     groundItems.push_back(std::make_unique<Weapon>(
-        "Thanh Kiem Thep", "Vu khi tang +8 ATK", 8, Position(22, 12)
         "Thanh Kiem Thep", "Vu khi tang +8 ATK", 8, Position(22, 12), "item_sword_steel"
     ));
     groundItems.push_back(std::make_unique<Potion>(
-        "Binh Thuoc Cuong Hoa", "Hoi phuc 60 HP", 60, Position(42, 9)
         "Binh Thuoc Cuong Hoa", "Hoi phuc 60 HP", 60, Position(42, 9), "item_potion_strength"
     ));
     groundItems.push_back(std::make_unique<Weapon>(
-        "Dai Kiem Huyen Bi", "Vu khi tang +15 ATK", 15, Position(60, 6)
         "Dai Kiem Huyen Bi", "Vu khi tang +15 ATK", 15, Position(60, 6), "item_sword_mystic"
     ));
     groundItems.push_back(std::make_unique<Potion>(
-        "Than Duoc Aethelgard", "Hoi phuc 100 HP", 100, Position(69, 6)
         "Than Duoc Aethelgard", "Hoi phuc 100 HP", 100, Position(69, 6), "item_potion_elixir"
     ));
 
