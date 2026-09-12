@@ -3,6 +3,10 @@
 #include "map/Dungeon.h"
 #include <cstdlib>
 
+// Khởi tạo các thành viên tĩnh (Static Members - Slide 36-39 Chương 3)
+int Monster::activeMonsterCount = 0;
+int Monster::totalMonstersDefeated = 0;
+
 Monster::Monster(const std::string& name, const Position& pos, int hp, int attack, int defense,
                  int expReward, int goldReward,
                  int aggroRange, int patrolRange, bool flying)
@@ -12,7 +16,15 @@ Monster::Monster(const std::string& name, const Position& pos, int hp, int attac
       facingRight(true), flying(flying), turnCount(0), patrolDir(1),
       aiState(MonsterAIState::PATROL), actionTimer(0.0f), attackCooldown(0.0f),
       pauseTimer(0.0f), isAlerted(false),
-      animState(""), dying(false), rewarded(false) {}
+      animState(""), dying(false), rewarded(false) {
+    ++activeMonsterCount;
+}
+
+Monster::~Monster() {
+    if (activeMonsterCount > 0) {
+        --activeMonsterCount;
+    }
+}
 
 // ===== Hệ thống hoạt họa nhiều trạng thái =====
 
@@ -93,6 +105,9 @@ void Monster::takeDamage(int amount) {
 }
 
 void Monster::kill() {
+    if (!dying) {
+        ++totalMonstersDefeated;
+    }
     alive = false;
     dying = true;
     // Phát animation biến mất: ưu tiên "dead", nếu không có thì giữ nguyên animation hiện tại

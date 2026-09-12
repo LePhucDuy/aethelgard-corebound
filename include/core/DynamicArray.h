@@ -106,6 +106,15 @@ public:
         count = 0;
     }
 
+    // Xóa phần tử tại chỉ số index và dồn mảng
+    void erase(size_t index) {
+        if (index >= count) return;
+        for (size_t i = index; i + 1 < count; ++i) {
+            data[i] = data[i + 1];
+        }
+        --count;
+    }
+
     // 8. Khai báo hàm bạn của khuôn mẫu lớp (Slide 21-22 Chương 7)
     template <typename U>
     friend std::ostream& operator<<(std::ostream& os, const DynamicArray<U>& arr);

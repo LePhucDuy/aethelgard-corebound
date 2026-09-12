@@ -102,7 +102,7 @@ public:
     Monster(const std::string& name, const Position& pos, int hp, int attack, int defense,
             int expReward, int goldReward,
             int aggroRange = 5, int patrolRange = 3, bool flying = false);
-    virtual ~Monster() override = default;
+    virtual ~Monster() override;
 
     // AI theo lượt — mỗi loài quái tự triển khai hành vi riêng (Polymorphism)
     void act(Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) override = 0;
@@ -116,6 +116,15 @@ public:
     const Position& getHomePos() const { return homePos; }
     bool isFacingRight() const { return facingRight; }
     bool isFlying() const { return flying; }
+
+    // Thành viên tĩnh (Static Members - Slide 36-39 Chương 3)
+    static int getActiveMonsterCount() { return activeMonsterCount; }
+    static int getTotalMonstersDefeated() { return totalMonstersDefeated; }
+    static void resetStats() { activeMonsterCount = 0; totalMonstersDefeated = 0; }
+
+protected:
+    static int activeMonsterCount;
+    static int totalMonstersDefeated;
 };
 
 #endif // MONSTER_H

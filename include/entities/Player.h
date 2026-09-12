@@ -3,6 +3,7 @@
 
 #include "entities/Entity.h"
 #include "items/Inventory.h"
+#include "systems/Skill.h"
 #include <map>
 
 /**
@@ -41,6 +42,9 @@ private:
     float sinkVisualOffset;// Độ lún vào bùn đầm lầy (px)
     bool facingRight;
 
+    // Quản lý kỹ năng đa hình (Polymorphic Skills)
+    std::vector<std::unique_ptr<Skill>> skills;
+
     void checkLevelUp();
 
 public:
@@ -53,6 +57,11 @@ public:
     // Cập nhật hoạt họa và render
     void update(float deltaTime) override;
     void render(float scale = 2.0f, Vector2 offset = {0.0f, 0.0f}) const override;
+
+    // Quản lý kỹ năng đa hình
+    bool useSkill(size_t index, GameEngine* engine);
+    Skill* getSkill(size_t index) const;
+    size_t getSkillCount() const { return skills.size(); }
 
     // Di chuyển và các hành động hoạt họa
     bool moveBy(int dx, int dy, Dungeon& dungeon);
@@ -80,20 +89,21 @@ public:
     const std::string& getState() const { return currentState; }
     const Animation* getCurrentAnimation() const;
 
-    // Getters & Setters
+    // Getters
     int getLevel() const { return level; }
     int getExp() const { return exp; }
     int getExpToNextLevel() const { return expToNextLevel; }
     int getGold() const { return gold; }
 
-    void setLevel(int val) { level = val; }
-    void setExp(int val) { exp = val; }
-    void setExpToNextLevel(int val) { expToNextLevel = val; }
-    void setGold(int val) { gold = val; }
-    void setHp(int val) { hp = val; }
-    void setMaxHp(int val) { maxHp = val; }
-    void setAttack(int val) { attack = val; }
-    void setDefense(int val) { defense = val; }
+    // Method Chaining với con trỏ this (Slide 24-25 Chương 3)
+    Player& setLevel(int val) { level = val; return *this; }
+    Player& setExp(int val) { exp = val; return *this; }
+    Player& setExpToNextLevel(int val) { expToNextLevel = val; return *this; }
+    Player& setGold(int val) { gold = val; return *this; }
+    Player& setHp(int val) { hp = val; return *this; }
+    Player& setMaxHp(int val) { maxHp = val; return *this; }
+    Player& setAttack(int val) { attack = val; return *this; }
+    Player& setDefense(int val) { defense = val; return *this; }
 
     // Đặt lại chỉ số ban đầu khi chơi lại
     void resetStats(const Position& startPos);

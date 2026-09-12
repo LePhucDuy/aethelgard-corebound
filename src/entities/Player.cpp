@@ -9,7 +9,12 @@ Player::Player(const std::string& name, const Position& pos, int hp, int attack,
       inventory(std::make_unique<Inventory>(Constants::MAX_INVENTORY_SLOTS)),
       currentState("idle"), runTimer(0.0f), jumpTimer(0.0f), jumpVisualLift(0.0f),
       sinkVisualOffset(0.0f),
-      facingRight(true) {}
+      facingRight(true) {
+    // Khởi tạo các kỹ năng đa hình
+    skills.push_back(std::make_unique<SlashSkill>());
+    skills.push_back(std::make_unique<DashSkill>());
+    skills.push_back(std::make_unique<HealSkill>());
+}
 
 void Player::checkLevelUp() {
     while (exp >= expToNextLevel) {
@@ -96,6 +101,11 @@ void Player::triggerJump(int dx, int dy) {
 
 void Player::update(float deltaTime) {
     Entity::update(deltaTime);
+
+    // Cập nhật hồi chiêu các kỹ năng
+    for (auto& s : skills) {
+        if (s) s->update(deltaTime);
+    }
 
     if (!alive) {
         if (anims.find("dead") != anims.end()) {
@@ -253,3 +263,14 @@ void Player::resetStats(const Position& startPos) {
         if (pair.second) pair.second->reset();
     }
 }
+
+bool Player::useSkill(size_t index, GameEngine* engine) {
+    if (index >= skills.size() || !skills[index]) return false;
+    return skills[index]->execute(this, engine);
+}
+
+Skill* Player::getSkill(size_t index) const {
+    if (index >= skills.size()) return nullptr;
+    return skills[index].get();
+}
+

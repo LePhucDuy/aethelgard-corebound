@@ -6,8 +6,8 @@
 #include <cstdlib>
 
 Boar::Boar(const Position& pos)
-    : Monster("Boar (Lon rung)", pos, 45, 12, 3, 25, 10,
-              /*aggroRange*/ 6, /*patrolRange*/ 3, /*flying*/ false) {
+    : GroundMonster("Boar (Lon rung)", pos, 45, 12, 3, 25, 10,
+                    /*aggroRange*/ 6, /*patrolRange*/ 3) {
     // Hoạt họa đa trạng thái: idle (đứng yên), walk (tuần tra), run (chạy/đuổi), dead (Hit-Vanish)
     addAnimation("idle", std::make_unique<Animation>("boar_idle", 4, 48, 32, 0.15f, true));
     addAnimation("walk", std::make_unique<Animation>("boar_walk", 6, 48, 32, 0.12f, true));

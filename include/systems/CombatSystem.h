@@ -17,10 +17,12 @@
  *    - Cho dù là `Player` đánh `Monster`, hay `Monster` đánh `Player`, hay giữa 2 `Monster`,
  *      hàm `attack()` đều xử lý nhất quán thông qua lớp cơ sở `Entity&`.
  */
+class GameEngine;
+
 class CombatSystem {
 public:
-    // Xử lý đòn tấn công giữa 2 thực thể và ghi lại nhật ký chiến đấu
-    static bool attack(Entity& attacker, Entity& defender, std::vector<std::string>& combatLog);
+    // Xử lý đòn tấn công giữa 2 thực thể và ghi lại nhật ký chiến đấu (có tham số ngầm định GameEngine* - Chương 2)
+    static bool attack(Entity& attacker, Entity& defender, std::vector<std::string>& combatLog, GameEngine* engine = nullptr);
 };
 
 #endif // COMBAT_SYSTEM_H

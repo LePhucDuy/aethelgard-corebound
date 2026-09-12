@@ -8,8 +8,8 @@
 #include <algorithm>
 
 SmallBee::SmallBee(const Position& pos)
-    : Monster("Small Bee (Ong sat thu)", pos, 25, 10, 1, 15, 6,
-              /*aggroRange*/ 6, /*patrolRange*/ 2, /*flying*/ true),
+    : FlyingMonster("Small Bee (Ong sat thu)", pos, 25, 10, 1, 15, 6,
+                    /*aggroRange*/ 6, /*patrolRange*/ 2),
       evasionChance(35) {
     // Hoạt họa đa trạng thái: idle (lượn lờ), run (bay đuổi), attack (lao chích), dead (Hit-Vanish)
     addAnimation("idle",   std::make_unique<Animation>("bee_fly",    4, 64, 64, 0.12f, true));

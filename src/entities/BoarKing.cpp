@@ -9,8 +9,8 @@
 #include <algorithm>
 
 BoarKing::BoarKing(const Position& pos)
-    : Monster("Boar King (Chua Heo Rung)", pos, 160, 20, 5, 200, 100,
-              /*aggroRange*/ 15, /*patrolRange*/ 6, /*flying*/ false),
+    : Boar("Boar King (Chua Heo Rung)", pos, 160, 20, 5, 200, 100,
+           /*aggroRange*/ 15, /*patrolRange*/ 6),
       bossState(BoarKingState::DORMANT),
       enraged(false),
       stateTimer(0.0f),

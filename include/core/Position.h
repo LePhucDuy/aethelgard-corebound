@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <cmath>
+#include "raylib.h"
 
 /**
  * @brief Struct Position biểu diễn tọa độ ô lưới (Grid Coordinate) trong hầm ngục.
@@ -99,6 +100,49 @@ struct Position {
             is >> pos.x >> pos.y;
         }
         return is;
+    }
+
+    // 9. Nạp chồng toán tử chuyển đổi kiểu (User-Defined Conversion Operator - Slide 24 Chương 4)
+    // Tự động chuyển đổi tọa độ ô tile sang tọa độ Vector2 của Raylib (pixel thế giới)
+    operator Vector2() const {
+        return Vector2{ static_cast<float>(x) * 32.0f, static_cast<float>(y) * 32.0f };
+    }
+
+    // 10. Toán tử 1 ngôi tiền tố & hậu tố (Slide 9-11 Chương 4)
+    // Tăng/giảm tọa độ X một bước lưới
+    Position& operator++() {
+        ++x;
+        return *this;
+    }
+
+    Position operator++(int) {
+        Position temp = *this;
+        ++x;
+        return temp;
+    }
+
+    Position& operator--() {
+        --x;
+        return *this;
+    }
+
+    Position operator--(int) {
+        Position temp = *this;
+        --x;
+        return temp;
+    }
+};
+
+/**
+ * @brief Functor so sánh khoảng cách giữa hai tọa độ tới một tâm gốc (Chương 4 - Slide 17)
+ * Nạp chồng toán tử gọi hàm operator() để làm tiêu chuẩn so sánh tìm kiếm mục tiêu gần nhất.
+ */
+struct DistanceComparator {
+    Position origin;
+    explicit DistanceComparator(const Position& orig) : origin(orig) {}
+
+    bool operator()(const Position& a, const Position& b) const {
+        return origin.manhattanDistanceTo(a) < origin.manhattanDistanceTo(b);
     }
 };
 

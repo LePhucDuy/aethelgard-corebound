@@ -1,4 +1,5 @@
 #include "systems/SaveLoadManager.h"
+#include "core/GameException.h"
 #include "items/Weapon.h"
 #include "items/Potion.h"
 #include <fstream>
@@ -8,8 +9,7 @@
 bool SaveLoadManager::saveGame(const std::string& filePath, const Player& player, const Dungeon& dungeon) {
     std::ofstream outFile(filePath);
     if (!outFile.is_open()) {
-        std::cerr << "[Save Error] Khong the mo file de ghi: " << filePath << std::endl;
-        return false;
+        throw SaveLoadException("Khong the mo file de ghi: " + filePath);
     }
 
     // 1. Ghi thông tin Người chơi
@@ -60,8 +60,7 @@ bool SaveLoadManager::saveGame(const std::string& filePath, const Player& player
 bool SaveLoadManager::loadGame(const std::string& filePath, Player& player, Dungeon& dungeon) {
     std::ifstream inFile(filePath);
     if (!inFile.is_open()) {
-        std::cerr << "[Load Error] Khong the mo file de doc: " << filePath << std::endl;
-        return false;
+        throw SaveLoadException("Khong the mo file de doc: " + filePath);
     }
 
     std::string line;

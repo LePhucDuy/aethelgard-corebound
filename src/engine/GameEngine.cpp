@@ -2,6 +2,7 @@
 #include "graphics/TextureManager.h"
 #include "systems/CombatSystem.h"
 #include "systems/SaveLoadManager.h"
+#include "core/GameException.h"
 #include "items/Potion.h"
 #include "items/Weapon.h"
 #include "entities/Snail.h"
@@ -312,7 +313,7 @@ void GameEngine::handleInput() {
         }
 
         if (targetMonster) {
-            CombatSystem::attack(player, *targetMonster, combatLog);
+            CombatSystem::attack(player, *targetMonster, combatLog, this);
             bool wasKilled = !targetMonster->isAlive();
             dungeon.removeDeadMonsters(player);
             if (wasKilled) monstersDefeated++;
@@ -677,17 +678,54 @@ void GameEngine::handleInput() {
         }
     }
 
-    // Phím Lưu game [F5] & Tải game [F9]
+    // Phím Kỹ năng Đa hình: [L-Shift] Lướt né đòn, [Q] Hồi máu khẩn cấp
+    if (IsKeyPressed(KEY_LEFT_SHIFT)) {
+        if (player.useSkill(1, this)) {
+            combatLog.push_back("[KY NANG] Hiep si luot nhanh ve phia truoc (Dash)!");
+        } else {
+            Skill* dash = player.getSkill(1);
+            if (dash && !dash->canExecute()) {
+                combatLog.push_back("[HOI CHIEU] Luot ne don con " + std::to_string(static_cast<int>(dash->getCurrentCooldown() + 0.9f)) + "s");
+            }
+        }
+    }
+
+    if (IsKeyPressed(KEY_Q)) {
+        if (!player.useSkill(2, this)) {
+            Skill* heal = player.getSkill(2);
+            if (heal && !heal->canExecute()) {
+                combatLog.push_back("[HOI CHIEU] Hoi phuc khan cap con " + std::to_string(static_cast<int>(heal->getCurrentCooldown() + 0.9f)) + "s");
+            }
+        }
+    }
+
+    // Phím Lưu game [F5] & Tải game [F9] - Bọc cơ chế Ngoại lệ (C++ Exception Handling)
     if (IsKeyPressed(KEY_F5)) {
-        if (SaveLoadManager::saveGame("saves/savegame.txt", player, dungeon)) {
-            combatLog.push_back("[HE THONG] Da luu game thanh cong (F5)!");
+        try {
+            if (SaveLoadManager::saveGame("saves/savegame.txt", player, dungeon)) {
+                combatLog.push_back("[HE THONG] Da luu game thanh cong (F5)!");
+            }
+        } catch (const GameException& e) {
+            combatLog.push_back(std::string("[NGOAI LE] ") + e.what());
+        } catch (const std::exception& e) {
+            combatLog.push_back(std::string("[LOI] ") + e.what());
         }
     }
     if (IsKeyPressed(KEY_F9)) {
-        if (SaveLoadManager::loadGame("saves/savegame.txt", player, dungeon)) {
-            combatLog.push_back("[HE THONG] Da tai lai game thanh cong (F9)!");
+        try {
+            if (SaveLoadManager::loadGame("saves/savegame.txt", player, dungeon)) {
+                combatLog.push_back("[HE THONG] Da tai lai game thanh cong (F9)!");
+            }
+        } catch (const SaveLoadException& e) {
+            combatLog.push_back(std::string("[NGOAI LE] ") + e.what());
+        } catch (const std::exception& e) {
+            combatLog.push_back(std::string("[LOI] ") + e.what());
         }
     }
+}
+
+void GameEngine::addDamagePopup(const std::string& text, float worldX, float worldY, Color color, float duration) {
+    activeDamagePopups.push_back(DamagePopup(text, worldX, worldY, color, duration));
 }
 
 void GameEngine::update(float deltaTime) {
@@ -698,6 +736,16 @@ void GameEngine::update(float deltaTime) {
     if (screenShake > 0.0f) {
         screenShake -= deltaTime * 1.5f;
         if (screenShake < 0.0f) screenShake = 0.0f;
+    }
+
+    // Cập nhật mảng động các số sát thương nổi (Class Template DynamicArray - Chương 7)
+    for (size_t pIdx = 0; pIdx < activeDamagePopups.size(); ) {
+        activeDamagePopups[pIdx].update(deltaTime);
+        if (!activeDamagePopups[pIdx].isAlive()) {
+            activeDamagePopups.erase(pIdx);
+        } else {
+            ++pIdx;
+        }
     }
 
     // Kích hoạt Trận Đấu Boss Boar King khi người chơi bước vào Đấu Trường Khu F (x >= 130)
@@ -979,6 +1027,32 @@ void GameEngine::renderHUD() const {
     drawText(TextFormat("[B] TUI DO (%d/8)", (int)inv.getSize()), invBtn.x + 12, invBtn.y + 7, 15, invHover ? YELLOW : RAYWHITE);
 
     drawText("[F5] Luu  [F9] Tai  [F11] Toan man", screenW - 170, 17, 13, Color{ 165, 165, 185, 255 });
+
+    // Hiển thị trạng thái các kỹ năng đa hình (Polymorphic Skills - Chương 6)
+    Skill* dashSkill = player.getSkill(1);
+    Skill* healSkill = player.getSkill(2);
+    if (dashSkill) {
+        bool ready = dashSkill->canExecute();
+        std::string text = ready ? "[Shift] Luot: SAN SANG" : TextFormat("[Shift] Luot: %.1fs", dashSkill->getCurrentCooldown());
+        DrawRectangle(10, 52, 165, 22, Color{ 20, 18, 30, 210 });
+        DrawRectangleLines(10, 52, 165, 22, ready ? GREEN : DARKGRAY);
+        drawText(text.c_str(), 16, 56, 12, ready ? GREEN : LIGHTGRAY);
+    }
+    if (healSkill) {
+        bool ready = healSkill->canExecute();
+        std::string text = ready ? "[Q] Hoi mau: SAN SANG" : TextFormat("[Q] Hoi mau: %.1fs", healSkill->getCurrentCooldown());
+        DrawRectangle(180, 52, 170, 22, Color{ 20, 18, 30, 210 });
+        DrawRectangleLines(180, 52, 170, 22, ready ? SKYBLUE : DARKGRAY);
+        drawText(text.c_str(), 186, 56, 12, ready ? SKYBLUE : LIGHTGRAY);
+    }
+
+    // Thống kê quái vật qua thành viên tĩnh Monster::getActiveMonsterCount() (Chương 3)
+    std::string mobStat = TextFormat("Quai song: %d  |  Da diet: %d", 
+                                     Monster::getActiveMonsterCount(), 
+                                     Monster::getTotalMonstersDefeated());
+    DrawRectangle(355, 52, 175, 22, Color{ 20, 18, 30, 210 });
+    DrawRectangleLines(355, 52, 175, 22, Color{ 180, 120, 50, 255 });
+    drawText(mobStat.c_str(), 361, 56, 12, Color{ 255, 210, 120, 255 });
 
     // =========================================================================
     // 2. THANH MÁU TRÙM (BOSS HP BAR)
@@ -1281,6 +1355,14 @@ void GameEngine::render(const std::string& screenshotPath) const {
         }
     }
 
+    // 5.2. Vẽ các số sát thương nổi từ DynamicArray (Class Template tự cài đặt - Chương 7)
+    for (size_t pIdx = 0; pIdx < activeDamagePopups.size(); ++pIdx) {
+        const auto& popup = activeDamagePopups[pIdx];
+        Color popCol = popup.color;
+        popCol.a = static_cast<unsigned char>(popup.getAlpha() * 255);
+        DrawText(popup.text.c_str(), static_cast<int>(popup.x), static_cast<int>(popup.y), 18, popCol);
+    }
+
     EndMode2D();
 
     // 6. Vẽ giao diện người dùng
@@ -1420,8 +1502,32 @@ void GameEngine::runOOPAcademicTests() {
     assert(posIn == posA);
     std::cout << "  [PASS] Toan tu nhap stream operator>>: doc thanh cong posIn = " << posIn << "\n";
 
+    // 9. Toán tử chuyển đổi kiểu (User-Defined Type Conversion Operator)
+    Vector2 v = posA; // Tự động gọi operator Vector2()
+    assert(v.x == 320.0f && v.y == 640.0f);
+    std::cout << "  [PASS] Toan tu chuyen doi kieu operator Vector2(): (" << v.x << ", " << v.y << ")\n";
+
+    // 10. Toán tử 1 ngôi tiền tố/hậu tố (++ / --)
+    Position posInc = posA;
+    ++posInc;
+    assert(posInc.x == 11);
+    std::cout << "  [PASS] Toan tu 1 ngoi tien to ++pos: x = " << posInc.x << "\n";
+
+    // 11. Functor operator()
+    DistanceComparator comp(Position(0, 0));
+    assert(comp(Position(1, 1), Position(5, 5)));
+    std::cout << "  [PASS] Functor operator() DistanceComparator: so sanh khoang cach muc tieu.\n";
+
+    // 12. Toán tử 1 ngôi trên Potion
+    Potion potTest("Binh Mau Test", "Hoi 30 HP", 30);
+    ++potTest;
+    assert(potTest.getStackCount() == 2);
+    --potTest;
+    assert(potTest.getStackCount() == 1);
+    std::cout << "  [PASS] Toan tu 1 ngoi ++/-- cho Potion stackCount: " << potTest.getStackCount() << "\n";
+
     // -------------------------------------------------------------------------
-    // TEST 4: CHƯƠNG 5 - ĐA KẾ THỪA & GIẢI QUYẾT DIAMOND PROBLEM VỚI VIRTUAL BASE
+    // TEST 4: CHƯƠNG 5 - ĐA KẾ THỪA, KIM CƯƠNG VIRTUAL BASE & KẾ THỪA ĐA MỨC
     // -------------------------------------------------------------------------
     std::cout << "\n[TEST 4] CHUONG 5: DA KE THUA & DIAMOND PROBLEM (Virtual Base Class):\n";
     Player testHero("Hiep Si Test", Position(5, 5), 100, 20, 5);
@@ -1441,8 +1547,17 @@ void GameEngine::runOOPAcademicTests() {
     std::cout << "         objFromRender (" << (void*)objFromRender << ") == objFromDamage (" << (void*)objFromDamage << ")\n";
     std::cout << "         Duy nhat 1 instanceId = " << objFromRender->getInstanceId() << " (Khong bi xung dot luong nghia!)\n";
 
+    // Kế thừa đa mức (Multi-level Inheritance)
+    BoarKing testKing(Position(10, 10));
+    Boar* asBoar = &testKing;
+    GroundMonster* asGround = asBoar;
+    Monster* asMonster = asGround;
+    Entity* asEntity = asMonster;
+    assert(asEntity != nullptr);
+    std::cout << "  [PASS] Ke thua da muc (Multi-level 5 tang): BoarKing -> Boar -> GroundMonster -> Monster -> Entity\n";
+
     // -------------------------------------------------------------------------
-    // TEST 5: CHƯƠNG 6 - ĐA HÌNH ĐỘNG (RUNTIME POLYMORPHISM) & VIRTUAL DESTRUCTOR
+    // TEST 5: CHƯƠNG 6 - ĐA HÌNH ĐỘNG (RUNTIME POLYMORPHISM) & KỸ NĂNG ĐA HÌNH
     // -------------------------------------------------------------------------
     std::cout << "\n[TEST 5] CHUONG 6: DA HINH DONG (Runtime Polymorphism & Pure Virtual):\n";
     Entity* polymorphicMonster = new Boar(Position(7, 7));
@@ -1457,6 +1572,16 @@ void GameEngine::runOOPAcademicTests() {
 
     delete polymorphicMonster; // Virtual Destructor được kích hoạt
     std::cout << "  [PASS] Giai phong bo nho qua con tro Entity* goi dung Virtual Destructor.\n";
+
+    // Kỹ năng đa hình (Polymorphic Skills)
+    Skill* dashSkill = testHero.getSkill(1);
+    assert(dashSkill != nullptr && dashSkill->getName() == "Luot Ne Don");
+    std::cout << "  [PASS] Da hinh Ky nang (Polymorphic Skill): " << dashSkill->getName() << " (Cooldown " << dashSkill->getCooldown() << "s)\n";
+
+    // Method Chaining với con trỏ this (Chương 3)
+    testHero.setHp(80).setAttack(25).setDefense(10);
+    assert(testHero.getHp() == 80 && testHero.getAttack() == 25);
+    std::cout << "  [PASS] Method Chaining voi con tro this: testHero.setHp().setAttack().setDefense()\n";
 
     // -------------------------------------------------------------------------
     // TEST 6: CHƯƠNG 7 - KHUÔN MẪU (TEMPLATES - FUNCTION & CLASS TEMPLATES)
@@ -1490,7 +1615,22 @@ void GameEngine::runOOPAcademicTests() {
     strArr.push_back("Roguelike C++17");
     std::cout << "  [PASS] Class Template DynamicArray<string>: " << strArr << "\n";
 
+    // -------------------------------------------------------------------------
+    // TEST 7: XỬ LÝ NGOẠI LỆ & THÀNH VIÊN TĨNH (EXCEPTION HANDLING & STATIC MEMBERS)
+    // -------------------------------------------------------------------------
+    std::cout << "\n[TEST 7] NGOAI LE & THANH VIEN TINH (Exception Handling & Static Tracking):\n";
+    bool exceptionCaught = false;
+    try {
+        throw SaveLoadException("File savegame bi loi cau truc!");
+    } catch (const SaveLoadException& e) {
+        exceptionCaught = true;
+        std::cout << "  [PASS] Bat ngoai le thanh cong (try-catch): " << e.what() << "\n";
+    }
+    assert(exceptionCaught);
+
+    std::cout << "  [PASS] Thanh vien tinh Monster::getActiveMonsterCount() = " << Monster::getActiveMonsterCount() << "\n";
+
     std::cout << "\n======================================================================\n";
-    std::cout << "   TAT CA 6 PHAN KIEM THU HOC THUAT OOP CHO 7 CHUONG DEU DAT [100%]\n";
+    std::cout << "   TAT CA 7 PHAN KIEM THU HOC THUAT OOP TOAN DIEN DEU DAT [100%]\n";
     std::cout << "======================================================================\n\n";
 }

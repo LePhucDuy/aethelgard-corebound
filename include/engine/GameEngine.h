@@ -7,6 +7,7 @@
 #include "core/DynamicArray.h"
 #include "core/Templates.h"
 #include "entities/Player.h"
+#include "graphics/DamagePopup.h"
 #include "map/Dungeon.h"
 #include <vector>
 #include <string>
@@ -38,6 +39,7 @@ private:
     GameState state;
     std::vector<std::string> combatLog;
     DynamicArray<std::string> templateCombatLog; // Ứng dụng Class Template tự xây dựng (Chương 7)
+    mutable DynamicArray<DamagePopup> activeDamagePopups; // Mảng động quản lý số sát thương nổi thời gian thực (Chương 7)
     Camera2D camera;
     Font fontMain;
     float moveTimer;
@@ -96,6 +98,14 @@ public:
 
     // Vòng lặp chính của game (hỗ trợ chụp ảnh tự động khi truyền đường dẫn)
     void run(const std::string& autoScreenshot = "");
+
+    // Quản lý số sát thương nổi thời gian thực (Class Template DynamicArray - Chương 7)
+    void addDamagePopup(const std::string& text, float worldX, float worldY, Color color = YELLOW, float duration = 0.8f);
+    Dungeon& getDungeon() { return dungeon; }
+    const Dungeon& getDungeon() const { return dungeon; }
+    Player& getPlayer() { return player; }
+    const Player& getPlayer() const { return player; }
+    std::vector<std::string>& getCombatLog() { return combatLog; }
 
     // Hàm tự kiểm thử học thuật cho toàn bộ 7 chương OOP của trường UTH
     static void runOOPAcademicTests();

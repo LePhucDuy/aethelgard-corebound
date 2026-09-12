@@ -5,8 +5,8 @@
 #include <iostream>
 
 Snail::Snail(const Position& pos)
-    : Monster("Snail (Oc sen giap)", pos, 30, 4, 3, 30, 15,
-              /*aggroRange*/ 2, /*patrolRange*/ 1, /*flying*/ false),
+    : GroundMonster("Snail (Oc sen giap)", pos, 30, 4, 3, 30, 15,
+                    /*aggroRange*/ 2, /*patrolRange*/ 1),
       isHiding(false), turnsToMove(0) {
     // Hoạt họa đa trạng thái: idle (bò ra), hide (rút vỏ), dead (chết)
     addAnimation("idle", std::make_unique<Animation>("snail_walk", 8, 48, 32, 0.18f, true));
