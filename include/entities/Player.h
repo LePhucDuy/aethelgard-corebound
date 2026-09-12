@@ -69,6 +69,7 @@ public:
     size_t getSkillCount() const { return skills.size(); }
 
     // Di chuyển và các hành động hoạt họa
+    void setPosition(const Position& newPos, bool snapVisual = false) override;
     bool moveBy(int dx, int dy, Dungeon& dungeon);
     void triggerAttack();
     void triggerJump(int dx = 0, int dy = -1);

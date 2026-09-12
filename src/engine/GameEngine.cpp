@@ -461,11 +461,7 @@ void GameEngine::handleInput() {
                         Position cand(jX, fallY);
                         if (dungeon.isWater(cand)) {
                             player.setPosition(cand);
-                            isSinking = true;
-                            sinkTimer = sinkDuration;
-                            sinkDepth = 0.0f;
-                            player.setSinkVisualOffset(0.0f);
-                            combatLog.push_back("[LUN DAM LAY] Ban da phong minh xuong dam lay lun va dang bi chim dan!");
+                            combatLog.push_back("[NHAY XUONG] Ban da phong minh xuong dam lay lun ben duoi!");
                             combatLog.push_back(">> Nhanh tay nhan [Space] de vung vay thoat len bo!");
                             jumped = true;
                             break;
@@ -590,11 +586,7 @@ void GameEngine::handleInput() {
                             // 1. Rơi trúng Đầm lầy lún
                             if (dungeon.isWater(checkPos)) {
                                 player.setPosition(checkPos);
-                                isSinking = true;
-                                sinkTimer = sinkDuration;
-                                sinkDepth = 0.0f;
-                                player.setSinkVisualOffset(0.0f);
-                                combatLog.push_back("[LUN DAM LAY] Ban da sa chan xuong dam lay lun va dang bi chim dan!");
+                                combatLog.push_back("[LUN DAM LAY] Ban da sa chan xuong dam lay lun ben duoi!");
                                 combatLog.push_back(">> Nhanh tay nhan [Space] de vung vay thoat len bo!");
                                 break;
                             }
@@ -818,13 +810,15 @@ void GameEngine::update(float deltaTime) {
             combatLog.push_back(">>> BAN DA BI DAM LAY NUOT CHUNG VA MAT MANG! Nhan [R] de hoi sinh va thu lai. <<<");
         }
     } else if (state == GameState::RUNNING && dungeon.isWater(player.getPosition()) && !isSinking) {
-        // Kích hoạt lún đầm lầy nếu người chơi đang đứng trên ô đầm lầy
-        isSinking = true;
-        sinkTimer = sinkDuration;
-        sinkDepth = 0.0f;
-        player.setSinkVisualOffset(0.0f);
-        combatLog.push_back("[LUN DAM LAY] Ban da sa vao dam lay lun va dang bi chim dan vao bun sau!");
-        combatLog.push_back(">> Nhanh tay nhan [Space] de vung vay thoat len bo!");
+        // Kích hoạt lún đầm lầy nếu người chơi đang ở ô đầm lầy và ĐÃ TIẾP NƯỚC (không còn đang rơi trong không trung)
+        if (!player.isFalling()) {
+            isSinking = true;
+            sinkTimer = sinkDuration;
+            sinkDepth = 0.0f;
+            player.setSinkVisualOffset(0.0f);
+            combatLog.push_back("[LUN DAM LAY] Ban da sa vao dam lay lun va dang bi chim dan vao bun sau!");
+            combatLog.push_back(">> Nhanh tay nhan [Space] de vung vay thoat len bo!");
+        }
     }
 
     // ===== KỊCH BẢN PHÂN KHU: banner khi người chơi đi qua mốc khu mới (6 khu vực) =====

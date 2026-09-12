@@ -13,6 +13,11 @@ void Entity::resetVisualPosition() {
     visualPos = { (float)(pos.x * Constants::TILE_SIZE), (float)(pos.y * Constants::TILE_SIZE) };
 }
 
+void Entity::setPosition(const Position& newPos, bool snapVisual) {
+    pos = newPos;
+    if (snapVisual) resetVisualPosition();
+}
+
 void Entity::takeDamage(int amount) {
     // Sát thương thực tế = lượng dame trừ đi chỉ số phòng thủ (tối thiểu chịu 1 sát thương)
     int actualDamage = std::max(1, amount - defense);

@@ -82,10 +82,7 @@ public:
     const Position& getPosition() const { return pos; }
     const Vector2& getVisualPosition() const { return visualPos; }
     void resetVisualPosition();
-    void setPosition(const Position& newPos, bool snapVisual = false) { 
-        pos = newPos; 
-        if (snapVisual) resetVisualPosition();
-    }
+    virtual void setPosition(const Position& newPos, bool snapVisual = false);
 
     int getHp() const { return hp; }
     int getMaxHp() const { return maxHp; }
