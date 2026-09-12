@@ -56,8 +56,9 @@ void Boar::act(Dungeon& dungeon, Player& player, std::vector<std::string>& comba
 
         // Người chơi ở sau lưng hoặc quá xa -> Tiếp tục tuần tra nhịp nhàng
         setState("walk");
+        setMoveLerpSpeed(5.5f);
         patrolStep(dungeon);
-        actionTimer = 0.65f;
+        actionTimer = 0.45f;
         return;
     }
 
@@ -68,15 +69,16 @@ void Boar::act(Dungeon& dungeon, Player& player, std::vector<std::string>& comba
             aiState = MonsterAIState::RETURNING;
             isAlerted = false;
             combatLog.push_back("Boar mat dau ban va nguoi ngoai quay ve.");
-            actionTimer = 0.6f;
+            actionTimer = 0.5f;
             return;
         }
 
         setState("run");
+        setMoveLerpSpeed(15.0f);
         faceTowards(pPos);
         int step = (dx > 0) ? 1 : -1;
         tryStepTo(dungeon, Position(pos.x + step, pos.y), player);
-        actionTimer = 0.22f; // Bứt tốc lao nhanh 0.22s/bước
+        actionTimer = 0.20f; // Bứt tốc lao nhanh 0.20s/bước
         return;
     }
 
@@ -94,14 +96,15 @@ void Boar::act(Dungeon& dungeon, Player& player, std::vector<std::string>& comba
         if (pos.x == homePos.x) {
             aiState = MonsterAIState::PATROL;
             setState("idle");
-            actionTimer = 0.8f;
+            actionTimer = 0.6f;
             return;
         }
 
         setState("walk");
+        setMoveLerpSpeed(5.5f);
         int step = (homePos.x > pos.x) ? 1 : -1;
         tryStepTo(dungeon, Position(pos.x + step, pos.y), player);
-        actionTimer = 0.5f;
+        actionTimer = 0.45f;
         return;
     }
 }

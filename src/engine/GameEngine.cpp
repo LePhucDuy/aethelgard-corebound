@@ -5,6 +5,7 @@
 #include "items/Potion.h"
 #include "items/Weapon.h"
 #include "entities/Snail.h"
+#include "entities/BoarKing.h"
 #include "core/Constants.h"
 #include <rlgl.h>
 #include <iostream>
@@ -31,6 +32,9 @@ GameEngine::GameEngine(int spawnX, int spawnY, bool startWithInventory, bool sta
       bannerText(""),
       bannerTimer(0.0f),
       monstersDefeated(0),
+      bossCinematicTriggered(false),
+      bossWarningTimer(0.0f),
+      screenShake(0.0f),
       showInventory(startWithInventory),
       showCombatLog(true),
       spawnOverrideX(spawnX),
@@ -148,6 +152,9 @@ void GameEngine::handleInput() {
             player.setSinkVisualOffset(0.0f);
             isDying = false;
             deathTimer = 0.0f;
+            bossCinematicTriggered = false;
+            bossWarningTimer = 0.0f;
+            screenShake = 0.0f;
             state = GameState::RUNNING;
         }
         return;
@@ -684,6 +691,36 @@ void GameEngine::update(float deltaTime) {
     if (moveTimer > 0.0f) moveTimer -= deltaTime;
     if (attackTimer > 0.0f) attackTimer -= deltaTime;
     if (edgeSlipTimer > 0.0f) edgeSlipTimer -= deltaTime;
+    if (bossWarningTimer > 0.0f) bossWarningTimer -= deltaTime;
+    if (screenShake > 0.0f) {
+        screenShake -= deltaTime * 1.5f;
+        if (screenShake < 0.0f) screenShake = 0.0f;
+    }
+
+    // Kích hoạt Trận Đấu Boss Boar King khi người chơi bước vào Đấu Trường Khu F (x >= 130)
+    if (state == GameState::RUNNING && !bossCinematicTriggered && player.getPosition().x >= 130) {
+        Monster* boss = dungeon.getBossMonster();
+        if (boss && boss->isAlive()) {
+            bossCinematicTriggered = true;
+            bossWarningTimer = 4.0f;
+            screenShake = 1.2f;
+            BoarKing* bk = dynamic_cast<BoarKing*>(boss);
+            if (bk) bk->triggerEntrance();
+            combatLog.push_back(">>> [CANH BAO NGUY HIEM!] CHUA HEO RUNG DANG LAO RA TU BONG TOI! <<<");
+        }
+    }
+
+    // Lắng nghe rung màn hình từ Boss (Dậm chân, tông tường, húc trúng)
+    if (state == GameState::RUNNING) {
+        Monster* boss = dungeon.getBossMonster();
+        if (boss && boss->isAlive()) {
+            BoarKing* bk = dynamic_cast<BoarKing*>(boss);
+            float intensity = 0.0f;
+            if (bk && bk->consumeScreenShake(intensity)) {
+                if (intensity > screenShake) screenShake = intensity;
+            }
+        }
+    }
 
     // Cập nhật tiến trình lún đầm lầy (Swamp Sinking)
     if (state == GameState::RUNNING && isSinking) {
@@ -714,18 +751,19 @@ void GameEngine::update(float deltaTime) {
         combatLog.push_back(">> Nhanh tay nhan [Space] de vung vay thoat len bo!");
     }
 
-    // ===== KỊCH BẢN PHÂN KHU: banner khi người chơi đi qua mốc khu mới (5 khu vực) =====
+    // ===== KỊCH BẢN PHÂN KHU: banner khi người chơi đi qua mốc khu mới (6 khu vực) =====
     if (state == GameState::RUNNING) {
         int px = player.getPosition().x;
-        int zone = (px < 25) ? 0 : (px < 56) ? 1 : (px < 89) ? 2 : (px < 113) ? 3 : 4;
+        int zone = (px < 25) ? 0 : (px < 56) ? 1 : (px < 89) ? 2 : (px < 113) ? 3 : (px < 130) ? 4 : 5;
         if (zone != currentZone) {
             currentZone = zone;
-            static const char* zoneBanners[5] = {
+            static const char* zoneBanners[6] = {
                 "KHU A - TRAI KHOI DAU: Lam quen dieu khien. Canh chung cac ho khoang cach!",
                 "KHU B - RUNG NAM & CAU TREO: Heo rung tren cau treo, vuc nuoc sau ben duoi!",
                 "KHU C - VACH DA & VUC NUOC: Sa chan xuong nuoc se bi chet duoi va quay lai tu dau!",
                 "KHU D - BINH NGUYEN TAN TICH: Quan doan quai vat canh giu loi len Den Tho!",
-                "KHU E - DINH DEN THO BOSS: BOAR KING ngap tran no khi! Ha guc no de mo khoa be vang!"
+                "KHU E - DINH DEN THO: Vuot qua cac ho sau de tien vao Dau Truong!",
+                "KHU F - DAU TRUONG BOAR KING: Chien truong rong lon, khong loi thoat! Tieu diet Chua Heo Rung de mo khoa Be Vang!"
             };
             bannerText = zoneBanners[zone];
             bannerTimer = 3.5f;
@@ -856,6 +894,13 @@ void GameEngine::update(float deltaTime) {
     camera.target = Vector2{ targetX, targetY };
     // Offset Y đặt giữa vùng nhìn (không ghim đáy) để bám Y mượt cả lên/xuống.
     camera.offset = Vector2{ screenW / 2.0f, viewTop + activeHeight / 2.0f };
+
+    // Hiệu ứng Rung màn hình (Screen Shake) kịch tính khi Boss húc, giậm đất hoặc xuất hiện
+    if (screenShake > 0.0f) {
+        float shakeOffset = screenShake * 7.0f;
+        camera.target.x += ((float)(std::rand() % 200 - 100) / 100.0f) * shakeOffset;
+        camera.target.y += ((float)(std::rand() % 200 - 100) / 100.0f) * shakeOffset;
+    }
 }
 
 void GameEngine::renderHUD() const {
@@ -880,23 +925,18 @@ void GameEngine::renderHUD() const {
     // 1.2. Huy hiệu Vàng
     DrawRectangleRounded(Rectangle{ 98, 9, 90, 30 }, 0.3f, 4, Color{ 26, 22, 38, 255 });
     DrawRectangleRoundedLinesEx(Rectangle{ 98, 9, 90, 30 }, 0.3f, 4, 1.5f, Color{ 180, 140, 40, 255 });
-    DrawCircle(112, 24, 6, GOLD);
-    DrawCircle(112, 24, 3, YELLOW);
-    drawText(TextFormat("%d", player.getGold()), 124, 14, 16, Color{ 255, 230, 110, 255 });
+    drawText(TextFormat("VANG %d", player.getGold()), 108, 14, 16, Color{ 255, 220, 80, 255 });
 
-    // 1.3. Thanh Máu HP (RPG Health Bar)
-    int hpX = 196, hpY = 9, hpW = 180, hpH = 30;
+    // 1.3. Thanh Máu Người Chơi
+    int hpX = 205, hpY = 15, hpW = 165, hpH = 18;
     float hpPercent = (float)player.getHp() / (float)player.getMaxHp();
     if (hpPercent < 0.0f) hpPercent = 0.0f;
     if (hpPercent > 1.0f) hpPercent = 1.0f;
 
-    DrawRectangle(hpX, hpY, hpW, hpH, Color{ 35, 12, 16, 255 });
-    int fillW = (int)((hpW - 4) * hpPercent);
-    DrawRectangle(hpX + 2, hpY + 2, fillW, hpH - 4, Color{ 190, 25, 40, 255 });
-    DrawRectangle(hpX + 2, hpY + 2, fillW, (hpH - 4) / 2, Color{ 255, 90, 100, 140 });
-    DrawRectangleLines(hpX, hpY, hpW, hpH, Color{ 140, 50, 60, 255 });
-    DrawRectangleLines(hpX + 1, hpY + 1, hpW - 2, hpH - 2, Color{ 55, 18, 24, 255 });
-    drawText(TextFormat("HP %d/%d", player.getHp(), player.getMaxHp()), hpX + 44, hpY + 6, 16, WHITE);
+    DrawRectangle(hpX, hpY, hpW, hpH, Color{ 35, 25, 30, 255 });
+    DrawRectangle(hpX + 2, hpY + 2, (int)((hpW - 4) * hpPercent), hpH - 4, Color{ 215, 45, 45, 255 });
+    DrawRectangleLines(hpX, hpY, hpW, hpH, Color{ 110, 50, 50, 255 });
+    drawText(TextFormat("HP %d/%d", player.getHp(), player.getMaxHp()), hpX + 38, hpY + 2, 14, WHITE);
 
     // 1.4. Chỉ số Tấn công & Phòng ngự
     drawText(TextFormat("ATK %d", player.getAttack()), 386, 15, 16, Color{ 255, 165, 70, 255 });
@@ -946,34 +986,47 @@ void GameEngine::renderHUD() const {
             Position pPos = player.getPosition();
             Position bPos = boss->getPosition();
             int cheb = std::max(std::abs(pPos.x - bPos.x), std::abs(pPos.y - bPos.y));
-            if (cheb <= 11) {
-                int bossBarW = 380, bossBarH = 18;
+            // Hiển thị thanh máu nếu trong Đấu trường hoặc trong cự ly quan sát
+            if (bossCinematicTriggered || cheb <= 14) {
+                int bossBarW = 420, bossBarH = 20;
                 int bossBarX = screenW / 2 - bossBarW / 2;
                 int bossBarY = 56;
                 float bossHp = (float)boss->getHp() / (float)boss->getMaxHp();
                 if (bossHp < 0.0f) bossHp = 0.0f;
                 if (bossHp > 1.0f) bossHp = 1.0f;
 
-                DrawRectangle(bossBarX - 8, bossBarY - 6, bossBarW + 16, bossBarH + 28, Color{ 16, 12, 22, 235 });
-                DrawRectangleLines(bossBarX - 8, bossBarY - 6, bossBarW + 16, bossBarH + 28, Color{ 180, 130, 45, 255 });
+                DrawRectangle(bossBarX - 10, bossBarY - 6, bossBarW + 20, bossBarH + 28, Color{ 16, 12, 22, 235 });
+                DrawRectangleLines(bossBarX - 10, bossBarY - 6, bossBarW + 20, bossBarH + 28, Color{ 200, 140, 45, 255 });
                 
-                drawText("BOAR KING - CHUA HEO RUNG", bossBarX + 60, bossBarY - 2, 15, Color{ 255, 170, 80, 255 });
+                drawText("BOAR KING - CHUA HEO RUNG", bossBarX + 85, bossBarY - 2, 16, Color{ 255, 170, 80, 255 });
                 
                 DrawRectangle(bossBarX, bossBarY + 18, bossBarW, bossBarH, Color{ 40, 15, 15, 255 });
                 int fillBossW = (int)((bossBarW - 4) * bossHp);
-                DrawRectangle(bossBarX + 2, bossBarY + 20, fillBossW, bossBarH - 4, Color{ 220, 60, 30, 255 });
+                DrawRectangle(bossBarX + 2, bossBarY + 20, fillBossW, bossBarH - 4, Color{ 220, 50, 30, 255 });
                 DrawRectangle(bossBarX + 2, bossBarY + 20, fillBossW, (bossBarH - 4) / 2, Color{ 255, 120, 60, 160 });
-                DrawRectangleLines(bossBarX, bossBarY + 18, bossBarW, bossBarH, Color{ 130, 50, 40, 255 });
+                DrawRectangleLines(bossBarX, bossBarY + 18, bossBarW, bossBarH, Color{ 140, 50, 40, 255 });
                 
-                drawText(TextFormat("HP: %d/%d", boss->getHp(), boss->getMaxHp()), bossBarX + bossBarW / 2 - 35, bossBarY + 19, 14, WHITE);
+                drawText(TextFormat("HP: %d/%d", boss->getHp(), boss->getMaxHp()), bossBarX + bossBarW / 2 - 38, bossBarY + 20, 14, WHITE);
             }
         }
     }
 
     // =========================================================================
-    // 3. BANNER KHU VỰC (HIỂN THỊ KHI VÀO PHÂN KHU MỚI)
+    // 3. CẢNH BÁO NGUY HIỂM: CHÚA HEO RỪNG XUẤT HIỆN
     // =========================================================================
-    if (state == GameState::RUNNING && bannerTimer > 0.0f) {
+    if (state == GameState::RUNNING && bossWarningTimer > 0.0f) {
+        bool flash = ((int)(GetTime() * 8.0f) % 2 == 0);
+        int warnW = 720, warnH = 52;
+        int warnX = screenW / 2 - warnW / 2;
+        int warnY = 110;
+        Color warnBg = flash ? Color{ 170, 25, 25, 245 } : Color{ 70, 12, 12, 245 };
+        Color warnBorder = flash ? YELLOW : RED;
+        DrawRectangle(warnX, warnY, warnW, warnH, warnBg);
+        DrawRectangleLines(warnX, warnY, warnW, warnH, warnBorder);
+        drawText("!!! CANH BAO: CHUA HEO RUNG XUAT HIEN !!!", warnX + 65, warnY + 14, 22, flash ? WHITE : YELLOW);
+    }
+    // BANNER PHÂN KHU THƯỜNG (KHI KHÔNG HIỆN CẢNH BÁO BOSS)
+    else if (state == GameState::RUNNING && bannerTimer > 0.0f) {
         float alpha = (bannerTimer > 3.0f) ? (3.5f - bannerTimer) * 2.0f
                                            : (bannerTimer < 0.5f ? bannerTimer * 2.0f : 1.0f);
         if (alpha > 1.0f) alpha = 1.0f;
@@ -1269,6 +1322,10 @@ void GameEngine::run(const std::string& autoScreenshot) {
                         takeNow = true;
                     }
                 }
+            } else if (autoScreenshot.find("boss_entrance") != std::string::npos) {
+                takeNow = (testFrames >= 18); // Boss đang phi nước đại từ phải sang trái và banner cảnh báo hiện
+            } else if (autoScreenshot.find("boss_battle") != std::string::npos) {
+                takeNow = (testFrames >= 40); // Boss đã đến giữa và sẵn sàng chiến đấu
             } else {
                 takeNow = (testFrames >= 10);
             }

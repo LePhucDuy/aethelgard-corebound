@@ -203,12 +203,12 @@ void Dungeon::generate(int floor) {
     makeStair(112, 7);
 
     // =========================================================================
-    // KHU E: ĐỈNH ĐỀN THỜ BOSS (x = 113 đến 129) - Tầng cao y = 6
-    // Bệ đá Đền Thờ uy nghiêm, nơi Boar King ngự trị và Bệ đá Chiến Thắng
+    // KHU E: ĐỈNH ĐỀN THỜ (x = 113 đến 129) - Tầng cao y = 6
+    // Cầu thang phía sau Đền Thờ dẫn xuống Đấu Trường Boss phía trước
     // =========================================================================
     makePlatform(113, 128, 6, 2);
 
-    // Cầu thang phía sau Đền Thờ dẫn xuống hành lang ngầm tầng dưới (y = 18)
+    // Cầu thang phía sau Đền Thờ dẫn xuống tầng đất (y = 18)
     makeStair(122, 7);
     makeStair(123, 8);
     makeStair(124, 9);
@@ -221,12 +221,25 @@ void Dungeon::generate(int floor) {
     makeStair(127, 16);
     makeStair(128, 17);
 
-    // Bệ đá cổ chuyển tầng / Chiến thắng đặt tại đỉnh Đền Thờ (x = 126, y = 6)
-    stairsPos = Position(126, 6);
+    // =========================================================================
+    // KHU F: ĐẤU TRƯỜNG BOAR KING (x = 130 đến 164) - Tầng trệt y = 18
+    // Đấu trường phẳng lì, trống hoàn toàn, không có nền trên cao
+    // =========================================================================
+    // Bức tường thành chặn biên phải ở x = 164
+    for (int y = 0; y < height; ++y) {
+        grid[y][164].setCustom(TileType::WALL, Rectangle{ 32.0f, 32.0f, 16.0f, 16.0f }, false);
+    }
+    // Cổng vòm cổ kính vào đấu trường ở x = 129
+    for (int y = 0; y <= 14; ++y) {
+        grid[y][129].setCustom(TileType::WALL, Rectangle{ 32.0f, 32.0f, 16.0f, 16.0f }, false);
+    }
+
+    // Bệ đá cổ chuyển tầng / Chiến thắng đặt tại cuối Đấu Trường (x = 162, y = 18)
+    stairsPos = Position(162, 18);
     grid[stairsPos.y][stairsPos.x].setCustom(TileType::STAIRS_DOWN, Rectangle{ 128.0f, 16.0f, 16.0f, 16.0f }, true);
 
     // =========================================================================
-    // 3. PHÂN BỔ QUÁI VẬT THEO 5 KHU VỰC TRÊN BẢN ĐỒ 130 Ô
+    // 3. PHÂN BỔ QUÁI VẬT THEO 6 KHU VỰC TRÊN BẢN ĐỒ 165 Ô
     // =========================================================================
     // KHU A - TRẠI KHỞI ĐẦU (x = 0..24)
     spawnMonster(MonsterType::SNAIL, Position(11, 15));
@@ -265,13 +278,16 @@ void Dungeon::generate(int floor) {
     spawnMonster(MonsterType::BOAR, Position(106, 18));
     spawnMonster(MonsterType::SNAIL, Position(110, 18));
 
-    // KHU E - ĐỈNH ĐỀN THỜ BOSS (x = 113..129)
-    spawnMonster(MonsterType::BOAR_KING, Position(121, 6)); // BOSS CHÍNH
-    spawnMonster(MonsterType::SMALL_BEE, Position(117, 4)); // Hộ vệ bay
+    // KHU E - ĐỈNH ĐỀN THỜ (x = 113..129)
+    spawnMonster(MonsterType::BOAR, Position(121, 6));       // Hộ vệ đền thờ
+    spawnMonster(MonsterType::SMALL_BEE, Position(117, 4));  // Hộ vệ bay
     spawnMonster(MonsterType::SMALL_BEE, Position(125, 4));
     // Tầng hầm Đền Thờ (y = 18)
     spawnMonster(MonsterType::BOAR, Position(118, 18));
     spawnMonster(MonsterType::SNAIL, Position(123, 18));
+
+    // KHU F - ĐẤU TRƯỜNG BOAR KING (x = 130..164)
+    spawnMonster(MonsterType::BOAR_KING, Position(160, 18)); // BOSS CHÍNH - Chờ ở rìa phải lao ra
 
     // =========================================================================
     // 4. SINH VẬT PHẨM TRÊN BẢN ĐỒ 130 Ô
@@ -333,11 +349,18 @@ void Dungeon::generate(int floor) {
     groundItems.push_back(std::make_unique<Weapon>(
         "Dai Kiem Huyen Bi", "Vu khi tang +15 ATK", 15, Position(124, 6), "item_sword_mystic"
     ));
+    // KHU F - ĐẤU TRƯỜNG BOAR KING
     groundItems.push_back(std::make_unique<Potion>(
-        "Than Duoc Aethelgard", "Hoi phuc 100 HP", 100, Position(120, 18), "item_potion_elixir"
+        "Than Duoc Aethelgard", "Hoi phuc 100 HP", 100, Position(133, 18), "item_potion_elixir"
+    ));
+    groundItems.push_back(std::make_unique<Potion>(
+        "Binh Thuoc Cuong Hoa", "Hoi phuc 60 HP", 60, Position(145, 18), "item_potion_strength"
+    ));
+    groundItems.push_back(std::make_unique<Potion>(
+        "Than Duoc Aethelgard", "Hoi phuc 100 HP", 100, Position(155, 18), "item_potion_elixir"
     ));
 
-    std::cout << "[Dungeon] Sinh dia hinh 2D Side thanh cong: 130 o ngang (5 khu) cho Tang " << floorLevel << std::endl;
+    std::cout << "[Dungeon] Sinh dia hinh 2D Side thanh cong: 165 o ngang (6 khu) cho Tang " << floorLevel << std::endl;
 }
 
 bool Dungeon::isValidPos(const Position& pos) const {
@@ -416,7 +439,8 @@ const char* Dungeon::getZoneName(int x) const {
     if (x < 56) return "RUNG NAM & CAU TREO";
     if (x < 89) return "VACH DA & VUC NUOC";
     if (x < 113) return "BINH NGUYEN TAN TICH";
-    return "DINH DEN THO BOSS";
+    if (x < 130) return "DINH DEN THO";
+    return "DAU TRUONG BOAR KING";
 }
 
 TileType Dungeon::getTileType(const Position& pos) const {

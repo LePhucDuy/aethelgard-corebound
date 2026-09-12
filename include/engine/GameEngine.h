@@ -56,6 +56,11 @@ private:
     float bannerTimer;             // Thời gian còn hiển thị banner
     int monstersDefeated;          // Số quái đã hạ (thống kê chiến thắng)
 
+    // Boss Boar King Cinematic & Cảnh báo nguy hiểm
+    bool bossCinematicTriggered;   // true khi người chơi bước vào đấu trường Boss (x >= 130)
+    float bossWarningTimer;        // Thời gian đếm ngược hiển thị cảnh báo trùm
+    float screenShake;             // Cường độ rung màn hình (Screen Shake)
+
     // Trạng thái giao diện
     bool showInventory;            // true: đang mở bảng túi đồ (phím B/I/Tab hoặc click chuột)
     bool showCombatLog;            // true: đang mở khung nhật ký chiến đấu (phím L)
