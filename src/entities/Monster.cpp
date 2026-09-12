@@ -17,6 +17,13 @@ Monster::Monster(const std::string& name, const Position& pos, int hp, int attac
 // ===== Hệ thống hoạt họa nhiều trạng thái =====
 
 void Monster::addAnimation(const std::string& stateName, std::unique_ptr<Animation> anim) {
+    if (anim) {
+        // Spritesheet của quái vật (Heo, Ốc, Ong) trong assets có hướng vẽ gốc quay về bên TRÁI.
+        // Đặt baseFacingRight = false để khi quái quay phải (facingRight = true),
+        // sprite được lật ngang (flip) sang phải chuẩn xác theo đúng hướng di chuyển.
+        anim->setBaseFacingRight(false);
+        anim->setFacingRight(facingRight);
+    }
     anims[stateName] = std::move(anim);
     // Animation đầu tiên nạp vào trở thành mặc định
     if (!currentAnim) {
@@ -31,6 +38,7 @@ void Monster::setState(const std::string& stateName) {
     animState = stateName;
     currentAnim = it->second.get();
     currentAnim->reset();
+    currentAnim->setFacingRight(facingRight);
 }
 
 void Monster::update(float deltaTime) {
@@ -100,6 +108,9 @@ bool Monster::isDeathAnimFinished() const {
 
 void Monster::setFacing(bool right) {
     facingRight = right;
+    for (auto& pair : anims) {
+        if (pair.second) pair.second->setFacingRight(right);
+    }
     if (currentAnim) currentAnim->setFacingRight(right);
 }
 

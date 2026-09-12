@@ -53,6 +53,7 @@ public:
     bool moveBy(int dx, int dy, Dungeon& dungeon);
     void triggerAttack();
     void triggerJump(int dx = 0, int dy = -1);
+    void setFacingRight(bool right);
 
     bool isFacingRight() const { return facingRight; }
     bool isAttacking() const { return currentState == "attack"; }

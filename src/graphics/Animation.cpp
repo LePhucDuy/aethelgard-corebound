@@ -4,13 +4,13 @@
 Animation::Animation() 
     : textureId(""), totalFrames(1), frameWidth(0), frameHeight(0),
       frameDuration(0.12f), timer(0.0f), currentFrame(0),
-      isFacingRight(true), isLoop(true), isFinished(false) {}
+      isFacingRight(true), baseFacingRight(true), isLoop(true), isFinished(false) {}
 
 Animation::Animation(const std::string& textureId, int totalFrames, int frameWidth, int frameHeight, 
-                     float frameDuration, bool isLoop)
+                     float frameDuration, bool isLoop, bool baseFacingRight)
     : textureId(textureId), totalFrames(totalFrames), frameWidth(frameWidth), frameHeight(frameHeight),
       frameDuration(frameDuration), timer(0.0f), currentFrame(0),
-      isFacingRight(true), isLoop(isLoop), isFinished(false) {}
+      isFacingRight(true), baseFacingRight(baseFacingRight), isLoop(isLoop), isFinished(false) {}
 
 void Animation::update(float deltaTime) {
     if (isFinished && !isLoop) return;
@@ -35,11 +35,12 @@ void Animation::draw(Vector2 position, float scale, Color tint) const {
     if (tex.id == 0) return;
 
     // Cắt frame hiện tại
-    // Nếu quay sang trái, gán width âm để lật ảnh (Sprite Flip)
+    // Nếu hướng mong muốn khác với hướng vẽ gốc của texture, lật ảnh (Sprite Flip)
+    bool flip = (isFacingRight != baseFacingRight);
     Rectangle sourceRec = {
         (float)(currentFrame * frameWidth),
         0.0f,
-        isFacingRight ? (float)frameWidth : -(float)frameWidth,
+        flip ? -(float)frameWidth : (float)frameWidth,
         (float)frameHeight
     };
 
@@ -68,18 +69,27 @@ bool Animation::getFacingRight() const {
     return isFacingRight;
 }
 
+void Animation::setBaseFacingRight(bool baseRight) {
+    baseFacingRight = baseRight;
+}
+
+bool Animation::getBaseFacingRight() const {
+    return baseFacingRight;
+}
+
 bool Animation::hasFinished() const {
     return isFinished;
 }
 
 void Animation::setTextureId(const std::string& id, int frames, int width, int height, 
-                            float duration, bool loop) {
+                            float duration, bool loop, bool baseRight) {
     textureId = id;
     totalFrames = frames;
     frameWidth = width;
     frameHeight = height;
     frameDuration = duration;
     isLoop = loop;
+    baseFacingRight = baseRight;
     reset();
 }
 

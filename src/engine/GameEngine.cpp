@@ -376,6 +376,7 @@ void GameEngine::handleInput() {
         if (isInit || moveTimer <= 0.0f) {
             moveTimer = isInit ? 0.12f : 0.07f; // Nhấn đầu chờ 0.12s, giữ phím lặp mỗi 0.07s
             int dx = moveRightHeld ? 1 : -1;
+            player.setFacingRight(dx > 0);
 
             Position candidates[] = {
                 Position(pPos.x + dx, pPos.y),     // Đi thẳng ngang

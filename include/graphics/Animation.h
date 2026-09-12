@@ -22,13 +22,14 @@ private:
     float timer;
     int currentFrame;
     bool isFacingRight;
+    bool baseFacingRight; // Hướng vẽ gốc trong spritesheet (true = quay phải, false = quay trái)
     bool isLoop;
     bool isFinished;
 
 public:
     Animation();
     Animation(const std::string& textureId, int totalFrames, int frameWidth, int frameHeight, 
-              float frameDuration = 0.12f, bool isLoop = true);
+              float frameDuration = 0.12f, bool isLoop = true, bool baseFacingRight = true);
 
     void update(float deltaTime);
     void draw(Vector2 position, float scale = 2.0f, Color tint = WHITE) const;
@@ -36,10 +37,12 @@ public:
     void reset();
     void setFacingRight(bool right);
     bool getFacingRight() const;
+    void setBaseFacingRight(bool baseRight);
+    bool getBaseFacingRight() const;
     bool hasFinished() const;
 
     void setTextureId(const std::string& id, int frames, int width, int height, 
-                      float duration = 0.12f, bool loop = true);
+                      float duration = 0.12f, bool loop = true, bool baseRight = true);
     int getCurrentFrame() const;
     int getTotalFrames() const { return totalFrames; }
     int getFrameWidth() const { return frameWidth; }

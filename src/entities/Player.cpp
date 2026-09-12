@@ -67,18 +67,19 @@ void Player::triggerAttack() {
     }
 }
 
+void Player::setFacingRight(bool right) {
+    facingRight = right;
+    for (auto& pair : anims) {
+        if (pair.second) pair.second->setFacingRight(right);
+    }
+}
+
 void Player::triggerJump(int dx, int dy) {
     (void)dy;
     if (dx < 0) {
-        facingRight = false;
-        for (auto& pair : anims) {
-            if (pair.second) pair.second->setFacingRight(false);
-        }
+        setFacingRight(false);
     } else if (dx > 0) {
-        facingRight = true;
-        for (auto& pair : anims) {
-            if (pair.second) pair.second->setFacingRight(true);
-        }
+        setFacingRight(true);
     }
 
     if (anims.find("jump") != anims.end()) {
@@ -195,15 +196,9 @@ bool Player::moveBy(int dx, int dy, Dungeon& dungeon) {
 
     // Cập nhật hướng quay mặt của sprite
     if (dx < 0) {
-        facingRight = false;
-        for (auto& pair : anims) {
-            if (pair.second) pair.second->setFacingRight(false);
-        }
+        setFacingRight(false);
     } else if (dx > 0) {
-        facingRight = true;
-        for (auto& pair : anims) {
-            if (pair.second) pair.second->setFacingRight(true);
-        }
+        setFacingRight(true);
     }
 
     // Kích hoạt hoạt họa chạy — đồng bộ với nhịp input 0.07s để run loop mượt,
