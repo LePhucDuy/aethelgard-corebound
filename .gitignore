@@ -1,0 +1,32 @@
+# ===== Sản phẩm build (tự sinh, không commit) =====
+bin/
+*.o
+*.a
+
+# Thư viện raylib + GLFW static build sẵn cho Linux
+# (tạo lại bằng: ./setup-linux.sh)
+lib/
+
+# ===== Nguồn raylib/GLFW tải về tạm (nếu ai giải nén trong dự án) =====
+vendor/
+third_party/
+raylib-*.tar.gz
+glfw-*.tar.gz
+
+# ===== Save game sinh khi chơi =====
+saves/
+
+# ===== Screenshot chụp ra tại thư mục gốc =====
+/*.png
+
+# ===== Log tạm =====
+*.log
+
+# ===== Hệ điều hành / IDE =====
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
