@@ -80,6 +80,7 @@ void GameEngine::init() {
     tm.load("warrior_attack", "assets/characters/warrior/Attack-01/Attack-01-Sheet.png");
     tm.load("warrior_jump",   "assets/characters/warrior/Jumlp-All/Jump-All-Sheet.png");
     tm.load("warrior_dead",   "assets/characters/warrior/Dead/Dead-Sheet.png");
+    tm.load("warrior_fall",   "assets/characters/warrior/Jump-End/Jump-End-Sheet.png");
     tm.load("boar_walk",       "assets/mobs/boar/Walk/Walk-Base-Sheet.png");
     tm.load("boar_idle",       "assets/mobs/boar/Idle/Idle-Sheet.png");
     tm.load("boar_run",        "assets/mobs/boar/Run/Run-Sheet.png");
@@ -113,6 +114,7 @@ void GameEngine::init() {
     player.addAnimation("attack", std::make_unique<Animation>("warrior_attack", 8, 96, 80, 0.06f, false));
     player.addAnimation("jump",   std::make_unique<Animation>("warrior_jump", 15, 64, 64, 0.03f, true));
     player.addAnimation("dead",   std::make_unique<Animation>("warrior_dead", 8, 80, 64, 0.085f, false));
+    player.addAnimation("fall",   std::make_unique<Animation>("warrior_fall", 3, 64, 64, 0.18f, false));
     player.setState("idle");
 
     // 3. Khởi tạo tầng 1 hầm ngục 2D Side dài 75 ô
@@ -295,6 +297,11 @@ void GameEngine::handleInput() {
         }
     }
 
+    // Khi đang rơi tự do xuống hố và tiếp đất: khóa toàn bộ thao tác di chuyển / chiến đấu
+    if (player.isFalling()) {
+        return;
+    }
+
     // =========================================================================
     // 1. HÀNH ĐỘNG TẤN CÔNG (ATTACK) [J] / [F] / [Z] (Hỗ trợ nhấp hoặc giữ phím)
     // =========================================================================
@@ -463,8 +470,17 @@ void GameEngine::handleInput() {
                             jumped = true;
                             break;
                         }
-                        if (dungeon.isWalkable(cand) && dungeon.getMonsterAt(cand) == nullptr) {
-                            player.setPosition(cand);
+                        if (dungeon.isWalkable(cand)) {
+                            Position landPos = cand;
+                            if (dungeon.getMonsterAt(landPos) != nullptr) {
+                                if (dungeon.isWalkable(Position(jX - 1, fallY)) && dungeon.getMonsterAt(Position(jX - 1, fallY)) == nullptr) {
+                                    landPos = Position(jX - 1, fallY);
+                                } else if (dungeon.isWalkable(Position(jX + 1, fallY)) && dungeon.getMonsterAt(Position(jX + 1, fallY)) == nullptr) {
+                                    landPos = Position(jX + 1, fallY);
+                                }
+                            }
+                            player.setPosition(landPos);
+                            player.triggerFall(0.52f, 0.22f);
                             combatLog.push_back("[NHAY XUONG] Ban da phong minh roi xuong tang ben duoi!");
                             jumped = true;
                             break;
@@ -562,53 +578,54 @@ void GameEngine::handleInput() {
                 if (dungeon.getMonsterAt(forwardPos)) {
                     combatLog.push_back("Quai vat dang chan duong! Nhan [J] hoac [F] de tan cong.");
                 } else {
-                    // TRỌNG LỰC: BƯỚC HỤT VÀO HỐ HOẶC VỰC NƯỚC SÂU
+                    // Phía trước là hố khoảng cách (EMPTY) hoặc vực nước:
+                    // Bước tiếp sẽ rơi tự do xuống sàn đất tầng dưới một cách tự nhiên
                     TileType forwardType = dungeon.getTileType(forwardPos);
-                    // Rơi nếu phía trước là không khí (EMPTY) hoặc nước ngập (WATER)
                     if (forwardType == TileType::EMPTY || forwardType == TileType::WATER) {
-                        // Khoảng đệm coyote time (0.18s): ngập ngừng ở mép hố để kịp bấm Space nhảy qua
-                        if (edgeSlipTimer <= 0.0f) {
-                            edgeSlipTimer = 0.18f;
-                            return;
-                        }
-
-                        // Người chơi tiếp tục nhấn giữ phím vượt qua thời gian chờ -> Trượt chân rơi xuống!
-                        edgeSlipTimer = 0.0f;
                         int targetX = pPos.x + dx;
-                        bool landed = false;
-                        for (int fallY = pPos.y; fallY < dungeon.getHeight(); ++fallY) {
+
+                        for (int fallY = pPos.y + 1; fallY < dungeon.getHeight(); ++fallY) {
                             Position checkPos(targetX, fallY);
-                            // RƠI TRÚNG ĐẦM LẦY -> BẮT ĐẦU CHÌM DẦN!
+
+                            // 1. Rơi trúng Đầm lầy lún
                             if (dungeon.isWater(checkPos)) {
                                 player.setPosition(checkPos);
                                 isSinking = true;
                                 sinkTimer = sinkDuration;
                                 sinkDepth = 0.0f;
                                 player.setSinkVisualOffset(0.0f);
-                                combatLog.push_back("[LUN DAM LAY] Ban da sa vao dam lay lun va dang bi chim dan!");
+                                combatLog.push_back("[LUN DAM LAY] Ban da sa chan xuong dam lay lun va dang bi chim dan!");
                                 combatLog.push_back(">> Nhanh tay nhan [Space] de vung vay thoat len bo!");
-                                landed = true;
                                 break;
                             }
-                            // RƠI ĐÁP TRÚNG BỆ NỀN DƯỚI (FLOOR, STAIRS)
-                            if (dungeon.isWalkable(checkPos) && dungeon.getMonsterAt(checkPos) == nullptr) {
-                                int actualDx = targetX - pPos.x;
-                                int actualDy = fallY - pPos.y;
-                                player.moveBy(actualDx, actualDy, dungeon);
-                                combatLog.push_back("[TRUOT CHAN] Ban da bi truot chan roi xuong tang duoi!");
+
+                            // 2. Rơi trúng sàn đất tầng dưới (FLOOR / STAIRS)
+                            if (dungeon.isWalkable(checkPos)) {
+                                Position landPos = checkPos;
+                                // Nếu ô rơi xuống đang có quái vật đứng, ưu tiên né sang ô đất trống lân cận
+                                if (dungeon.getMonsterAt(landPos) != nullptr) {
+                                    Position leftPos(targetX - 1, fallY);
+                                    Position rightPos(targetX + 1, fallY);
+                                    if (dungeon.isWalkable(leftPos) && dungeon.getMonsterAt(leftPos) == nullptr) {
+                                        landPos = leftPos;
+                                    } else if (dungeon.isWalkable(rightPos) && dungeon.getMonsterAt(rightPos) == nullptr) {
+                                        landPos = rightPos;
+                                    }
+                                }
+
+                                player.setPosition(landPos);
+                                player.triggerFall(0.52f, 0.22f);
+                                combatLog.push_back("[ROI XUONG] Ban da buoc hut va roi xuong tang duoi!");
+
+                                // Nhặt vật phẩm nếu có tại ô đáp
                                 std::unique_ptr<Item> item = dungeon.takeItemAt(player.getPosition());
                                 if (item) {
                                     combatLog.push_back("Nhat duoc: " + item->getName() + "!");
                                     player.getInventory().addItem(std::move(item));
                                 }
-                                landed = true;
+
                                 break;
                             }
-                        }
-                        if (!landed) {
-                            player.takeDamage(9999);
-                            state = GameState::GAME_OVER;
-                            combatLog.push_back(">>> BAN DA SA CHAN XUONG VUC THAM VA TU TRAN! Nhan [R] de hoi sinh va thu lai. <<<");
                         }
                     }
                 }
@@ -1428,6 +1445,29 @@ void GameEngine::run(const std::string& autoScreenshot) {
                     }
                 }
                 takeNow = (testFrames >= 7);
+            } else if (autoScreenshot.find("fall_lower") != std::string::npos) {
+                if (testFrames == 2) {
+                    Position pPos = player.getPosition();
+                    int targetX = pPos.x + 1;
+                    for (int fallY = pPos.y + 1; fallY < dungeon.getHeight(); ++fallY) {
+                        Position checkPos(targetX, fallY);
+                        if (dungeon.isWalkable(checkPos)) {
+                            Position landPos = checkPos;
+                            if (dungeon.getMonsterAt(landPos) != nullptr) {
+                                if (dungeon.isWalkable(Position(targetX - 1, fallY)) && dungeon.getMonsterAt(Position(targetX - 1, fallY)) == nullptr) {
+                                    landPos = Position(targetX - 1, fallY);
+                                } else if (dungeon.isWalkable(Position(targetX + 1, fallY)) && dungeon.getMonsterAt(Position(targetX + 1, fallY)) == nullptr) {
+                                    landPos = Position(targetX + 1, fallY);
+                                }
+                            }
+                            player.setPosition(landPos);
+                            player.triggerFall(0.52f, 0.22f);
+                            combatLog.push_back("[ROI XUONG] Ban da buoc hut va roi xuong tang duoi!");
+                            break;
+                        }
+                    }
+                }
+                takeNow = (testFrames >= 16);
             } else {
                 takeNow = (testFrames >= 10);
             }

@@ -43,6 +43,7 @@ public:
 
     void setTextureId(const std::string& id, int frames, int width, int height, 
                       float duration = 0.12f, bool loop = true, bool baseRight = true);
+    void setCurrentFrame(int frame);
     int getCurrentFrame() const;
     int getTotalFrames() const { return totalFrames; }
     int getFrameWidth() const { return frameWidth; }

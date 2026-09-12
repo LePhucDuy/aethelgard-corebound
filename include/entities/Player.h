@@ -40,6 +40,11 @@ private:
     float jumpTimer;       // Thời gian còn khóa hoạt họa nhảy (ưu tiên hơn run)
     float jumpVisualLift;  // Độ nâng hình ảnh (px world) cho cú nhảy xa
     float sinkVisualOffset;// Độ lún vào bùn đầm lầy (px)
+    float fallTimer;       // Thời gian đếm ngược của cú rơi xuống hố
+    float fallAirDuration; // Thời gian rơi tự do trong không trung (chuẩn gia tốc g)
+    float fallTotalDuration; // Tổng thời gian rơi + tiếp đất giảm chấn
+    float startFallY;      // Tọa độ Y bắt đầu rơi
+    float targetFallY;     // Tọa độ Y đáy sàn tiếp đất
     bool facingRight;
 
     // Quản lý kỹ năng đa hình (Polymorphic Skills)
@@ -67,11 +72,13 @@ public:
     bool moveBy(int dx, int dy, Dungeon& dungeon);
     void triggerAttack();
     void triggerJump(int dx = 0, int dy = -1);
+    void triggerFall(float airDuration = 0.52f, float landDuration = 0.22f);
     void setFacingRight(bool right);
 
     bool isFacingRight() const { return facingRight; }
     bool isAttacking() const { return currentState == "attack"; }
     bool isJumping() const { return currentState == "jump"; }
+    bool isFalling() const { return fallTimer > 0.0f; }
 
     // Xử lý kinh nghiệm, cấp độ và tiền vàng
     void addExp(int amount);
