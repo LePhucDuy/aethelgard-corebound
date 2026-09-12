@@ -81,6 +81,15 @@ private:
     bool showForge;                // true: đang mở đe rèn cường hóa (phím U hoặc click chuột)
     bool showCombatLog;            // true: đang mở khung nhật ký chiến đấu (phím L)
 
+    // Thông báo phản hồi tức thì trên các cửa sổ giao diện (Shop, Forge)
+    std::string shopNotification;
+    Color shopNotificationColor;
+    float shopNotificationTimer;
+
+    std::string forgeNotification;
+    Color forgeNotificationColor;
+    float forgeNotificationTimer;
+
     // Ghi đè vị trí xuất phát (tuỳ chọn, phục vụ debug/test từng khu: --spawn X Y)
     int spawnOverrideX;
     int spawnOverrideY;
@@ -98,6 +107,7 @@ private:
     void buyShopItem(int slot);
     void triggerForgeUpgrade();
     void interactWithChest();
+    void tryPickupItemAtPlayerPos();
 
 public:
     GameEngine(int spawnX = -1, int spawnY = -1, bool startWithInventory = false, bool startLethal = false, bool startWithShop = false, bool startWithForge = false);

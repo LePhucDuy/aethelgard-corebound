@@ -46,6 +46,12 @@ GameEngine::GameEngine(int spawnX, int spawnY, bool startWithInventory, bool sta
       showShop(startWithShop),
       showForge(startWithForge),
       showCombatLog(true),
+      shopNotification(""),
+      shopNotificationColor(WHITE),
+      shopNotificationTimer(0.0f),
+      forgeNotification(""),
+      forgeNotificationColor(WHITE),
+      forgeNotificationTimer(0.0f),
       spawnOverrideX(spawnX),
       spawnOverrideY(spawnY),
       startLethalOverride(startLethal) {
@@ -336,12 +342,12 @@ void GameEngine::handleInput() {
 
         // 3. Tương tác khi CỬA HÀNG đang mở
         if (showShop) {
-            int modalW = 560, modalH = 460;
+            int modalW = 570, modalH = 500;
             int modalX = screenW / 2 - modalW / 2;
             int modalY = screenH / 2 - modalH / 2;
 
             // Nút đóng [X]
-            Rectangle closeBtn = { (float)(modalX + modalW - 36), (float)(modalY + 8), 28.0f, 28.0f };
+            Rectangle closeBtn = { (float)(modalX + modalW - 36), (float)(modalY + 9), 28.0f, 28.0f };
             if (CheckCollisionPointRec(mouse, closeBtn)) {
                 showShop = false;
                 return;
@@ -351,9 +357,9 @@ void GameEngine::handleInput() {
             for (int i = 0; i < 6; ++i) {
                 int col = i % 2;
                 int row = i / 2;
-                int cardX = modalX + 16 + col * 270;
-                int cardY = modalY + 54 + row * 128;
-                Rectangle cardRect = { (float)cardX, (float)cardY, 262.0f, 118.0f };
+                int cardX = modalX + 16 + col * 272;
+                int cardY = modalY + 54 + row * 118;
+                Rectangle cardRect = { (float)cardX, (float)cardY, 265.0f, 112.0f };
                 if (CheckCollisionPointRec(mouse, cardRect)) {
                     buyShopItem(i);
                     return;
@@ -371,19 +377,19 @@ void GameEngine::handleInput() {
 
         // 4. Tương tác khi ĐE RÈN đang mở
         if (showForge) {
-            int modalW = 460, modalH = 400;
+            int modalW = 480, modalH = 430;
             int modalX = screenW / 2 - modalW / 2;
             int modalY = screenH / 2 - modalH / 2;
 
             // Nút đóng [X]
-            Rectangle closeBtn = { (float)(modalX + modalW - 36), (float)(modalY + 8), 28.0f, 28.0f };
+            Rectangle closeBtn = { (float)(modalX + modalW - 36), (float)(modalY + 9), 28.0f, 28.0f };
             if (CheckCollisionPointRec(mouse, closeBtn)) {
                 showForge = false;
                 return;
             }
 
             // Nút [CƯỜNG HÓA KIẾM]
-            Rectangle upgradeBtn = { (float)(modalX + 30), (float)(modalY + modalH - 65), (float)(modalW - 60), 46.0f };
+            Rectangle upgradeBtn = { (float)(modalX + 24), (float)(modalY + modalH - 58), (float)(modalW - 48), 44.0f };
             if (CheckCollisionPointRec(mouse, upgradeBtn)) {
                 triggerForgeUpgrade();
                 return;
@@ -654,11 +660,7 @@ void GameEngine::handleInput() {
 
         if (jumped) {
             edgeSlipTimer = 0.0f;
-            std::unique_ptr<Item> item = dungeon.takeItemAt(player.getPosition());
-            if (item) {
-                combatLog.push_back("Nhat duoc: " + item->getName() + "!");
-                player.getInventory().addItem(std::move(item));
-            }
+            tryPickupItemAtPlayerPos();
         }
 
         return;
@@ -702,12 +704,7 @@ void GameEngine::handleInput() {
                     int actualDy = cand.y - pPos.y;
                     player.moveBy(actualDx, actualDy, dungeon);
                     edgeSlipTimer = 0.0f;
-
-                    std::unique_ptr<Item> item = dungeon.takeItemAt(player.getPosition());
-                    if (item) {
-                        combatLog.push_back("Nhat duoc: " + item->getName() + "!");
-                        player.getInventory().addItem(std::move(item));
-                    }
+                    tryPickupItemAtPlayerPos();
                     moved = true;
                     break;
                 }
@@ -755,12 +752,7 @@ void GameEngine::handleInput() {
                                 combatLog.push_back("[ROI XUONG] Ban da buoc hut va roi xuong tang duoi!");
 
                                 // Nhặt vật phẩm nếu có tại ô đáp
-                                std::unique_ptr<Item> item = dungeon.takeItemAt(player.getPosition());
-                                if (item) {
-                                    combatLog.push_back("Nhat duoc: " + item->getName() + "!");
-                                    player.getInventory().addItem(std::move(item));
-                                }
-
+                                tryPickupItemAtPlayerPos();
                                 break;
                             }
                         }
@@ -800,12 +792,7 @@ void GameEngine::handleInput() {
                         player.triggerJump(0, -1);
                     }
                     player.moveBy(cand.x - pPos.x, cand.y - pPos.y, dungeon);
-
-                    std::unique_ptr<Item> item = dungeon.takeItemAt(player.getPosition());
-                    if (item) {
-                        combatLog.push_back("Nhat duoc: " + item->getName() + "!");
-                        player.getInventory().addItem(std::move(item));
-                    }
+                    tryPickupItemAtPlayerPos();
                     break;
                 }
             }
@@ -895,6 +882,14 @@ void GameEngine::update(float deltaTime) {
     if (attackTimer > 0.0f) attackTimer -= deltaTime;
     if (edgeSlipTimer > 0.0f) edgeSlipTimer -= deltaTime;
     if (bossWarningTimer > 0.0f) bossWarningTimer -= deltaTime;
+    if (shopNotificationTimer > 0.0f) {
+        shopNotificationTimer -= deltaTime;
+        if (shopNotificationTimer <= 0.0f) shopNotification.clear();
+    }
+    if (forgeNotificationTimer > 0.0f) {
+        forgeNotificationTimer -= deltaTime;
+        if (forgeNotificationTimer <= 0.0f) forgeNotification.clear();
+    }
     if (screenShake > 0.0f) {
         screenShake -= deltaTime * 1.5f;
         if (screenShake < 0.0f) screenShake = 0.0f;
@@ -1203,11 +1198,14 @@ void GameEngine::renderHUD() const {
 
     Rectangle invBtn = { (float)(screenW - 150), 8.0f, 140.0f, 32.0f };
     bool invHover = CheckCollisionPointRec(mouse, invBtn);
-    Color invBg = showInventory ? Color{ 60, 48, 85, 255 } : (invHover ? Color{ 45, 38, 65, 255 } : Color{ 28, 24, 40, 255 });
-    Color invBorder = showInventory ? GOLD : (invHover ? Color{ 240, 200, 70, 255 } : Color{ 85, 75, 105, 255 });
+    bool isInvFull = inv.isFull();
+    Color invBg = showInventory ? Color{ 60, 48, 85, 255 } : (isInvFull ? (invHover ? Color{ 80, 25, 30, 255 } : Color{ 55, 20, 25, 255 }) : (invHover ? Color{ 45, 38, 65, 255 } : Color{ 28, 24, 40, 255 }));
+    Color invBorder = isInvFull ? RED : (showInventory ? GOLD : (invHover ? Color{ 240, 200, 70, 255 } : Color{ 85, 75, 105, 255 }));
     DrawRectangleRounded(invBtn, 0.25f, 4, invBg);
     DrawRectangleRoundedLinesEx(invBtn, 0.25f, 4, 1.5f, invBorder);
-    drawText(TextFormat("[B] TUI DO (%d/8)", (int)inv.getSize()), invBtn.x + 12, invBtn.y + 7, 15, (invHover || showInventory) ? YELLOW : RAYWHITE);
+    const char* invLabel = isInvFull ? TextFormat("[B] TUI DO (%zu/%zu) [!]", inv.getSize(), inv.getCapacity()) : TextFormat("[B] TUI DO (%zu/%zu)", inv.getSize(), inv.getCapacity());
+    Color invTextCol = isInvFull ? Color{ 255, 130, 130, 255 } : ((invHover || showInventory) ? YELLOW : RAYWHITE);
+    drawText(invLabel, invBtn.x + (isInvFull ? 6 : 12), invBtn.y + 7, isInvFull ? 13 : 15, invTextCol);
 
     // Hiển thị trạng thái các kỹ năng đa hình (Polymorphic Skills - Chương 6)
     Skill* dashSkill = player.getSkill(1);
@@ -1356,7 +1354,7 @@ void GameEngine::renderHUD() const {
         DrawRectangle(modalX + 4, modalY + 4, modalW - 8, 40, Color{ 36, 30, 52, 255 });
         DrawLine(modalX + 4, modalY + 44, modalX + modalW - 4, modalY + 44, Color{ 195, 155, 55, 255 });
         drawText("TUI DO CHIEN BINH", modalX + 16, modalY + 12, 19, GOLD);
-        drawText(TextFormat("(%d/8 o)", (int)inv.getSize()), modalX + 225, modalY + 14, 15, Color{ 180, 180, 205, 255 });
+        drawText(TextFormat("(%zu/%zu o)", inv.getSize(), inv.getCapacity()), modalX + 225, modalY + 14, 15, Color{ 180, 180, 205, 255 });
 
         Rectangle closeBtn = { (float)(modalX + modalW - 38), (float)(modalY + 8), 28.0f, 28.0f };
         bool closeHover = CheckCollisionPointRec(mouse, closeBtn);
@@ -1621,6 +1619,15 @@ void GameEngine::run(const std::string& autoScreenshot) {
                 }
             } else if (autoScreenshot.find("boss_entrance") != std::string::npos) {
                 takeNow = (testFrames >= 18); // Boss đang phi nước đại từ phải sang trái và banner cảnh báo hiện
+            } else if (autoScreenshot.find("shop_full") != std::string::npos) {
+                if (testFrames == 2) {
+                    showShop = true;
+                    while (!player.getInventory().isFull()) {
+                        player.getInventory().addItem(std::make_unique<Potion>("Binh Thuoc Mau", "Hoi 35 HP", 35, Position(0,0), "item_potion_health"));
+                    }
+                    buyShopItem(0); // Kích hoạt mua khi túi đồ đã đầy 8/8
+                }
+                takeNow = (testFrames >= 4);
             } else if (autoScreenshot.find("boar_hit") != std::string::npos) {
                 if (testFrames == 3) {
                     // Mô phỏng chém trúng Boar bên cạnh để kiểm tra hoạt ảnh Hit-Sheet
@@ -1759,6 +1766,25 @@ void GameEngine::renderGoldParticles(Vector2 offset) const {
     }
 }
 
+void GameEngine::tryPickupItemAtPlayerPos() {
+    Position pos = player.getPosition();
+    if (!dungeon.getItemAt(pos)) return;
+
+    if (player.getInventory().isFull()) {
+        combatLog.push_back("[TUI DO] Tui do da day (8/8)! Khong the nhat vat pham.");
+        addDamagePopup("TUI DO DAY!", (float)(pos.x * Constants::TILE_SIZE) + 16.0f, (float)(pos.y * Constants::TILE_SIZE) - 8.0f, RED, 1.0f);
+        return;
+    }
+
+    std::unique_ptr<Item> item = dungeon.takeItemAt(pos);
+    if (item) {
+        std::string itemName = item->getName();
+        combatLog.push_back("Nhat duoc: " + itemName + "!");
+        addDamagePopup("+1 " + itemName, (float)(pos.x * Constants::TILE_SIZE) + 16.0f, (float)(pos.y * Constants::TILE_SIZE) - 16.0f, GREEN, 1.0f);
+        player.getInventory().addItem(std::move(item));
+    }
+}
+
 void GameEngine::interactWithChest() {
     Chest* chest = dungeon.getNearChest(player.getPosition());
     if (!chest) return;
@@ -1768,10 +1794,16 @@ void GameEngine::interactWithChest() {
         return;
     }
 
-    int cost = chest->getUnlockCost();
     float chestWorldX = (float)(chest->getPosition().x * Constants::TILE_SIZE) + 16.0f;
     float chestWorldY = (float)(chest->getPosition().y * Constants::TILE_SIZE) + 6.0f;
     float groundY = (float)(chest->getPosition().y * Constants::TILE_SIZE) + 24.0f;
+    int cost = chest->getUnlockCost();
+
+    if (player.getInventory().isFull()) {
+        combatLog.push_back("[RUONG BAU] Tui do da day (8/8)! Hay mo tui [B] de dung bot vat pham truoc khi mo ruong.");
+        addDamagePopup("TUI DO DA DAY!", chestWorldX, chestWorldY - 16.0f, RED, 1.2f);
+        return;
+    }
 
     if (chest->tryOpen(player, this)) {
         spawnGoldBurst(chestWorldX, chestWorldY, groundY, 25, 8);
@@ -1799,7 +1831,7 @@ void GameEngine::buyShopItem(int slot) {
     static const ShopItemDef catalog[6] = {
         { "Binh Mau Nho", "Hoi phuc 35 HP tuc thi", 25, "potion", 35, "item_potion_health" },
         { "Thuoc Cuong Hoa", "Hoi phuc 60 HP va tang suc ben", 40, "potion", 60, "item_potion_strength" },
-        { "Than Duoc Truong Sinh", "Hoi phuc 100 HP toi da", 65, "potion", 100, "item_potion_elixir" },
+        { "Than Duoc Aethelgard", "Hoi phuc 100 HP toi da", 65, "potion", 100, "item_potion_elixir" },
         { "Dai Kiem Huyen Bi", "Vu khi co dai tang +15 ATK", 80, "weapon", 15, "item_sword_mystic" },
         { "Khien Ho Menh", "Trang bi thep vieng vang tang +5 DEF", 70, "armor", 5, "item_armor_shield" },
         { "Nhan Co Ngu Ruby", "Nhan co +6 ATK, +3 DEF, +20 MaxHP", 90, "accessory", 6, "item_ring_power" }
@@ -1809,12 +1841,19 @@ void GameEngine::buyShopItem(int slot) {
     const auto& item = catalog[slot];
 
     if (player.getInventory().isFull()) {
-        combatLog.push_back("[CUA HANG] Tui do da day! Khong the mua them.");
+        shopNotification = TextFormat("TUI DO DA DAY (%zu/%zu)! Hay mo tui [B] dung bot vat pham.",
+                                      player.getInventory().getSize(), player.getInventory().getCapacity());
+        shopNotificationColor = RED;
+        shopNotificationTimer = 3.5f;
+        combatLog.push_back("[CUA HANG] Tui do da day! Khong the mua " + item.name + ".");
         addDamagePopup("TUI DO DAY!", player.getVisualPosition().x + 8.0f, player.getVisualPosition().y - 20.0f, RED, 0.8f);
         return;
     }
 
     if (!player.spendGold(item.cost)) {
+        shopNotification = "KHONG DU VANG! Can " + std::to_string(item.cost) + " vang de mua " + item.name + ".";
+        shopNotificationColor = Color{ 255, 110, 110, 255 };
+        shopNotificationTimer = 3.0f;
         combatLog.push_back("[CUA HANG] Khong du " + std::to_string(item.cost) + " vang de mua " + item.name + "!");
         addDamagePopup("KHONG DU VANG!", player.getVisualPosition().x + 8.0f, player.getVisualPosition().y - 20.0f, RED, 0.8f);
         return;
@@ -1830,6 +1869,10 @@ void GameEngine::buyShopItem(int slot) {
         player.getInventory().addItem(std::make_unique<Accessory>(item.name, item.desc, 6, 3, 20, Position(0,0), item.texId));
     }
 
+    shopNotification = "DA MUA THANH CONG: " + item.name + " (-" + std::to_string(item.cost) + " Vang)!";
+    shopNotificationColor = Color{ 110, 245, 150, 255 };
+    shopNotificationTimer = 2.5f;
+
     addDamagePopup("-" + std::to_string(item.cost) + " VANG", player.getVisualPosition().x + 8.0f, player.getVisualPosition().y - 12.0f, YELLOW, 0.9f);
     addDamagePopup("+1 " + item.name, player.getVisualPosition().x + 8.0f, player.getVisualPosition().y - 28.0f, GREEN, 1.1f);
     combatLog.push_back("[CUA HANG] Da mua: " + item.name + " (-" + std::to_string(item.cost) + " vang)!");
@@ -1840,10 +1883,16 @@ void GameEngine::triggerForgeUpgrade() {
     int bonus = player.getNextUpgradeBonus();
 
     if (player.upgradeForge()) {
+        forgeNotification = "CUONG HOA THANH CONG! Kiem +" + std::to_string(player.getForgeLevel()) + " (+" + std::to_string(bonus) + " ATK)!";
+        forgeNotificationColor = GOLD;
+        forgeNotificationTimer = 2.8f;
         addDamagePopup("-" + std::to_string(cost) + " VANG", player.getVisualPosition().x + 8.0f, player.getVisualPosition().y - 12.0f, YELLOW, 0.9f);
         addDamagePopup("+" + std::to_string(bonus) + " ATK CUONG HOA!", player.getVisualPosition().x + 8.0f, player.getVisualPosition().y - 28.0f, GOLD, 1.3f);
         combatLog.push_back("[DE REN] Cuong hoa kiem thanh cong! +" + std::to_string(bonus) + " ATK (Cap ren: +" + std::to_string(player.getForgeLevel()) + ")!");
     } else {
+        forgeNotification = "KHONG DU VANG! Can " + std::to_string(cost) + " vang de ren len Cap +" + std::to_string(player.getForgeLevel() + 1) + ".";
+        forgeNotificationColor = Color{ 255, 110, 110, 255 };
+        forgeNotificationTimer = 2.8f;
         addDamagePopup("CAN " + std::to_string(cost) + " VANG!", player.getVisualPosition().x + 8.0f, player.getVisualPosition().y - 16.0f, RED, 0.9f);
         combatLog.push_back("[DE REN] Khong du " + std::to_string(cost) + " vang de cuong hoa vu khi!");
     }
@@ -1857,8 +1906,8 @@ void GameEngine::renderShop() const {
 
     DrawRectangle(0, 0, screenW, screenH, Color{ 0, 0, 0, 150 });
 
-    int modalW = 560;
-    int modalH = 460;
+    int modalW = 570;
+    int modalH = 500;
     int modalX = screenW / 2 - modalW / 2;
     int modalY = screenH / 2 - modalH / 2;
 
@@ -1876,17 +1925,31 @@ void GameEngine::renderShop() const {
         DrawTexturePro(sTex, Rectangle{ 0, 0, (float)sTex.width, (float)sTex.height },
                        Rectangle{ (float)(modalX + 14), (float)(modalY + 9), 32.0f, 32.0f }, Vector2{ 0, 0 }, 0.0f, WHITE);
     }
-    drawText("CUA HANG HAM NGUC AETHELGARD", modalX + 54, modalY + 14, 18, GOLD);
+    drawText("CUA HANG HAM NGUC AETHELGARD", modalX + 52, modalY + 14, 16, GOLD);
+
+    size_t invSize = player.getInventory().getSize();
+    size_t invCap = player.getInventory().getCapacity();
+    bool isInvFull = (invSize >= invCap);
+
+    // Huy hiệu trạng thái Túi đồ
+    Rectangle invBadge = { (float)(modalX + modalW - 275), (float)(modalY + 9), 110.0f, 28.0f };
+    Color invBg = isInvFull ? Color{ 80, 20, 25, 255 } : Color{ 24, 20, 36, 255 };
+    Color invBorder = isInvFull ? RED : Color{ 90, 80, 115, 255 };
+    DrawRectangleRounded(invBadge, 0.3f, 4, invBg);
+    DrawRectangleRoundedLinesEx(invBadge, 0.3f, 4, 1.2f, invBorder);
+    const char* invText = isInvFull ? TextFormat("TUI: %zu/%zu [!]", invSize, invCap) : TextFormat("Tui: %zu/%zu", invSize, invCap);
+    drawText(invText, invBadge.x + 10, invBadge.y + 6, 14, isInvFull ? Color{ 255, 130, 130, 255 } : LIGHTGRAY);
 
     // Huy hiệu vàng hiện có của người chơi
-    DrawRectangleRounded(Rectangle{ (float)(modalX + modalW - 175), (float)(modalY + 9), 130.0f, 28.0f }, 0.3f, 4, Color{ 24, 20, 36, 255 });
-    DrawRectangleRoundedLinesEx(Rectangle{ (float)(modalX + modalW - 175), (float)(modalY + 9), 130.0f, 28.0f }, 0.3f, 4, 1.2f, GOLD);
+    Rectangle goldBadge = { (float)(modalX + modalW - 155), (float)(modalY + 9), 112.0f, 28.0f };
+    DrawRectangleRounded(goldBadge, 0.3f, 4, Color{ 24, 20, 36, 255 });
+    DrawRectangleRoundedLinesEx(goldBadge, 0.3f, 4, 1.2f, GOLD);
     if (tm.has("item_gold_coin")) {
         const Texture2D& cTex = tm.get("item_gold_coin");
         DrawTexturePro(cTex, Rectangle{ 0, 0, (float)cTex.width, (float)cTex.height },
-                       Rectangle{ (float)(modalX + modalW - 170), (float)(modalY + 13), 20.0f, 20.0f }, Vector2{ 0, 0 }, 0.0f, WHITE);
+                       Rectangle{ (float)(modalX + modalW - 150), (float)(modalY + 13), 20.0f, 20.0f }, Vector2{ 0, 0 }, 0.0f, WHITE);
     }
-    drawText(TextFormat("%d Vang", player.getGold()), modalX + modalW - 144, modalY + 14, 15, YELLOW);
+    drawText(TextFormat("%d Vang", player.getGold()), modalX + modalW - 124, modalY + 14, 15, YELLOW);
 
     // Nút đóng [X]
     Rectangle closeBtn = { (float)(modalX + modalW - 36), (float)(modalY + 9), 28.0f, 28.0f };
@@ -1916,10 +1979,10 @@ void GameEngine::renderShop() const {
     for (int i = 0; i < 6; ++i) {
         int col = i % 2;
         int row = i / 2;
-        int cardX = modalX + 16 + col * 270;
-        int cardY = modalY + 54 + row * 128;
-        int cardW = 262;
-        int cardH = 118;
+        int cardX = modalX + 16 + col * 272;
+        int cardY = modalY + 54 + row * 118;
+        int cardW = 265;
+        int cardH = 112;
         Rectangle cardRect = { (float)cardX, (float)cardY, (float)cardW, (float)cardH };
 
         bool canAfford = (player.getGold() >= items[i].cost);
@@ -1945,29 +2008,65 @@ void GameEngine::renderShop() const {
         // Tên và chỉ số
         drawText(items[i].name, cardX + 80, cardY + 8, 15, items[i].nameCol);
         drawText(items[i].statText, cardX + 80, cardY + 28, 14, GOLD);
-        drawText(items[i].desc, cardX + 8, cardY + 50, 12, Color{ 160, 160, 185, 255 });
+        drawText(items[i].desc, cardX + 8, cardY + 48, 12, Color{ 160, 160, 185, 255 });
 
         // Giá bán
-        DrawRectangle(cardX + 8, cardY + 80, 100, 28, Color{ 20, 16, 30, 255 });
-        DrawRectangleLines(cardX + 8, cardY + 80, 100, 28, Color{ 80, 70, 100, 255 });
+        DrawRectangle(cardX + 8, cardY + 76, 95, 28, Color{ 20, 16, 30, 255 });
+        DrawRectangleLines(cardX + 8, cardY + 76, 95, 28, Color{ 80, 70, 100, 255 });
         if (tm.has("item_gold_coin")) {
             const Texture2D& cTex = tm.get("item_gold_coin");
             DrawTexturePro(cTex, Rectangle{ 0, 0, (float)cTex.width, (float)cTex.height },
-                           Rectangle{ (float)(cardX + 12), (float)(cardY + 85), 18.0f, 18.0f }, Vector2{ 0, 0 }, 0.0f, WHITE);
+                           Rectangle{ (float)(cardX + 11), (float)(cardY + 81), 18.0f, 18.0f }, Vector2{ 0, 0 }, 0.0f, WHITE);
         }
-        drawText(TextFormat("%d V", items[i].cost), cardX + 34, cardY + 85, 14, canAfford ? YELLOW : RED);
+        drawText(TextFormat("%d V", items[i].cost), cardX + 32, cardY + 81, 14, canAfford ? YELLOW : RED);
 
-        // Nút MUA
-        Rectangle buyBtn = { (float)(cardX + 185), (float)(cardY + 76), 70.0f, 32.0f };
+        // Nút MUA hoặc TÚI ĐẦY
+        Rectangle buyBtn = { (float)(cardX + 178), (float)(cardY + 74), 79.0f, 30.0f };
         bool buyHover = CheckCollisionPointRec(mouse, buyBtn);
-        Color buyBg = canAfford ? (buyHover ? Color{ 35, 140, 60, 255 } : Color{ 25, 95, 45, 255 }) : Color{ 45, 40, 52, 255 };
-        DrawRectangleRec(buyBtn, buyBg);
-        DrawRectangleLinesEx(buyBtn, 1.0f, canAfford ? GREEN : DARKGRAY);
-        drawText("MUA", buyBtn.x + 18, buyBtn.y + 7, 15, canAfford ? WHITE : GRAY);
+
+        if (isInvFull) {
+            Color btnCol = buyHover ? Color{ 90, 25, 30, 255 } : Color{ 55, 20, 25, 255 };
+            DrawRectangleRec(buyBtn, btnCol);
+            DrawRectangleLinesEx(buyBtn, 1.0f, RED);
+            drawText("TUI DAY", buyBtn.x + 11, buyBtn.y + 6, 14, Color{ 255, 130, 130, 255 });
+        } else if (!canAfford) {
+            DrawRectangleRec(buyBtn, Color{ 45, 40, 52, 255 });
+            DrawRectangleLinesEx(buyBtn, 1.0f, DARKGRAY);
+            drawText("MUA", buyBtn.x + 23, buyBtn.y + 6, 14, GRAY);
+        } else {
+            Color buyBg = buyHover ? Color{ 35, 140, 60, 255 } : Color{ 25, 95, 45, 255 };
+            DrawRectangleRec(buyBtn, buyBg);
+            DrawRectangleLinesEx(buyBtn, 1.0f, GREEN);
+            drawText("MUA", buyBtn.x + 23, buyBtn.y + 6, 14, WHITE);
+        }
     }
 
-    DrawLine(modalX + 4, modalY + modalH - 30, modalX + modalW - 4, modalY + modalH - 30, Color{ 60, 50, 80, 255 });
-    drawText("Phim [1-6] de mua nhanh | [P] / [ESC] de dong cua hang", modalX + 16, modalY + modalH - 22, 13, Color{ 180, 180, 205, 255 });
+    // Khu vực hiển thị thông báo phản hồi (Notification Banner)
+    Rectangle notifArea = { (float)(modalX + 16), (float)(modalY + 414), (float)(modalW - 32), 38.0f };
+    if (shopNotificationTimer > 0.0f && !shopNotification.empty()) {
+        float pulse = 0.85f + 0.15f * sinf((float)GetTime() * 10.0f);
+        bool isErr = (shopNotificationColor.r > 200 && shopNotificationColor.g < 100);
+        Color notifBg = isErr ? Color{ 75, 18, 24, 250 } : Color{ 16, 60, 32, 250 };
+        Color notifBorder = ColorAlpha(shopNotificationColor, pulse);
+        DrawRectangleRounded(notifArea, 0.25f, 4, notifBg);
+        DrawRectangleRoundedLinesEx(notifArea, 0.25f, 4, 1.5f, notifBorder);
+        const char* prefix = isErr ? "[!] CANH BAO: " : "[OK] ";
+        std::string fullMsg = prefix + shopNotification;
+        drawText(fullMsg.c_str(), notifArea.x + 12, notifArea.y + 10, 14, shopNotificationColor);
+    } else {
+        if (isInvFull) {
+            DrawRectangleRounded(notifArea, 0.25f, 4, Color{ 60, 20, 25, 220 });
+            DrawRectangleRoundedLinesEx(notifArea, 0.25f, 4, 1.2f, RED);
+            drawText(TextFormat("[!] TUI DO DA DAY (%zu/%zu): Hay mo tui do [B] de dung bot vat pham truoc khi mua!", invSize, invCap), notifArea.x + 12, notifArea.y + 10, 13, Color{ 255, 140, 140, 255 });
+        } else {
+            DrawRectangleRounded(notifArea, 0.25f, 4, Color{ 26, 22, 38, 200 });
+            DrawRectangleRoundedLinesEx(notifArea, 0.25f, 4, 1.0f, Color{ 75, 65, 95, 255 });
+            drawText(TextFormat("Suc chua tui do: %zu/%zu o  |  Nhan [B] de kiem tra hanh ly", invSize, invCap), notifArea.x + 16, notifArea.y + 11, 13, Color{ 180, 180, 205, 255 });
+        }
+    }
+
+    DrawLine(modalX + 4, modalY + modalH - 36, modalX + modalW - 4, modalY + modalH - 36, Color{ 60, 50, 80, 255 });
+    drawText("Phim [1-6] de mua nhanh | [P] / [ESC] de dong | [B] Xem tui do", modalX + 16, modalY + modalH - 26, 13, Color{ 180, 180, 205, 255 });
 }
 
 void GameEngine::renderForge() const {
@@ -1978,8 +2077,8 @@ void GameEngine::renderForge() const {
 
     DrawRectangle(0, 0, screenW, screenH, Color{ 0, 0, 0, 150 });
 
-    int modalW = 460;
-    int modalH = 400;
+    int modalW = 480;
+    int modalH = 430;
     int modalX = screenW / 2 - modalW / 2;
     int modalY = screenH / 2 - modalH / 2;
 
@@ -2007,42 +2106,60 @@ void GameEngine::renderForge() const {
     drawText("X", closeBtn.x + 8, closeBtn.y + 4, 18, WHITE);
 
     // Khung thông tin thanh kiếm hiện tại
-    int infoY = modalY + 60;
-    DrawRectangle(modalX + 24, infoY, modalW - 48, 80, Color{ 34, 24, 38, 255 });
-    DrawRectangleLines(modalX + 24, infoY, modalW - 48, 80, Color{ 100, 70, 85, 255 });
+    int infoY = modalY + 56;
+    DrawRectangle(modalX + 24, infoY, modalW - 48, 74, Color{ 34, 24, 38, 255 });
+    DrawRectangleLines(modalX + 24, infoY, modalW - 48, 74, Color{ 100, 70, 85, 255 });
 
     if (tm.has("item_sword_steel")) {
         const Texture2D& sTex = tm.get("item_sword_steel");
         DrawTexturePro(sTex, Rectangle{ 0, 0, (float)sTex.width, (float)sTex.height },
-                       Rectangle{ (float)(modalX + 38), (float)(infoY + 16), 48.0f, 48.0f }, Vector2{ 0, 0 }, 0.0f, WHITE);
+                       Rectangle{ (float)(modalX + 36), (float)(infoY + 13), 48.0f, 48.0f }, Vector2{ 0, 0 }, 0.0f, WHITE);
     }
-    drawText(TextFormat("Thanh Kiem Hiep Si (Cap +%d)", player.getForgeLevel()), modalX + 102, infoY + 16, 17, GOLD);
-    drawText(TextFormat("Suc tan cong hien tai: %d ATK", player.getAttack()), modalX + 102, infoY + 44, 15, Color{ 255, 175, 75, 255 });
+    drawText(TextFormat("Thanh Kiem Hiep Si (Cap +%d)", player.getForgeLevel()), modalX + 96, infoY + 14, 17, GOLD);
+    drawText(TextFormat("Suc tan cong hien tai: %d ATK", player.getAttack()), modalX + 96, infoY + 40, 15, Color{ 255, 175, 75, 255 });
 
     // Khung nâng cấp kế tiếp
-    int nextY = modalY + 155;
+    int nextY = modalY + 138;
     int nextCost = player.getNextUpgradeCost();
     int nextBonus = player.getNextUpgradeBonus();
     bool canAfford = (player.getGold() >= nextCost);
 
-    DrawRectangle(modalX + 24, nextY, modalW - 48, 120, Color{ 30, 22, 34, 255 });
-    DrawRectangleLines(modalX + 24, nextY, modalW - 48, 120, canAfford ? GOLD : Color{ 80, 55, 70, 255 });
+    DrawRectangle(modalX + 24, nextY, modalW - 48, 110, Color{ 30, 22, 34, 255 });
+    DrawRectangleLines(modalX + 24, nextY, modalW - 48, 110, canAfford ? GOLD : Color{ 80, 55, 70, 255 });
 
-    drawText("GIAI DOAN CUONG HOA KE TIEP:", modalX + 36, nextY + 12, 15, ORANGE);
-    drawText(TextFormat("> Nang len: Kiem Cap +%d", player.getForgeLevel() + 1), modalX + 36, nextY + 36, 16, YELLOW);
-    drawText(TextFormat("> Tang them: +%d ATK vinh vien vao chi so!", nextBonus), modalX + 36, nextY + 60, 15, GREEN);
+    drawText("GIAI DOAN CUONG HOA KE TIEP:", modalX + 36, nextY + 10, 15, ORANGE);
+    drawText(TextFormat("> Nang len: Kiem Cap +%d", player.getForgeLevel() + 1), modalX + 36, nextY + 32, 16, YELLOW);
+    drawText(TextFormat("> Tang them: +%d ATK vinh vien vao chi so!", nextBonus), modalX + 36, nextY + 54, 15, GREEN);
 
     drawText(TextFormat("Chi phi: %d Vang  |  Vang cua ban: %d Vang", nextCost, player.getGold()),
-             modalX + 36, nextY + 90, 14, canAfford ? Color{ 255, 220, 80, 255 } : Color{ 255, 100, 100, 255 });
+             modalX + 36, nextY + 80, 14, canAfford ? Color{ 255, 220, 80, 255 } : Color{ 255, 100, 100, 255 });
+
+    // Khu vực thông báo phản hồi Đe rèn
+    Rectangle fNotif = { (float)(modalX + 24), (float)(nextY + 118), (float)(modalW - 48), 34.0f };
+    if (forgeNotificationTimer > 0.0f && !forgeNotification.empty()) {
+        float pulse = 0.85f + 0.15f * sinf((float)GetTime() * 10.0f);
+        bool isErr = (forgeNotificationColor.r > 200 && forgeNotificationColor.g < 100);
+        Color notifBg = isErr ? Color{ 75, 18, 24, 250 } : Color{ 60, 40, 15, 250 };
+        Color notifBorder = ColorAlpha(forgeNotificationColor, pulse);
+        DrawRectangleRounded(fNotif, 0.25f, 4, notifBg);
+        DrawRectangleRoundedLinesEx(fNotif, 0.25f, 4, 1.5f, notifBorder);
+        const char* prefix = isErr ? "[!] " : "[OK] ";
+        std::string fullMsg = prefix + forgeNotification;
+        drawText(fullMsg.c_str(), fNotif.x + 12, fNotif.y + 8, 14, forgeNotificationColor);
+    } else {
+        DrawRectangleRounded(fNotif, 0.25f, 4, Color{ 26, 18, 28, 180 });
+        DrawRectangleRoundedLinesEx(fNotif, 0.25f, 4, 1.0f, Color{ 80, 55, 70, 255 });
+        drawText("Nhan [Enter], [Space] hoac Click nut duoi de cuong hoa", fNotif.x + 14, fNotif.y + 9, 13, Color{ 190, 165, 180, 255 });
+    }
 
     // Nút thực hiện cường hóa
-    Rectangle upgradeBtn = { (float)(modalX + 30), (float)(modalY + modalH - 65), (float)(modalW - 60), 46.0f };
+    Rectangle upgradeBtn = { (float)(modalX + 24), (float)(modalY + modalH - 58), (float)(modalW - 48), 44.0f };
     bool upHover = CheckCollisionPointRec(mouse, upgradeBtn);
     Color upBg = canAfford ? (upHover ? Color{ 200, 90, 20, 255 } : Color{ 160, 65, 15, 255 }) : Color{ 45, 35, 45, 255 };
     DrawRectangleRounded(upgradeBtn, 0.25f, 4, upBg);
     DrawRectangleRoundedLinesEx(upgradeBtn, 0.25f, 4, 1.5f, canAfford ? ORANGE : DARKGRAY);
     const char* btnText = canAfford ? TextFormat("REN KIEM (+%d ATK) - %d VANG [ENTER]", nextBonus, nextCost) : "KHONG DU VANG DE REN";
-    drawText(btnText, upgradeBtn.x + (upgradeBtn.width - 320) / 2.0f, upgradeBtn.y + 14, 15, canAfford ? WHITE : GRAY);
+    drawText(btnText, upgradeBtn.x + (upgradeBtn.width - 320) / 2.0f, upgradeBtn.y + 13, 15, canAfford ? WHITE : GRAY);
 }
 
 void GameEngine::runOOPAcademicTests() {

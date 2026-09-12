@@ -49,6 +49,11 @@ void Chest::render(float scale, Vector2 offset) const {
 bool Chest::tryOpen(Player& player, GameEngine* engine) {
     if (opened) return false;
 
+    if (player.getInventory().isFull()) {
+        std::cout << "[Ruong Bau] Tui do da day! Khong the mo Ruong Hoang Kim." << std::endl;
+        return false;
+    }
+
     if (!player.spendGold(unlockCost)) {
         std::cout << "[Ruong Bau] Khong du " << unlockCost << " vang de mo Ruong Hoang Kim!" << std::endl;
         return false;
