@@ -118,5 +118,7 @@ void Boar::act(Dungeon& dungeon, Player& player, std::vector<std::string>& comba
 void Boar::onDeath(Player& player) {
     std::cout << "[Ha guc] Boar da bi tieu diet! Ban tang +" << expReward << " EXP va +" << goldReward << " Vang!" << std::endl;
     player.addExp(expReward);
-    player.addGold(goldReward);
+    if (!goldDropped) {
+        player.addGold(goldReward);
+    }
 }

@@ -31,6 +31,7 @@ void Dungeon::generate(int floor) {
     floorLevel = floor;
     monsters.clear();
     groundItems.clear();
+    chests.clear();
     hasBossFlag = false;
     bossDefeated = false;
 
@@ -361,7 +362,24 @@ void Dungeon::generate(int floor) {
         "Than Duoc Aethelgard", "Hoi phuc 100 HP", 100, Position(155, 18), "item_potion_elixir"
     ));
 
-    std::cout << "[Dungeon] Sinh dia hinh 2D Side thanh cong: 165 o ngang (6 khu) cho Tang " << floorLevel << std::endl;
+    // =========================================================================
+    // RƯƠNG BÁU HOÀNG KIM (GOLDEN CHESTS) - TIÊU THỤ VÀNG [E]
+    // =========================================================================
+    // Khu B: Bệ đá cao (38, 12) - Mở rương 35 vàng nhận Thần Dược & 50 EXP
+    chests.push_back(std::make_unique<Chest>(Position(38, 12), 35, "Than Duoc Aethelgard", 50));
+    // Khu D: Hang sâu (98, 9) - Mở rương 35 vàng nhận Đại Kiếm Huyền Bí & 60 EXP
+    chests.push_back(std::make_unique<Chest>(Position(98, 9), 35, "Dai Kiem Huyen Bi", 60));
+
+    std::cout << "[Dungeon] Sinh dia hinh 2D Side thanh cong: 165 o ngang (6 khu), 2 Ruong Hoang Kim cho Tang " << floorLevel << std::endl;
+}
+
+Chest* Dungeon::getNearChest(const Position& playerPos) const {
+    for (auto& c : chests) {
+        if (c && c->isNear(playerPos)) {
+            return c.get();
+        }
+    }
+    return nullptr;
 }
 
 bool Dungeon::isValidPos(const Position& pos) const {
@@ -693,6 +711,13 @@ void Dungeon::renderItems(Vector2 offset) const {
                 DrawCircle((int)(baseX + 16), (int)(itemY + ITEM_SIZE / 2.0f), 12.0f, GOLD);
                 DrawText("?", (int)(baseX + 12), (int)(itemY + ITEM_SIZE / 2.0f - 7.0f), 16, BLACK);
             }
+        }
+    }
+
+    // Vẽ toàn bộ các Rương Kho Báu Hoàng Kim
+    for (auto& chest : chests) {
+        if (chest) {
+            chest->render(2.0f, offset);
         }
     }
 }

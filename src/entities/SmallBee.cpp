@@ -152,5 +152,7 @@ void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
 void SmallBee::onDeath(Player& player) {
     std::cout << "[Ha guc] Small Bee roi rung! Ban tang +" << expReward << " EXP va +" << goldReward << " Vang!" << std::endl;
     player.addExp(expReward);
-    player.addGold(goldReward);
+    if (!goldDropped) {
+        player.addGold(goldReward);
+    }
 }

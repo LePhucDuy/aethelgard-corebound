@@ -29,6 +29,7 @@ private:
     int exp;
     int expToNextLevel;
     int gold;
+    int forgeLevel; // Cấp độ đe rèn cường hóa vũ khí (Blacksmith Forge)
 
     // Quan hệ hợp thành (Composition): Player sở hữu độc quyền Inventory
     std::unique_ptr<Inventory> inventory;
@@ -84,8 +85,15 @@ public:
     // Xử lý kinh nghiệm, cấp độ và tiền vàng
     void addExp(int amount);
     void addGold(int amount);
+    bool spendGold(int amount);
     void addAttack(int amount) { attack += amount; }
     void addDefense(int amount) { defense += amount; }
+
+    // Cơ chế tiêu thụ vàng: Đe rèn cường hóa vũ khí (Blacksmith Forge)
+    int getForgeLevel() const { return forgeLevel; }
+    int getNextUpgradeCost() const { return 30 + forgeLevel * 35; }
+    int getNextUpgradeBonus() const { return 3 + forgeLevel * 2; }
+    bool upgradeForge();
 
     // Quản lý túi đồ
     Inventory& getInventory() { return *inventory; }
@@ -108,6 +116,7 @@ public:
     Player& setExp(int val) { exp = val; return *this; }
     Player& setExpToNextLevel(int val) { expToNextLevel = val; return *this; }
     Player& setGold(int val) { gold = val; return *this; }
+    Player& setForgeLevel(int val) { forgeLevel = val; return *this; }
     Player& setHp(int val) { hp = val; return *this; }
     Player& setMaxHp(int val) { maxHp = val; return *this; }
     Player& setAttack(int val) { attack = val; return *this; }

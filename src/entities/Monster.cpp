@@ -16,7 +16,7 @@ Monster::Monster(const std::string& name, const Position& pos, int hp, int attac
       facingRight(true), flying(flying), turnCount(0), patrolDir(1),
       aiState(MonsterAIState::PATROL), actionTimer(0.0f), attackCooldown(0.0f),
       pauseTimer(0.0f), isAlerted(false),
-      animState(""), dying(false), rewarded(false) {
+      animState(""), dying(false), rewarded(false), goldDropped(false) {
     ++activeMonsterCount;
 }
 

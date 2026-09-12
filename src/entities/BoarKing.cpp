@@ -249,7 +249,9 @@ void BoarKing::takeDamage(int amount) {
 void BoarKing::onDeath(Player& player) {
     std::cout << "[BOSS HA GUC] Boar King da bi tieu diet!" << std::endl;
     player.addExp(expReward);
-    player.addGold(goldReward);
+    if (!goldDropped) {
+        player.addGold(goldReward);
+    }
 }
 
 void BoarKing::render(float scale, Vector2 offset) const {

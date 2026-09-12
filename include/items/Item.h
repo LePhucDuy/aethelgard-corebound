@@ -56,6 +56,15 @@ public:
         static const std::string texPotionStrength= "item_potion_strength";
         static const std::string texPotionElixir  = "item_potion_elixir";
 
+        static const std::string texArmorShield   = "item_armor_shield";
+        static const std::string texRingPower     = "item_ring_power";
+
+        if (name.find("Khien") != std::string::npos || name.find("Giap") != std::string::npos || name.find("Shield") != std::string::npos) {
+            return texArmorShield;
+        }
+        if (name.find("Nhan") != std::string::npos || name.find("Ring") != std::string::npos || name.find("Co Ngu") != std::string::npos) {
+            return texRingPower;
+        }
         if (name.find("Thep") != std::string::npos || name.find("Kiem") != std::string::npos) {
             if (name.find("Huyen Bi") != std::string::npos || name.find("Dai Kiem") != std::string::npos) {
                 return texSwordMystic;

@@ -1,11 +1,13 @@
 #include "entities/Player.h"
 #include "core/Constants.h"
+#include "core/Templates.h"
 #include <iostream>
 #include <cmath>
+#include <algorithm>
 
 Player::Player(const std::string& name, const Position& pos, int hp, int attack, int defense)
     : Entity(name, pos, hp, attack, defense),
-      level(1), exp(0), expToNextLevel(50), gold(0),
+      level(1), exp(0), expToNextLevel(50), gold(0), forgeLevel(0),
       inventory(std::make_unique<Inventory>(Constants::MAX_INVENTORY_SLOTS)),
       currentState("idle"), runTimer(0.0f), jumpTimer(0.0f), jumpVisualLift(0.0f),
       sinkVisualOffset(0.0f),
@@ -49,6 +51,29 @@ void Player::addGold(int amount) {
     if (amount <= 0) return;
     gold += amount;
     std::cout << "[Vang] +" << amount << " vang (Tong: " << gold << ")" << std::endl;
+}
+
+bool Player::spendGold(int amount) {
+    if (amount <= 0) return true;
+    if (gold < amount) return false;
+    gold -= amount;
+    std::cout << "[Vang] Da tieu ton -" << amount << " vang (Con lai: " << gold << ")" << std::endl;
+    return true;
+}
+
+bool Player::upgradeForge() {
+    int cost = getNextUpgradeCost();
+    if (!spendGold(cost)) {
+        std::cout << "[De ren] Khong du " << cost << " vang de cuong hoa vu khi!" << std::endl;
+        return false;
+    }
+
+    int bonus = getNextUpgradeBonus();
+    forgeLevel++;
+    attack += bonus;
+    std::cout << "[De ren] Cuong hoa thanh cong! Vu khi len Cap +" << forgeLevel 
+              << ", tang +" << bonus << " ATK! (Tong ATK: " << attack << ")" << std::endl;
+    return true;
 }
 
 void Player::addAnimation(const std::string& stateName, std::unique_ptr<Animation> anim) {
@@ -342,6 +367,7 @@ void Player::resetStats(const Position& startPos) {
     exp = 0;
     expToNextLevel = 50;
     gold = 0;
+    forgeLevel = 0;
     alive = true;
     currentState = "idle";
     runTimer = 0.0f;

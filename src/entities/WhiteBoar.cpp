@@ -117,9 +117,11 @@ void WhiteBoar::act(Dungeon& dungeon, Player& player, std::vector<std::string>& 
 }
 
 void WhiteBoar::onDeath(Player& player) {
-    std::cout << "[Ha guc] Bach Tru Tinh da bi tieu diet! Ban tang +" << expReward << " EXP va +" << goldReward << " Vang!" << std::endl;
+    std::cout << "[Ha guc] Bach Heo Tinh da bi tieu diet! Ban tang +" << expReward << " EXP va +" << goldReward << " Vang!" << std::endl;
     player.addExp(expReward);
-    player.addGold(goldReward);
+    if (!goldDropped) {
+        player.addGold(goldReward);
+    }
 }
 
 void WhiteBoar::render(float scale, Vector2 offset) const {

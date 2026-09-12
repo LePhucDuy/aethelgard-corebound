@@ -1,5 +1,7 @@
 #include "systems/CombatSystem.h"
 #include "engine/GameEngine.h"
+#include "entities/Monster.h"
+#include "core/Constants.h"
 #include <cstdlib>
 #include <iostream>
 
@@ -38,6 +40,16 @@ bool CombatSystem::attack(Entity& attacker, Entity& defender, std::vector<std::s
 
     if (!defender.isAlive()) {
         logMsg += " -> " + defender.getName() + " da bi tieu diet!";
+        // Kích hoạt hiệu ứng văng hạt vàng rơi ra thế giới (Gold Burst Effect)
+        Monster* m = dynamic_cast<Monster*>(&defender);
+        if (m && engine && !m->isGoldDropped()) {
+            m->setGoldDropped(true);
+            Vector2 mPos = m->getVisualPosition();
+            float groundY = (float)(m->getPosition().y * Constants::TILE_SIZE) + 8.0f;
+            int gReward = m->getGoldReward();
+            int coinCount = (gReward >= 50) ? 14 : ((gReward >= 20) ? 8 : 5);
+            engine->spawnGoldBurst(mPos.x + 16.0f, mPos.y + 4.0f, groundY, gReward, coinCount);
+        }
     }
 
     combatLog.push_back(logMsg);

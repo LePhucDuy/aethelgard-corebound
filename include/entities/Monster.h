@@ -53,6 +53,7 @@ protected:
     std::string animState;   // Tên animation đang dùng
     bool dying;              // Đã chết và đang phát animation biến mất
     bool rewarded;           // Đã trao thưởng EXP/Vàng (tránh trao 2 lần)
+    bool goldDropped;        // true: đã bung hiệu ứng hạt vàng rơi ra thế giới
 
 public:
 
@@ -73,6 +74,8 @@ public:
     bool isDeathAnimFinished() const;
     bool isRewarded() const { return rewarded; }
     void markRewarded() { rewarded = true; }
+    bool isGoldDropped() const { return goldDropped; }
+    void setGoldDropped(bool val = true) { goldDropped = val; }
 
     // Bước tới ô đích nếu an toàn: walkable, không đè quái khác, không đè player,
     // và (với quái bộ) ô đích phải có sàn đỡ phía dưới

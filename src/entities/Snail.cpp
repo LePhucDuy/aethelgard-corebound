@@ -72,5 +72,7 @@ void Snail::act(Dungeon& dungeon, Player& player, std::vector<std::string>& comb
 void Snail::onDeath(Player& player) {
     std::cout << "[Ha guc] Snail da vo vo! Ban tang +" << expReward << " EXP va +" << goldReward << " Vang!" << std::endl;
     player.addExp(expReward);
-    player.addGold(goldReward);
+    if (!goldDropped) {
+        player.addGold(goldReward);
+    }
 }

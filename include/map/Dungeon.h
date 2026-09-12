@@ -7,6 +7,7 @@
 #include "map/Tile.h"
 #include "entities/Monster.h"
 #include "items/Item.h"
+#include "items/Chest.h"
 #include "core/Position.h"
 
 // Forward declaration
@@ -23,6 +24,7 @@ enum class MonsterType;
  *    - Dungeon sở hữu ma trận 2D các Tile: `std::vector<std::vector<Tile>> grid;`
  *    - Dungeon sở hữu danh sách quái vật: `std::vector<std::unique_ptr<Monster>> monsters;`
  *    - Dungeon sở hữu danh sách vật phẩm rơi: `std::vector<std::unique_ptr<Item>> groundItems;`
+ *    - Dungeon sở hữu danh sách rương báu hoàng kim: `std::vector<std::unique_ptr<Chest>> chests;`
  *    Khi tầng Dungeon bị reset hoặc sang tầng mới, toàn bộ các đối tượng bên trong tự động
  *    được dọn dẹp sạch sẽ nhờ con trỏ thông minh (Smart Pointers).
  * 
@@ -42,6 +44,7 @@ private:
     std::vector<std::vector<Tile>> grid;
     std::vector<std::unique_ptr<Monster>> monsters;
     std::vector<std::unique_ptr<Item>> groundItems;
+    std::vector<std::unique_ptr<Chest>> chests;
 
     // Trạng thái kịch bản màn chơi
     bool hasBossFlag;
@@ -109,6 +112,10 @@ public:
 
     std::vector<std::unique_ptr<Item>>& getGroundItems() { return groundItems; }
     const std::vector<std::unique_ptr<Item>>& getGroundItems() const { return groundItems; }
+
+    std::vector<std::unique_ptr<Chest>>& getChests() { return chests; }
+    const std::vector<std::unique_ptr<Chest>>& getChests() const { return chests; }
+    Chest* getNearChest(const Position& playerPos) const;
 };
 
 #endif // DUNGEON_H
