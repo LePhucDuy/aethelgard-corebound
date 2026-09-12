@@ -20,6 +20,10 @@
  */
 class Player : public Entity {
 private:
+    // Khai báo Lớp bạn (Friend Class - Slide 60-61 Chương 3)
+    friend class SaveLoadManager;
+    friend class CombatSystem;
+
     int level;
     int exp;
     int expToNextLevel;

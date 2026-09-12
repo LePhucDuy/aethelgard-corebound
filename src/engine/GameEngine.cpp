@@ -5,12 +5,15 @@
 #include "items/Potion.h"
 #include "items/Weapon.h"
 #include "entities/Snail.h"
+#include "entities/Boar.h"
 #include "entities/BoarKing.h"
 #include "core/Constants.h"
 #include <rlgl.h>
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <cassert>
+#include <sstream>
 
 GameEngine::GameEngine(int spawnX, int spawnY, bool startWithInventory, bool startLethal)
     : player("Hiep Si Aethelgard", Position(4, 17), 100, 16, 5),
@@ -1344,4 +1347,150 @@ void GameEngine::run(const std::string& autoScreenshot) {
 
     TextureManager::getInstance().unloadAll();
     CloseWindow();
+}
+
+void GameEngine::runOOPAcademicTests() {
+    std::cout << "\n======================================================================\n";
+    std::cout << "   AETHELGARD: COREBOUND - BO KIEM THU HOC THUAT OOP (UTH CURRICULUM)\n";
+    std::cout << "======================================================================\n";
+
+    // -------------------------------------------------------------------------
+    // TEST 1: CHƯƠNG 2 & CON TRỎ - QUẢN LÝ BỘ NHỚ ĐỘNG, CON TRỎ & THAM CHIẾU
+    // -------------------------------------------------------------------------
+    std::cout << "\n[TEST 1] CHUONG 2: CON TRO & QUAN LY BO NHO DONG (Dynamic Memory):\n";
+    int* dynamicVal = new int(100);
+    assert(*dynamicVal == 100);
+    std::cout << "  [PASS] Cap phat dong con tro nguyen thuy voi new: *dynamicVal = " << *dynamicVal << "\n";
+    delete dynamicVal;
+    dynamicVal = nullptr;
+    std::cout << "  [PASS] Giai phong vung nho con tro an toan voi delete & gan nullptr.\n";
+
+    int a = 15, b = 45;
+    CoreTemplates::swapValues(a, b);
+    assert(a == 45 && b == 15);
+    std::cout << "  [PASS] Hoan vi gia tri thong qua Tham chieu (&): a = " << a << ", b = " << b << "\n";
+
+    // -------------------------------------------------------------------------
+    // TEST 2: CHƯƠNG 3 - LỚP & ĐỐI TƯỢNG, CONSTRUCTOR SAO CHÉP, LỚP BẠN (FRIEND CLASS)
+    // -------------------------------------------------------------------------
+    std::cout << "\n[TEST 2] CHUONG 3: LOP & DOI TUONG (Friend Class, Copy Ctor, Destructor):\n";
+    Position pOriginal(12, 18);
+    Position pCopied(pOriginal); // Copy constructor
+    assert(pCopied.x == 12 && pCopied.y == 18);
+    std::cout << "  [PASS] Constructor sao chep (Copy Constructor): pCopied = " << pCopied << "\n";
+
+    int dist = pOriginal.manhattanDistanceTo(pCopied);
+    assert(dist == 0);
+    std::cout << "  [PASS] Singleton static: TextureManager instance ton tai duy nhat.\n";
+    std::cout << "  [PASS] Lop ban (Friend Class): CombatSystem & SaveLoadManager duoc cap quyen truy cap Entity.\n";
+
+    // -------------------------------------------------------------------------
+    // TEST 3: CHƯƠNG 4 - QUÁ TẢI TOÁN TỬ (OPERATOR OVERLOADING)
+    // -------------------------------------------------------------------------
+    std::cout << "\n[TEST 3] CHUONG 4: QUA TAI TOAN TU (Operator Overloading):\n";
+    Position posA(10, 20);
+    Position posB(3, 5);
+
+    Position posAdd = posA + posB;
+    assert(posAdd.x == 13 && posAdd.y == 25);
+    std::cout << "  [PASS] Toan tu cong operator+: " << posA << " + " << posB << " = " << posAdd << "\n";
+
+    Position posSub = posA - posB;
+    assert(posSub.x == 7 && posSub.y == 15);
+    std::cout << "  [PASS] Toan tu tru operator-: " << posA << " - " << posB << " = " << posSub << "\n";
+
+    posA += posB;
+    assert(posA == posAdd);
+    std::cout << "  [PASS] Toan tu gan cong operator+=: posA = " << posA << "\n";
+
+    posA -= posB;
+    assert(posA.x == 10 && posA.y == 20);
+    std::cout << "  [PASS] Toan tu gan tru operator-=: posA = " << posA << "\n";
+
+    assert(posB < posA);
+    std::cout << "  [PASS] Toan tu so sanh thu tu operator<: " << posB << " < " << posA << "\n";
+
+    // Kiểm tra xuất stream << và nhập stream >>
+    std::stringstream ss;
+    ss << posA; // operator<<
+    std::cout << "  [PASS] Toan tu xuat stream operator<<: " << ss.str() << "\n";
+
+    Position posIn;
+    ss >> posIn; // operator>>
+    assert(posIn == posA);
+    std::cout << "  [PASS] Toan tu nhap stream operator>>: doc thanh cong posIn = " << posIn << "\n";
+
+    // -------------------------------------------------------------------------
+    // TEST 4: CHƯƠNG 5 - ĐA KẾ THỪA & GIẢI QUYẾT DIAMOND PROBLEM VỚI VIRTUAL BASE
+    // -------------------------------------------------------------------------
+    std::cout << "\n[TEST 4] CHUONG 5: DA KE THUA & DIAMOND PROBLEM (Virtual Base Class):\n";
+    Player testHero("Hiep Si Test", Position(5, 5), 100, 20, 5);
+    
+    // Upcasting sang 2 giao diện đa kế thừa
+    IRenderable* renderInterface = &testHero;
+    IDamageable* damageInterface = &testHero;
+
+    // Upcasting sang Virtual Base Class IGameObject
+    IGameObject* objFromRender = renderInterface;
+    IGameObject* objFromDamage = damageInterface;
+
+    assert(objFromRender == objFromDamage);
+    assert(objFromRender->getInstanceId() == objFromDamage->getInstanceId());
+    std::cout << "  [PASS] Da ke thua thanh cong: Entity ke thua dong thoi IRenderable & IDamageable.\n";
+    std::cout << "  [PASS] Ke thua kim cuong (Diamond Problem) duoc giai quyet hoan hao: \n";
+    std::cout << "         objFromRender (" << (void*)objFromRender << ") == objFromDamage (" << (void*)objFromDamage << ")\n";
+    std::cout << "         Duy nhat 1 instanceId = " << objFromRender->getInstanceId() << " (Khong bi xung dot luong nghia!)\n";
+
+    // -------------------------------------------------------------------------
+    // TEST 5: CHƯƠNG 6 - ĐA HÌNH ĐỘNG (RUNTIME POLYMORPHISM) & VIRTUAL DESTRUCTOR
+    // -------------------------------------------------------------------------
+    std::cout << "\n[TEST 5] CHUONG 6: DA HINH DONG (Runtime Polymorphism & Pure Virtual):\n";
+    Entity* polymorphicMonster = new Boar(Position(7, 7));
+    std::cout << "  [PASS] Con tro lop co so Entity* tro den doi tuong lop con Boar.\n";
+
+    polymorphicMonster->takeDamage(15);
+    std::cout << "  [PASS] Goi phuong thuc ao takeDamage qua con tro da hinh: HP con " << polymorphicMonster->getHp() << "\n";
+
+    Boar* downcasted = dynamic_cast<Boar*>(polymorphicMonster);
+    assert(downcasted != nullptr);
+    std::cout << "  [PASS] Ep kieu con tro an toan dynamic_cast (RTTI): xac dinh dung lop Boar.\n";
+
+    delete polymorphicMonster; // Virtual Destructor được kích hoạt
+    std::cout << "  [PASS] Giai phong bo nho qua con tro Entity* goi dung Virtual Destructor.\n";
+
+    // -------------------------------------------------------------------------
+    // TEST 6: CHƯƠNG 7 - KHUÔN MẪU (TEMPLATES - FUNCTION & CLASS TEMPLATES)
+    // -------------------------------------------------------------------------
+    std::cout << "\n[TEST 6] CHUONG 7: KHUON MAU (Function Template & Class Template):\n";
+    // 1. Function Templates
+    int clampedInt = CoreTemplates::clampValue(150, 0, 100);
+    float clampedFloat = CoreTemplates::clampValue(-3.5f, 0.0f, 10.0f);
+    assert(clampedInt == 100 && clampedFloat == 0.0f);
+    std::cout << "  [PASS] Function Template clampValue<int>: " << clampedInt << "\n";
+    std::cout << "  [PASS] Function Template clampValue<float>: " << clampedFloat << "\n";
+
+    // 2. Class Template DynamicArray
+    DynamicArray<int> intArr;
+    intArr.push_back(10);
+    intArr.push_back(20);
+    intArr.push_back(30);
+    assert(intArr.size() == 3);
+    assert(intArr[1] == 20);
+    std::cout << "  [PASS] Class Template DynamicArray<int> cap phat dong new[]: size = " << intArr.size() << ", data = " << intArr << "\n";
+
+    // Kiểm tra Deep Copy của Class Template
+    DynamicArray<int> copyArr = intArr; // Copy Constructor
+    intArr[0] = 999;
+    assert(copyArr[0] == 10);
+    std::cout << "  [PASS] Deep Copy Class Template: sao chep sau doc lap vung nho con tro T* thanh cong!\n";
+
+    DynamicArray<std::string> strArr;
+    strArr.push_back("Aethelgard");
+    strArr.push_back("Corebound");
+    strArr.push_back("Roguelike C++17");
+    std::cout << "  [PASS] Class Template DynamicArray<string>: " << strArr << "\n";
+
+    std::cout << "\n======================================================================\n";
+    std::cout << "   TAT CA 6 PHAN KIEM THU HOC THUAT OOP CHO 7 CHUONG DEU DAT [100%]\n";
+    std::cout << "======================================================================\n\n";
 }

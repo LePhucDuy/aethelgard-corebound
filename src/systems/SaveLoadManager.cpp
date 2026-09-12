@@ -23,6 +23,7 @@ bool SaveLoadManager::saveGame(const std::string& filePath, const Player& player
     outFile << "EXP=" << player.getExp() << "\n";
     outFile << "EXPToNext=" << player.getExpToNextLevel() << "\n";
     outFile << "Gold=" << player.getGold() << "\n";
+    outFile << "Pos=" << player.getPosition() << "\n"; // Minh họa nạp chồng toán tử xuất stream operator<<
     outFile << "PosX=" << player.getPosition().x << "\n";
     outFile << "PosY=" << player.getPosition().y << "\n";
 
@@ -101,6 +102,14 @@ bool SaveLoadManager::loadGame(const std::string& filePath, Player& player, Dung
             else if (key == "EXP") exp = std::stoi(val);
             else if (key == "EXPToNext") expToNext = std::stoi(val);
             else if (key == "Gold") gold = std::stoi(val);
+            else if (key == "Pos") {
+                // Minh họa nạp chồng toán tử nhập stream operator>> (Slide 25 Chương 4)
+                Position readPos;
+                std::stringstream ss(val);
+                ss >> readPos;
+                posX = readPos.x;
+                posY = readPos.y;
+            }
             else if (key == "PosX") posX = std::stoi(val);
             else if (key == "PosY") posY = std::stoi(val);
         } else if (section == "DUNGEON") {

@@ -7,20 +7,40 @@
 /**
  * @brief Struct Position biểu diễn tọa độ ô lưới (Grid Coordinate) trong hầm ngục.
  * 
- * Nạp chồng toán tử (Operator Overloading):
- * - operator== : Kiểm tra 2 thực thể có đứng cùng 1 ô không (phát hiện va chạm, nhặt đồ).
- * - operator!= : Kiểm tra khác vị trí.
- * - operator+  : Cộng dồn vector di chuyển (offset).
- * - operator<< : In tọa độ ra stream (phục vụ ghi log, debug và xuất console).
+ * TIÊU CHÍ OOP CHƯƠNG 3 (Lớp & Đối tượng) & CHƯƠNG 4 (Quá tải toán tử):
+ * 1. Constructor: Khởi tạo mặc định, có tham số, và Constructor sao chép (Copy Constructor).
+ * 2. Con trỏ this: Dùng trong toán tử gán sao chép (`return *this;`).
+ * 3. Nạp chồng toán tử toàn diện:
+ *    - `operator==`, `operator!=`: So sánh tọa độ trùng khớp / khác nhau.
+ *    - `operator<`: So sánh thứ tự từ điển, cho phép sắp xếp và lưu trong `std::map<Position, ...>`.
+ *    - `operator+`, `operator-`: Phép cộng / trừ vector độ dời.
+ *    - `operator+=`, `operator-=`: Phép gán kết hợp.
+ *    - `operator<<`: Nạp chồng toán tử xuất luồng (Stream Insertion) qua hàm bạn (friend).
+ *    - `operator>>`: Nạp chồng toán tử nhập luồng (Stream Extraction) qua hàm bạn (friend).
  */
 struct Position {
     int x;
     int y;
 
+    // 1. Constructor mặc định
     Position() : x(0), y(0) {}
+
+    // 2. Constructor có tham số
     Position(int x, int y) : x(x), y(y) {}
 
-    // Toán tử nạp chồng so sánh vị trí
+    // 3. Constructor sao chép (Copy Constructor - Slide 28-30 Chương 3)
+    Position(const Position& other) : x(other.x), y(other.y) {}
+
+    // 4. Toán tử gán sao chép (Copy Assignment Operator - Slide 23 Chương 4)
+    Position& operator=(const Position& other) {
+        if (this != &other) { // Kiểm tra tự gán thông qua con trỏ this
+            x = other.x;
+            y = other.y;
+        }
+        return *this; // Trả về tham chiếu đối tượng hiện tại
+    }
+
+    // 5. Nạp chồng toán tử so sánh (Slide 6-8 Chương 4)
     bool operator==(const Position& other) const {
         return (x == other.x && y == other.y);
     }
@@ -29,9 +49,17 @@ struct Position {
         return !(*this == other);
     }
 
-    // Toán tử cộng vị trí với vector độ dời
+    bool operator<(const Position& other) const {
+        return (x < other.x) || (x == other.x && y < other.y);
+    }
+
+    // 6. Nạp chồng toán tử số học
     Position operator+(const Position& offset) const {
         return Position(x + offset.x, y + offset.y);
+    }
+
+    Position operator-(const Position& offset) const {
+        return Position(x - offset.x, y - offset.y);
     }
 
     Position& operator+=(const Position& offset) {
@@ -40,15 +68,37 @@ struct Position {
         return *this;
     }
 
+    Position& operator-=(const Position& offset) {
+        x -= offset.x;
+        y -= offset.y;
+        return *this;
+    }
+
     // Tính khoảng cách Manhattan (khoảng cách lưới chuẩn của game Roguelike theo lượt)
     int manhattanDistanceTo(const Position& other) const {
         return std::abs(x - other.x) + std::abs(y - other.y);
     }
 
-    // Nạp chồng toán tử xuất stream
+    // 7. Nạp chồng toán tử xuất stream bằng hàm bạn (friend function - Slide 25 Chương 4)
     friend std::ostream& operator<<(std::ostream& os, const Position& pos) {
         os << "(" << pos.x << ", " << pos.y << ")";
         return os;
+    }
+
+    // 8. Nạp chồng toán tử nhập stream bằng hàm bạn (friend function - Slide 25 Chương 4)
+    friend std::istream& operator>>(std::istream& is, Position& pos) {
+        char ch = 0;
+        // Bỏ qua khoảng trắng đầu dòng
+        while (is.good() && std::isspace(is.peek())) {
+            is.get();
+        }
+        // Hỗ trợ đọc cả dạng "(x, y)" hoặc "x y"
+        if (is.peek() == '(') {
+            is >> ch >> pos.x >> ch >> pos.y >> ch;
+        } else {
+            is >> pos.x >> pos.y;
+        }
+        return is;
     }
 };
 

@@ -3,9 +3,15 @@
 
 #include <vector>
 #include <string>
-#include <raylib.h>
+#include "core/Position.h"
+#include "core/DynamicArray.h"
+#include "core/Templates.h"
 #include "entities/Player.h"
 #include "map/Dungeon.h"
+#include <vector>
+#include <string>
+#include <memory>
+#include <raylib.h>
 
 /**
  * @brief Định danh trạng thái tổng thể của trò chơi.
@@ -31,6 +37,7 @@ private:
     Dungeon dungeon;
     GameState state;
     std::vector<std::string> combatLog;
+    DynamicArray<std::string> templateCombatLog; // Ứng dụng Class Template tự xây dựng (Chương 7)
     Camera2D camera;
     Font fontMain;
     float moveTimer;
@@ -89,6 +96,9 @@ public:
 
     // Vòng lặp chính của game (hỗ trợ chụp ảnh tự động khi truyền đường dẫn)
     void run(const std::string& autoScreenshot = "");
+
+    // Hàm tự kiểm thử học thuật cho toàn bộ 7 chương OOP của trường UTH
+    static void runOOPAcademicTests();
 };
 
 #endif // GAME_ENGINE_H
