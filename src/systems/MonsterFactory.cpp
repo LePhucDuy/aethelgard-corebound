@@ -6,6 +6,8 @@ std::unique_ptr<Monster> MonsterFactory::create(MonsterType type, const Position
     switch (type) {
         case MonsterType::BOAR:
             return std::make_unique<Boar>(pos);
+        case MonsterType::WHITE_BOAR:
+            return std::make_unique<WhiteBoar>(pos);
         case MonsterType::SMALL_BEE:
             return std::make_unique<SmallBee>(pos);
         case MonsterType::SNAIL:

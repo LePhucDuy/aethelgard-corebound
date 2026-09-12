@@ -4,6 +4,7 @@
 #include <memory>
 #include "entities/Monster.h"
 #include "entities/Boar.h"
+#include "entities/WhiteBoar.h"
 #include "entities/SmallBee.h"
 #include "entities/Snail.h"
 
@@ -13,6 +14,7 @@
  */
 enum class MonsterType {
     BOAR,
+    WHITE_BOAR,    // Quái cấp trung: to hơn heo thường, máu trâu, húc mạnh
     SMALL_BEE,
     SNAIL,
     BOAR_KING      // Boss canh Cong Cua tren Dinh Den Tho

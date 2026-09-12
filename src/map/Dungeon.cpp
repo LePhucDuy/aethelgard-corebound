@@ -2,6 +2,7 @@
 #include "graphics/TextureManager.h"
 #include "systems/MonsterFactory.h"
 #include "entities/BoarKing.h"
+#include "entities/WhiteBoar.h"
 #include "items/Weapon.h"
 #include "items/Potion.h"
 #include "core/Constants.h"
@@ -270,20 +271,20 @@ void Dungeon::generate(int floor) {
     // KHU D - BÌNH NGUYÊN TÀN TÍCH (x = 89..112)
     spawnMonster(MonsterType::BOAR, Position(93, 9));
     spawnMonster(MonsterType::SMALL_BEE, Position(96, 7));
-    spawnMonster(MonsterType::BOAR, Position(105, 9));
+    spawnMonster(MonsterType::WHITE_BOAR, Position(105, 9));   // Quái cấp trung canh giữ tầng trên Khu D
     spawnMonster(MonsterType::SMALL_BEE, Position(109, 7));
     // Tầng dưới Khu D
     spawnMonster(MonsterType::BOAR, Position(92, 18));
     spawnMonster(MonsterType::SNAIL, Position(96, 18));
-    spawnMonster(MonsterType::BOAR, Position(106, 18));
+    spawnMonster(MonsterType::WHITE_BOAR, Position(106, 18));  // Quái cấp trung tuần tra lối vào đền thờ
     spawnMonster(MonsterType::SNAIL, Position(110, 18));
 
     // KHU E - ĐỈNH ĐỀN THỜ (x = 113..129)
-    spawnMonster(MonsterType::BOAR, Position(121, 6));       // Hộ vệ đền thờ
-    spawnMonster(MonsterType::SMALL_BEE, Position(117, 4));  // Hộ vệ bay
+    spawnMonster(MonsterType::WHITE_BOAR, Position(121, 6));   // Quái cấp trung Hộ Vệ Đền Thờ
+    spawnMonster(MonsterType::SMALL_BEE, Position(117, 4));    // Hộ vệ bay
     spawnMonster(MonsterType::SMALL_BEE, Position(125, 4));
     // Tầng hầm Đền Thờ (y = 18)
-    spawnMonster(MonsterType::BOAR, Position(118, 18));
+    spawnMonster(MonsterType::WHITE_BOAR, Position(118, 18));  // Quái cấp trung chốt chặn cổng đấu trường
     spawnMonster(MonsterType::SNAIL, Position(123, 18));
 
     // KHU F - ĐẤU TRƯỜNG BOAR KING (x = 130..164)
@@ -425,11 +426,14 @@ void Dungeon::removeDeadMonsters(Player& player) {
 
 void Dungeon::update(float deltaTime, Player& player, std::vector<std::string>& combatLog) {
     for (auto& monster : monsters) {
-        if (monster && monster->isAlive()) {
+        if (monster) {
             monster->update(deltaTime);
-            monster->updateAI(deltaTime, *this, player, combatLog);
+            if (monster->isAlive()) {
+                monster->updateAI(deltaTime, *this, player, combatLog);
+            }
         }
     }
+    removeDeadMonsters(player);
 }
 
 // ===== Kịch bản màn chơi =====
@@ -501,11 +505,14 @@ Monster* Dungeon::getBossMonster() const {
 }
 
 bool Dungeon::checkBossDefeated() {
-    // hasBossFlag chỉ bật khi boss đã sinh; getBossMonster() == nullptr
-    // nghĩa là boss đã bị xóa khỏi danh sách (đã chết)
-    if (hasBossFlag && !bossDefeated && getBossMonster() == nullptr) {
-        bossDefeated = true;
-        return true;
+    // hasBossFlag chỉ bật khi boss đã sinh;
+    // boss chết khi getBossMonster() == nullptr hoặc !boss->isAlive()
+    if (hasBossFlag && !bossDefeated) {
+        Monster* boss = getBossMonster();
+        if (boss == nullptr || !boss->isAlive()) {
+            bossDefeated = true;
+            return true;
+        }
     }
     return false;
 }
@@ -692,18 +699,26 @@ void Dungeon::renderItems(Vector2 offset) const {
 
 void Dungeon::renderMonsters(Vector2 offset) const {
     for (auto& monster : monsters) {
-        if (monster && monster->isAlive()) {
+        if (monster && (monster->isAlive() || monster->isDying())) {
             // Đứng vững chãi ngay trên mặt cỏ
             monster->render(1.8f, offset);
 
-            const Vector2& vPos = monster->getVisualPosition();
-            float barX = offset.x + vPos.x;
-            // Thanh máu nổi ngay trên đầu sprite bám theo tọa độ visualPos lướt mượt
-            float barY = offset.y + vPos.y - 1.8f * 32.0f - 8.0f;
-            float hpPercent = (float)monster->getHp() / (float)monster->getMaxHp();
+            if (monster->isAlive()) {
+                // Boss BoarKing đã có thanh máu trùm đồ sộ ở đỉnh màn hình
+                if (dynamic_cast<BoarKing*>(monster.get()) != nullptr) {
+                    continue;
+                }
 
-            DrawRectangle((int)barX, (int)barY, Constants::TILE_SIZE, 4, RED);
-            DrawRectangle((int)barX, (int)barY, (int)(Constants::TILE_SIZE * hpPercent), 4, GREEN);
+                const Vector2& vPos = monster->getVisualPosition();
+                float barX = offset.x + vPos.x;
+                // Quái cấp trung (WhiteBoar) to hơn 30% nên nâng thanh máu lên 10px để không che đỉnh gai lưng
+                float extraH = (dynamic_cast<WhiteBoar*>(monster.get()) != nullptr) ? 10.0f : 0.0f;
+                float barY = offset.y + vPos.y - 1.8f * 32.0f - 8.0f - extraH;
+                float hpPercent = (float)monster->getHp() / (float)monster->getMaxHp();
+
+                DrawRectangle((int)barX, (int)barY, Constants::TILE_SIZE, 4, RED);
+                DrawRectangle((int)barX, (int)barY, (int)(Constants::TILE_SIZE * hpPercent), 4, GREEN);
+            }
         }
     }
 }

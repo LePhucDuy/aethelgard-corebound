@@ -42,6 +42,7 @@ public:
 
     void update(float deltaTime) override;
     void act(Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) override;
+    void takeDamage(int amount) override;
     void onDeath(Player& player) override;
     void render(float scale = 2.0f, Vector2 offset = {0.0f, 0.0f}) const override;
 

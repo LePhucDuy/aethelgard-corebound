@@ -46,7 +46,13 @@ void Monster::addAnimation(const std::string& stateName, std::unique_ptr<Animati
 void Monster::setState(const std::string& stateName) {
     auto it = anims.find(stateName);
     if (it == anims.end()) return;           // Không có animation này -> bỏ qua
-    if (animState == stateName) return;      // Đang dùng rồi -> không reset frame
+    if (animState == stateName) {
+        // Nếu đang ở trạng thái hit và bị đánh tiếp -> reset frame 0 để giật tiếp đòn mới
+        if (stateName == "hit" && currentAnim) {
+            currentAnim->reset();
+        }
+        return;      // Đang dùng rồi -> không reset frame trừ khi là hit
+    }
     animState = stateName;
     currentAnim = it->second.get();
     currentAnim->reset();
@@ -60,6 +66,15 @@ void Monster::update(float deltaTime) {
     // Tự động thoát khỏi đòn tấn công 1 lần (attack) khi animation chạy xong
     if (!dying && animState == "attack" && currentAnim->hasFinished()) {
         setState("idle");
+    }
+
+    // Tự động thoát khỏi trạng thái bị đánh (hit) khi animation chớp giật chạy xong
+    if (!dying && animState == "hit" && currentAnim->hasFinished()) {
+        if (isAlerted || aiState == MonsterAIState::CHASE) {
+            setState("run");
+        } else {
+            setState("idle");
+        }
     }
 }
 
@@ -97,10 +112,14 @@ void Monster::takeDamage(int amount) {
     if (!alive) {
         kill();
     } else {
+        // Bị đánh trúng -> phát hoạt ảnh bị đánh (hit) nếu có
+        if (anims.find("hit") != anims.end()) {
+            setState("hit");
+        }
         // Bị đánh trúng -> lập tức báo động và chuyển sang truy đuổi
         isAlerted = true;
         aiState = MonsterAIState::CHASE;
-        actionTimer = 0.1f;
+        actionTimer = 0.28f; // Dừng nhẹ trong thời gian chớp trúng đòn
     }
 }
 

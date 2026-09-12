@@ -9,7 +9,7 @@
 #include <algorithm>
 
 BoarKing::BoarKing(const Position& pos)
-    : Boar("Boar King (Chua Heo Rung)", pos, 160, 20, 5, 200, 100,
+    : Boar("Boar King (Hac Tru Vuong)", pos, 160, 20, 5, 200, 100,
            /*aggroRange*/ 15, /*patrolRange*/ 6),
       bossState(BoarKingState::DORMANT),
       enraged(false),
@@ -22,11 +22,12 @@ BoarKing::BoarKing(const Position& pos)
       chargeTargetX(146),
       requestedScreenShake(false),
       shakeIntensity(0.0f) {
-    // Boss dùng bộ animation boar nhưng frame tốc độ cao, uy lực
-    addAnimation("idle", std::make_unique<Animation>("boar_idle", 4, 48, 32, 0.12f, true));
-    addAnimation("walk", std::make_unique<Animation>("boar_walk", 6, 48, 32, 0.09f, true));
-    addAnimation("run",  std::make_unique<Animation>("boar_run",  6, 48, 32, 0.06f, true));
-    addAnimation("dead", std::make_unique<Animation>("boar_hit",  4, 48, 32, 0.05f, false));
+    // Boss Boar King dùng bộ spritesheet Hắc Lợn Rừng (Black Boar) hắc ám, hung tợn và uy lực
+    addAnimation("idle", std::make_unique<Animation>("boar_black_idle", 4, 48, 32, 0.12f, true));
+    addAnimation("walk", std::make_unique<Animation>("boar_black_walk", 6, 48, 32, 0.09f, true));
+    addAnimation("run",  std::make_unique<Animation>("boar_black_run",  6, 48, 32, 0.06f, true));
+    addAnimation("hit",  std::make_unique<Animation>("boar_black_hit",  4, 48, 32, 0.06f, false));
+    addAnimation("dead", std::make_unique<Animation>("boar_black_hit",  4, 48, 32, 0.05f, false));
     setState("idle");
     setFacing(false); // Ban đầu quay mặt sang trái hướng về đấu trường
     setMoveLerpSpeed(6.0f);
@@ -46,7 +47,7 @@ void BoarKing::triggerEntrance() {
 }
 
 void BoarKing::update(float deltaTime) {
-    Entity::update(deltaTime);
+    Monster::update(deltaTime);
     if (!currentAnim) return;
 
     if (stompCooldown > 0.0f) stompCooldown -= deltaTime;
@@ -95,6 +96,7 @@ void BoarKing::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
     if (!alive || dying) return;
     if (bossState == BoarKingState::DORMANT || bossState == BoarKingState::ENTRANCE_RUSH) return;
     if (bossState == BoarKingState::STUNNED || bossState == BoarKingState::CHARGE_WINDUP) return;
+    if (animState == "hit" && currentAnim && !currentAnim->hasFinished()) return;
 
     Position pPos = player.getPosition();
     int dx = pPos.x - pos.x;
@@ -232,6 +234,16 @@ void BoarKing::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
     int step = (dx > 0) ? 1 : -1;
     tryStepTo(dungeon, Position(pos.x + step, pos.y), player);
     actionTimer = 0.28f;
+}
+
+void BoarKing::takeDamage(int amount) {
+    if (bossState == BoarKingState::CHARGING || bossState == BoarKingState::CHARGE_WINDUP) {
+        // Siêu giáp (Hyper-armor) khi đang lấy đà húc hoặc đang phóng húc: trừ máu nhưng không ngắt chiêu
+        Entity::takeDamage(amount);
+        if (!alive) kill();
+        return;
+    }
+    Monster::takeDamage(amount);
 }
 
 void BoarKing::onDeath(Player& player) {

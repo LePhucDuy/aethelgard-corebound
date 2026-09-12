@@ -80,10 +80,18 @@ void GameEngine::init() {
     tm.load("warrior_attack", "assets/characters/warrior/Attack-01/Attack-01-Sheet.png");
     tm.load("warrior_jump",   "assets/characters/warrior/Jumlp-All/Jump-All-Sheet.png");
     tm.load("warrior_dead",   "assets/characters/warrior/Dead/Dead-Sheet.png");
-    tm.load("boar_walk",      "assets/mobs/boar/Walk/Walk-Base-Sheet.png");
-    tm.load("boar_idle",      "assets/mobs/boar/Idle/Idle-Sheet.png");
-    tm.load("boar_run",       "assets/mobs/boar/Run/Run-Sheet.png");
-    tm.load("boar_hit",       "assets/mobs/boar/Hit-Vanish/Hit-Sheet.png");
+    tm.load("boar_walk",       "assets/mobs/boar/Walk/Walk-Base-Sheet.png");
+    tm.load("boar_idle",       "assets/mobs/boar/Idle/Idle-Sheet.png");
+    tm.load("boar_run",        "assets/mobs/boar/Run/Run-Sheet.png");
+    tm.load("boar_hit",        "assets/mobs/boar/Hit-Vanish/Hit-Sheet.png");
+    tm.load("boar_black_walk", "assets/mobs/boar/Walk/Walk-Base-SheetBlack.png");
+    tm.load("boar_black_idle", "assets/mobs/boar/Idle/Idle-Sheet-export-Back.png");
+    tm.load("boar_black_run",  "assets/mobs/boar/Run/Run-Sheet-Black.png");
+    tm.load("boar_black_hit",  "assets/mobs/boar/Hit-Vanish/Hit-Sheet-Black.png");
+    tm.load("boar_white_walk", "assets/mobs/boar/Walk/Walk-Base-Sheet-White.png");
+    tm.load("boar_white_idle", "assets/mobs/boar/Idle/Idle-Sheet-White.png");
+    tm.load("boar_white_run",  "assets/mobs/boar/Run/Run-Sheet-White.png");
+    tm.load("boar_white_hit",  "assets/mobs/boar/Hit-Vanish/Hit-Sheet-White.png");
     tm.load("bee_fly",        "assets/mobs/small_bee/Fly/Fly-Sheet.png");
     tm.load("bee_attack",     "assets/mobs/small_bee/Attack/Attack-Sheet.png");
     tm.load("bee_hit",        "assets/mobs/small_bee/Hit/Hit-Sheet.png");
@@ -1409,8 +1417,17 @@ void GameEngine::run(const std::string& autoScreenshot) {
                 }
             } else if (autoScreenshot.find("boss_entrance") != std::string::npos) {
                 takeNow = (testFrames >= 18); // Boss đang phi nước đại từ phải sang trái và banner cảnh báo hiện
-            } else if (autoScreenshot.find("boss_battle") != std::string::npos) {
-                takeNow = (testFrames >= 40); // Boss đã đến giữa và sẵn sàng chiến đấu
+            } else if (autoScreenshot.find("boar_hit") != std::string::npos) {
+                if (testFrames == 3) {
+                    // Mô phỏng chém trúng Boar bên cạnh để kiểm tra hoạt ảnh Hit-Sheet
+                    Position p = player.getPosition();
+                    Monster* m = dungeon.getMonsterAt(Position(p.x + 1, p.y));
+                    if (!m) m = dungeon.getMonsterAt(Position(p.x - 1, p.y));
+                    if (m) {
+                        CombatSystem::attack(player, *m, combatLog, this);
+                    }
+                }
+                takeNow = (testFrames >= 7);
             } else {
                 takeNow = (testFrames >= 10);
             }

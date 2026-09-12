@@ -21,15 +21,12 @@ bool DashSkill::execute(Player* user, GameEngine* engine) {
     if (!user || !canExecute()) return false;
     
     int dirX = user->isFacingRight() ? 1 : -1;
-    // Thử lướt tối đa 3 ô nếu không vướng tường
-    int successfulSteps = 0;
     if (engine) {
         Dungeon& dungeon = engine->getDungeon();
         for (int step = 1; step <= 3; ++step) {
             Position nextPos(user->getPosition().x + dirX, user->getPosition().y);
-            if (dungeon.isWalkable(nextPos) && !dungeon.isSolidWall(nextPos.x, nextPos.y)) {
+            if (dungeon.isWalkable(nextPos)) {
                 user->moveBy(dirX, 0, dungeon);
-                successfulSteps++;
             } else {
                 break;
             }
