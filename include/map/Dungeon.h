@@ -89,6 +89,7 @@ public:
     bool isBossDefeated() const { return bossDefeated; }
     void setBossDefeated(bool defeated) { bossDefeated = defeated; }
     Monster* getBossMonster() const;
+    Monster* getQueenBeeMonster() const;
 
     // Gọi sau khi dọn xác quái: trả về true đúng 1 lần khi phát hiện boss đã bị tiêu diệt
     bool checkBossDefeated();

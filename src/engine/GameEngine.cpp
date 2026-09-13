@@ -9,6 +9,8 @@
 #include "items/Accessory.h"
 #include "items/Chest.h"
 #include "entities/Snail.h"
+#include "entities/SmallBee.h"
+#include "entities/QueenBee.h"
 #include "entities/Boar.h"
 #include "entities/BoarKing.h"
 #include "core/Constants.h"
@@ -1236,34 +1238,65 @@ void GameEngine::renderHUD() const {
     // =========================================================================
     // 2. THANH MÁU TRÙM (BOSS HP BAR)
     // =========================================================================
+    // =========================================================================
+    // 2. THANH MÁU TRÙM (BOSS HP BAR - HỖ TRỢ CẢ QUEEN BEE & BOAR KING)
+    // =========================================================================
     if (state == GameState::RUNNING) {
-        Monster* boss = dungeon.getBossMonster();
-        if (boss && boss->isAlive()) {
-            Position pPos = player.getPosition();
-            Position bPos = boss->getPosition();
-            int cheb = std::max(std::abs(pPos.x - bPos.x), std::abs(pPos.y - bPos.y));
-            // Hiển thị thanh máu nếu trong Đấu trường hoặc trong cự ly quan sát
-            if (bossCinematicTriggered || cheb <= 14) {
-                int bossBarW = 420, bossBarH = 20;
-                int bossBarX = screenW / 2 - bossBarW / 2;
-                int bossBarY = 56;
-                float bossHp = (float)boss->getHp() / (float)boss->getMaxHp();
-                if (bossHp < 0.0f) bossHp = 0.0f;
-                if (bossHp > 1.0f) bossHp = 1.0f;
+        Position pPos = player.getPosition();
+        Monster* activeBoss = nullptr;
+        std::string bossTitle = "";
+        Color bossBorderColor = Color{ 200, 140, 45, 255 };
+        Color bossBarFill = Color{ 220, 50, 30, 255 };
+        Color bossBarHigh = Color{ 255, 120, 60, 160 };
 
-                DrawRectangle(bossBarX - 10, bossBarY - 6, bossBarW + 20, bossBarH + 28, Color{ 16, 12, 22, 235 });
-                DrawRectangleLines(bossBarX - 10, bossBarY - 6, bossBarW + 20, bossBarH + 28, Color{ 200, 140, 45, 255 });
-                
-                drawText("BOAR KING - CHUA HEO RUNG", bossBarX + 85, bossBarY - 2, 16, Color{ 255, 170, 80, 255 });
-                
-                DrawRectangle(bossBarX, bossBarY + 18, bossBarW, bossBarH, Color{ 40, 15, 15, 255 });
-                int fillBossW = (int)((bossBarW - 4) * bossHp);
-                DrawRectangle(bossBarX + 2, bossBarY + 20, fillBossW, bossBarH - 4, Color{ 220, 50, 30, 255 });
-                DrawRectangle(bossBarX + 2, bossBarY + 20, fillBossW, (bossBarH - 4) / 2, Color{ 255, 120, 60, 160 });
-                DrawRectangleLines(bossBarX, bossBarY + 18, bossBarW, bossBarH, Color{ 140, 50, 40, 255 });
-                
-                drawText(TextFormat("HP: %d/%d", boss->getHp(), boss->getMaxHp()), bossBarX + bossBarW / 2 - 38, bossBarY + 20, 14, WHITE);
+        Monster* qBee = dungeon.getQueenBeeMonster();
+        if (qBee && qBee->isAlive()) {
+            Position qPos = qBee->getPosition();
+            int distQ = std::max(std::abs(pPos.x - qPos.x), std::abs(pPos.y - qPos.y));
+            if (distQ <= 12) {
+                activeBoss = qBee;
+                bossTitle = "QUEEN BEE - HOANG HAU ONG CHUA";
+                bossBorderColor = Color{ 255, 215, 0, 255 };
+                bossBarFill = Color{ 230, 150, 20, 255 };
+                bossBarHigh = Color{ 255, 220, 80, 180 };
             }
+        }
+
+        if (!activeBoss) {
+            Monster* bKing = dungeon.getBossMonster();
+            if (bKing && bKing->isAlive()) {
+                Position bPos = bKing->getPosition();
+                int distB = std::max(std::abs(pPos.x - bPos.x), std::abs(pPos.y - bPos.y));
+                if (bossCinematicTriggered || distB <= 14) {
+                    activeBoss = bKing;
+                    bossTitle = "BOAR KING - CHUA HEO RUNG";
+                    bossBorderColor = Color{ 200, 140, 45, 255 };
+                    bossBarFill = Color{ 220, 50, 30, 255 };
+                    bossBarHigh = Color{ 255, 120, 60, 160 };
+                }
+            }
+        }
+
+        if (activeBoss && activeBoss->isAlive()) {
+            int bossBarW = 440, bossBarH = 20;
+            int bossBarX = screenW / 2 - bossBarW / 2;
+            int bossBarY = 56;
+            float bossHp = (float)activeBoss->getHp() / (float)activeBoss->getMaxHp();
+            if (bossHp < 0.0f) bossHp = 0.0f;
+            if (bossHp > 1.0f) bossHp = 1.0f;
+
+            DrawRectangle(bossBarX - 10, bossBarY - 6, bossBarW + 20, bossBarH + 28, Color{ 16, 12, 22, 235 });
+            DrawRectangleLines(bossBarX - 10, bossBarY - 6, bossBarW + 20, bossBarH + 28, bossBorderColor);
+            
+            drawText(bossTitle.c_str(), bossBarX + 70, bossBarY - 2, 16, bossBorderColor);
+            
+            DrawRectangle(bossBarX, bossBarY + 18, bossBarW, bossBarH, Color{ 40, 15, 15, 255 });
+            int fillBossW = (int)((bossBarW - 4) * bossHp);
+            DrawRectangle(bossBarX + 2, bossBarY + 20, fillBossW, bossBarH - 4, bossBarFill);
+            DrawRectangle(bossBarX + 2, bossBarY + 20, fillBossW, (bossBarH - 4) / 2, bossBarHigh);
+            DrawRectangleLines(bossBarX, bossBarY + 18, bossBarW, bossBarH, Color{ 140, 50, 40, 255 });
+            
+            drawText(TextFormat("HP: %d/%d", activeBoss->getHp(), activeBoss->getMaxHp()), bossBarX + bossBarW / 2 - 40, bossBarY + 20, 14, WHITE);
         }
     }
 
@@ -2287,6 +2320,15 @@ void GameEngine::runOOPAcademicTests() {
     assert(asEntity != nullptr);
     std::cout << "  [PASS] Ke thua da muc (Multi-level 5 tang): BoarKing -> Boar -> GroundMonster -> Monster -> Entity\n";
 
+    // Kế thừa phân cấp Boss bay (Hierarchical Flying Boss Inheritance)
+    QueenBee testQueen(Position(72, 6));
+    FlyingMonster* asFlying = &testQueen;
+    Monster* asMonQueen = asFlying;
+    Entity* asEntQueen = asMonQueen;
+    assert(asEntQueen != nullptr && asFlying->isFlying());
+    assert(testQueen.getHp() == 280);
+    std::cout << "  [PASS] Ke thua phan cap Boss bay: QueenBee (HP 280) -> FlyingMonster -> Monster -> Entity\n";
+
     // Kế thừa giao diện Chest -> IRenderable -> virtual IGameObject
     Chest testChest(Position(38, 12), 35, "Than Duoc Aethelgard", 50);
     IRenderable* chestRenderable = &testChest;
@@ -2311,6 +2353,14 @@ void GameEngine::runOOPAcademicTests() {
 
     delete polymorphicMonster; // Virtual Destructor được kích hoạt
     std::cout << "  [PASS] Giai phong bo nho qua con tro Entity* goi dung Virtual Destructor.\n";
+
+    // Đa hình động với Boss Ong Chúa (QueenBee Polymorphism)
+    Entity* polyQueen = new QueenBee(Position(15, 15));
+    polyQueen->takeDamage(20);
+    QueenBee* downcastQueen = dynamic_cast<QueenBee*>(polyQueen);
+    assert(downcastQueen != nullptr);
+    std::cout << "  [PASS] Da hinh dong RTTI dynamic_cast voi QueenBee thanh cong: HP hien tai " << polyQueen->getHp() << "\n";
+    delete polyQueen;
 
     // Đa hình vật phẩm Item (Chương 6): Armor & Accessory
     int heroDefBefore = testHero.getDefense();

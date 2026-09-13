@@ -5,8 +5,8 @@
 #include <iostream>
 
 Snail::Snail(const Position& pos)
-    : GroundMonster("Snail (Oc sen giap)", pos, 30, 4, 3, 30, 15,
-                    /*aggroRange*/ 2, /*patrolRange*/ 1),
+    : GroundMonster("Snail (Oc sen giap)", pos, /*hp*/ 50, /*atk*/ 8, /*def*/ 5, /*exp*/ 35, /*gold*/ 18,
+                    /*aggroRange*/ 3, /*patrolRange*/ 1),
       isHiding(false), turnsToMove(0) {
     // Hoạt họa đa trạng thái: idle (bò ra), hide (rút vỏ), dead (chết)
     addAnimation("idle", std::make_unique<Animation>("snail_walk", 8, 48, 32, 0.18f, true));
@@ -20,10 +20,10 @@ void Snail::takeDamage(int amount) {
 
     if (alive && hp <= (maxHp / 2) && !isHiding) {
         isHiding = true;
-        defense += 5; // Tăng thêm 5 giáp (tổng 8 DEF)
+        defense += 8; // Tăng thêm 8 giáp (tổng 13 DEF)
         setState("hide");  // Chuyển sang animation rút vỏ
         std::cout << "[KY NANG] " << name << " tai " << pos
-                  << " da kich hoat [RUT VAO VO]! Thu minh trong vo va ngung tan cong!" << std::endl;
+                  << " da kich hoat [RUT VAO VO]! Thu minh trong vo va tang phong thu vuot bac!" << std::endl;
     }
 }
 
@@ -32,9 +32,9 @@ void Snail::act(Dungeon& dungeon, Player& player, std::vector<std::string>& comb
     int dx = pPos.x - pos.x;
     int dy = pPos.y - pos.y;
 
-    // 1. RÚT VÀO VỎ: không tấn công, hồi 2 HP định kỳ
+    // 1. RÚT VÀO VỎ: không tấn công, hồi 3 HP định kỳ
     if (isHiding) {
-        heal(2);
+        heal(3);
         actionTimer = 2.0f;
         return;
     }

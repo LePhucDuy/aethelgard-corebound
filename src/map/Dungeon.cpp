@@ -2,6 +2,7 @@
 #include "graphics/TextureManager.h"
 #include "systems/MonsterFactory.h"
 #include "entities/BoarKing.h"
+#include "entities/QueenBee.h"
 #include "entities/WhiteBoar.h"
 #include "items/Weapon.h"
 #include "items/Potion.h"
@@ -260,6 +261,7 @@ void Dungeon::generate(int floor) {
     // KHU C - VÁCH ĐÁ & VỰC NƯỚC (x = 56..88)
     spawnMonster(MonsterType::SNAIL, Position(60, 9));
     spawnMonster(MonsterType::SMALL_BEE, Position(65, 7));
+    spawnMonster(MonsterType::QUEEN_BEE, Position(72, 6)); // ĐẠI BOSS ONG CHÚA HOÀNG GIA TRÊN KHÔNG
     spawnMonster(MonsterType::BOAR, Position(75, 9));
     spawnMonster(MonsterType::SNAIL, Position(79, 9));
     spawnMonster(MonsterType::SMALL_BEE, Position(85, 7));
@@ -516,6 +518,15 @@ bool Dungeon::spawnMonster(MonsterType type, const Position& desiredPos) {
 Monster* Dungeon::getBossMonster() const {
     for (const auto& monster : monsters) {
         if (monster && dynamic_cast<BoarKing*>(monster.get()) != nullptr) {
+            return monster.get();
+        }
+    }
+    return nullptr;
+}
+
+Monster* Dungeon::getQueenBeeMonster() const {
+    for (const auto& monster : monsters) {
+        if (monster && dynamic_cast<QueenBee*>(monster.get()) != nullptr) {
             return monster.get();
         }
     }

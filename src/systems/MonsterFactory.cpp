@@ -14,6 +14,8 @@ std::unique_ptr<Monster> MonsterFactory::create(MonsterType type, const Position
             return std::make_unique<Snail>(pos);
         case MonsterType::BOAR_KING:
             return std::make_unique<BoarKing>(pos);
+        case MonsterType::QUEEN_BEE:
+            return std::make_unique<QueenBee>(pos);
         default:
             return std::make_unique<Boar>(pos);
     }
