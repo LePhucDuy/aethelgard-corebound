@@ -43,9 +43,10 @@ HealSkill::HealSkill()
 bool HealSkill::execute(Player* user, GameEngine* engine) {
     if (!user || !canExecute()) return false;
 
-    if (user->getHp() >= user->getMaxHp()) {
+    bool wasPoisoned = user->isPoisoned();
+    if (user->getHp() >= user->getMaxHp() && !wasPoisoned) {
         if (engine) {
-            engine->getCombatLog().push_back("Mau cua ban da day, khong can hoi phuc!");
+            engine->getCombatLog().push_back("Mau cua ban da day va khong trung doc!");
         }
         return false;
     }
@@ -54,11 +55,24 @@ bool HealSkill::execute(Player* user, GameEngine* engine) {
     user->heal(30);
     int healed = user->getHp() - oldHp;
 
+    if (wasPoisoned) {
+        user->curePoison();
+    }
+
     if (engine) {
-        engine->addDamagePopup("+" + std::to_string(healed) + " HP", 
-                               static_cast<float>(user->getPosition().x * 32), 
-                               static_cast<float>(user->getPosition().y * 32 - 10), 
-                               GREEN, 1.0f);
+        if (healed > 0) {
+            engine->addDamagePopup("+" + std::to_string(healed) + " HP", 
+                                   static_cast<float>(user->getPosition().x * 32), 
+                                   static_cast<float>(user->getPosition().y * 32 - 10), 
+                                   GREEN, 1.0f);
+        }
+        if (wasPoisoned) {
+            engine->addDamagePopup("THANH TAY DOC!", 
+                                   static_cast<float>(user->getPosition().x * 32), 
+                                   static_cast<float>(user->getPosition().y * 32 - 24), 
+                                   Color{ 120, 255, 180, 255 }, 1.2f);
+            engine->getCombatLog().push_back("[THANH TAY] Phep Thanh Quang da hoa giai toan bo doc to!");
+        }
         engine->getCombatLog().push_back("Ban da su dung [Hoi Phuc Khan Cap] +30 HP!");
     }
 

@@ -6,6 +6,7 @@
 #include "entities/Boar.h"
 #include "entities/WhiteBoar.h"
 #include "entities/SmallBee.h"
+#include "entities/QueenBee.h"
 #include "entities/Snail.h"
 
 /**
@@ -17,8 +18,8 @@ enum class MonsterType {
     WHITE_BOAR,    // Quái cấp trung: to hơn heo thường, máu trâu, húc mạnh
     SMALL_BEE,
     SNAIL,
-    BOAR_KING      // Boss canh Cong Cua tren Dinh Den Tho
-    // Sau này thêm quái mới chỉ cần thêm 1 dòng ở đây
+    BOAR_KING,     // Đại Boss Đấu Trường Đền Thờ
+    QUEEN_BEE      // Đại Boss Ong Chúa Khu Vực Vực Đá Thác Nước
 };
 
 /**

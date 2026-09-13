@@ -8,17 +8,16 @@
 // Forward declaration
 class Player;
 class Dungeon;
+class IAIStrategy;
 
 /**
  * @brief Lớp trừu tượng Monster (Abstract Base Class 2)
  * Kế thừa từ Entity (Inheritance: IS-A), làm lớp cha cho toàn bộ quái vật trong game.
  *
- * AI THEO LƯỢT (Turn-based AI):
- * - Mỗi lượt của quái vật, Engine gọi `act(dungeon, player, combatLog)` — lớp con
- *   tự quyết định: tuần tra (patrol), đuổi theo (chase) hay tấn công (melee).
- * - Hạ tầng AI dùng chung được đặt tại lớp cha: bước đi an toàn (tryStepTo),
- *   kiểm tra sàn đỡ dưới chân (isGrounded — quái bộ không đứng lơ lửng),
- *   tầm nhìn thẳng (hasLineOfSight — không đánh/nhìn xuyên tường).
+ * AI THEO LƯỢT (Turn-based AI) & STRATEGY PATTERN:
+ * - Áp dụng Strategy Pattern (GoF Behavioral Pattern): Quái vật có thể sở hữu một
+ *   chiến lược tác chiến `IAIStrategy` và hoán đổi linh hoạt trong thời gian chạy.
+ * - Nếu không có strategy, Monster gọi hàm ảo thuần túy `act()` của lớp con.
  */
 enum class MonsterAIState {
     PATROL,
@@ -28,9 +27,14 @@ enum class MonsterAIState {
 };
 
 class Monster : public Entity {
+    friend class IAIStrategy;
+
 protected:
     int expReward;
     int goldReward;
+
+    // Chiến lược AI động (Strategy Pattern - GoF Behavioral Pattern)
+    std::unique_ptr<IAIStrategy> aiStrategy;
 
     // Trạng thái AI
     Position homePos;   // Điểm sinh — tâm của vùng tuần tra
@@ -100,6 +104,10 @@ public:
     MonsterAIState getAIState() const { return aiState; }
     void setAIState(MonsterAIState s) { aiState = s; }
     bool isTargetAlerted() const { return isAlerted; }
+
+    // Quản lý Chiến lược AI (Strategy Pattern)
+    void setStrategy(std::unique_ptr<IAIStrategy> newStrategy);
+    IAIStrategy* getStrategy() const { return aiStrategy.get(); }
 
 public:
     Monster(const std::string& name, const Position& pos, int hp, int attack, int defense,

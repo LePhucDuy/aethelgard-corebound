@@ -6,6 +6,7 @@
 #include "core/Position.h"
 #include "core/DynamicArray.h"
 #include "core/Templates.h"
+#include "systems/EventSystem.h"
 #include "entities/Player.h"
 #include "graphics/DamagePopup.h"
 #include "graphics/GoldParticle.h"
@@ -90,6 +91,27 @@ private:
     Color forgeNotificationColor;
     float forgeNotificationTimer;
 
+    // Vệt kiếm chém hình vòng cung (Slash Arc Trail) & Khựng đòn (Hit Stop)
+    struct SlashArc {
+        Vector2 center;
+        float radius;
+        float startAngle;
+        float endAngle;
+        float maxLifetime;
+        float timer;
+        bool facingRight;
+        Color baseColor;
+    };
+    std::vector<SlashArc> activeSlashArcs;
+    float hitStopTimer;
+    mutable float playerGhostHp;
+
+    // Hệ thống Observer Pattern (GoF Behavioral Pattern)
+    std::unique_ptr<AchievementObserver> achievementObserver;
+    std::unique_ptr<CombatLogObserver> combatLogObserver;
+    std::string achievementBanner;
+    float achievementBannerTimer;
+
     // Ghi đè vị trí xuất phát (tuỳ chọn, phục vụ debug/test từng khu: --spawn X Y)
     int spawnOverrideX;
     int spawnOverrideY;
@@ -130,6 +152,10 @@ public:
 
     // Hiệu ứng bung tỏa hạt vàng rơi ra từ thân quái vật (Gold Burst & Magnet Attract)
     void spawnGoldBurst(float worldX, float worldY, float groundY, int totalGold, int count = 6);
+
+    // Hiệu ứng vệt kiếm chém hình vòng cung & Khựng đòn (Game Feel)
+    void triggerHitStop(float duration = 0.06f);
+    void addSlashArc(Vector2 center, bool facingRight);
 
     Dungeon& getDungeon() { return dungeon; }
     const Dungeon& getDungeon() const { return dungeon; }

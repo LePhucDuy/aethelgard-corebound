@@ -8,8 +8,8 @@
 #include <cmath>
 
 WhiteBoar::WhiteBoar(const Position& pos)
-    : Boar("White Boar (Bach Tru Tinh)", pos, /*hp*/ 80, /*attack*/ 16, /*defense*/ 4,
-           /*expReward*/ 60, /*goldReward*/ 35, /*aggroRange*/ 8, /*patrolRange*/ 4) {
+    : Boar("White Boar (Bach Tru Tinh)", pos, /*hp*/ 140, /*attack*/ 25, /*defense*/ 9,
+           /*expReward*/ 90, /*goldReward*/ 50, /*aggroRange*/ 9, /*patrolRange*/ 4) {
     // Hoạt họa đa trạng thái của Bạch Trư Tinh (White Boar)
     addAnimation("idle", std::make_unique<Animation>("boar_white_idle", 4, 48, 32, 0.14f, true));
     addAnimation("walk", std::make_unique<Animation>("boar_white_walk", 6, 48, 32, 0.11f, true));

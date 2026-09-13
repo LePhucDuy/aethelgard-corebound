@@ -9,7 +9,7 @@
 #include <algorithm>
 
 BoarKing::BoarKing(const Position& pos)
-    : Boar("Boar King (Hac Tru Vuong)", pos, 160, 20, 5, 200, 100,
+    : Boar("Boar King (Hac Tru Vuong)", pos, /*hp*/ 320, /*atk*/ 32, /*def*/ 12, /*exp*/ 350, /*gold*/ 200,
            /*aggroRange*/ 15, /*patrolRange*/ 6),
       bossState(BoarKingState::DORMANT),
       enraged(false),
@@ -65,30 +65,31 @@ void BoarKing::update(float deltaTime) {
             requestedScreenShake = true;
             shakeIntensity = 1.0f;
         }
+        return;
     }
 
-    // 2. Trạng thái CHARGE_WINDUP: Lấy đà dậm móng cào đất
+    // 2. Cập nhật trạng thái Choáng (Stunned)
+    if (bossState == BoarKingState::STUNNED) {
+        stunTimer -= deltaTime;
+        if (stunTimer <= 0.0f) {
+            bossState = BoarKingState::CHASE;
+            setState("run");
+            setMoveLerpSpeed(10.0f);
+            actionTimer = 0.3f;
+        }
+        return;
+    }
+
+    // 3. Cập nhật Lấy đà húc (Charge Windup)
     if (bossState == BoarKingState::CHARGE_WINDUP) {
         windupTimer -= deltaTime;
         if (windupTimer <= 0.0f) {
             bossState = BoarKingState::CHARGING;
             setState("run");
-            setMoveLerpSpeed(24.0f);
-            actionTimer = 0.05f;
-            requestedScreenShake = true;
-            shakeIntensity = 0.6f;
+            setMoveLerpSpeed(enraged ? 22.0f : 18.0f);
+            actionTimer = 0.06f; // Bước cực nhanh
         }
-    }
-
-    // 3. Trạng thái STUNNED: Bị choáng / kiệt sức
-    if (bossState == BoarKingState::STUNNED) {
-        stunTimer -= deltaTime;
-        if (stunTimer <= 0.0f) {
-            bossState = BoarKingState::CHASE;
-            setState("idle");
-            setMoveLerpSpeed(6.0f);
-            actionTimer = 0.4f;
-        }
+        return;
     }
 }
 
@@ -102,11 +103,11 @@ void BoarKing::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
     int dx = pPos.x - pos.x;
     int dy = pPos.y - pos.y;
 
-    // Pha CUỒNG NỘ (HP <= 40%): Tăng sát thương, phòng thủ và hung bạo
-    if (!enraged && hp <= maxHp * 4 / 10) {
+    // Pha CUỒNG NỘ (HP <= 45%): Tăng sát thương, phòng thủ và hung bạo
+    if (!enraged && hp <= maxHp * 45 / 100) {
         enraged = true;
-        attack += 8;
-        defense += 2;
+        attack += 10;  // Tăng lên 42 ATK
+        defense += 3;  // Tăng lên 15 DEF
         requestedScreenShake = true;
         shakeIntensity = 1.2f;
         combatLog.push_back(">>> [CUONG NO!] Boar King gao thet hung ton! Mat do ruc va sat thuong tang vot! <<<");

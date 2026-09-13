@@ -51,6 +51,16 @@ private:
     // Quản lý kỹ năng đa hình (Polymorphic Skills)
     std::vector<std::unique_ptr<Skill>> skills;
 
+    // Cơ chế Đỡ đòn & Phản đòn hoàn hảo (Block & Perfect Parry) [K]
+    float blockTimer;
+    float parryWindowTimer;
+    float blockCooldown;
+
+    // Cơ chế Trúng Độc theo thời gian (Poison DoT System)
+    float poisonTimer;
+    float poisonTickTimer;
+    int poisonDmgPerTick;
+
     void checkLevelUp();
 
 public:
@@ -81,6 +91,20 @@ public:
     bool isAttacking() const { return currentState == "attack"; }
     bool isJumping() const { return currentState == "jump"; }
     bool isFalling() const { return fallTimer > 0.0f; }
+
+    // Cơ chế Đỡ đòn & Phản đòn hoàn hảo [K]
+    void triggerBlock();
+    bool isBlocking() const { return blockTimer > 0.0f; }
+    bool isParrying() const { return parryWindowTimer > 0.0f; }
+    float getBlockTimer() const { return blockTimer; }
+    float getBlockCooldown() const { return blockCooldown; }
+
+    // Cơ chế Trúng Độc theo thời gian (Poison DoT)
+    void applyPoison(float duration, int dmgPerTick);
+    void curePoison();
+    bool isPoisoned() const { return poisonTimer > 0.0f; }
+    float getPoisonTimer() const { return poisonTimer; }
+    int getPoisonDmgPerTick() const { return poisonDmgPerTick; }
 
     // Xử lý kinh nghiệm, cấp độ và tiền vàng
     void addExp(int amount);
