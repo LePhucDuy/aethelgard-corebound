@@ -1,6 +1,7 @@
 #include "engine/GameEngine.h"
 #include "graphics/TextureManager.h"
 #include "systems/CombatSystem.h"
+#include "systems/AudioSystem.h"
 #include "systems/SaveLoadManager.h"
 #include "core/GameException.h"
 #include "items/Potion.h"
@@ -56,6 +57,8 @@ GameEngine::GameEngine(int spawnX, int spawnY, bool startWithInventory, bool sta
       forgeNotification(""),
       forgeNotificationColor(WHITE),
       forgeNotificationTimer(0.0f),
+      hitStopTimer(0.0f),
+      playerGhostHp(100.0f),
       achievementObserver(nullptr),
       combatLogObserver(nullptr),
       achievementBanner(""),
@@ -71,6 +74,7 @@ GameEngine::GameEngine(int spawnX, int spawnY, bool startWithInventory, bool sta
 }
 
 GameEngine::~GameEngine() {
+    AudioSystem::getInstance().shutdown();
     EventDispatcher::getInstance().clear();
     if (fontMain.texture.id != 0 && fontMain.texture.id != GetFontDefault().texture.id) {
         UnloadFont(fontMain);
@@ -78,6 +82,9 @@ GameEngine::~GameEngine() {
 }
 
 void GameEngine::init() {
+    // 0. Khởi tạo Phân hệ Âm thanh Raylib (Singleton Pattern)
+    AudioSystem::getInstance().init();
+
     // 0. Khởi tạo hệ thống Mẫu thiết kế Observer Pattern (GoF Behavioral Pattern)
     achievementObserver = std::make_unique<AchievementObserver>();
     combatLogObserver = std::make_unique<CombatLogObserver>(&combatLog);
@@ -485,6 +492,11 @@ void GameEngine::handleInput() {
         player.triggerAttack();
 
         int dirX = player.isFacingRight() ? 1 : -1;
+        // Kích hoạt vệt kiếm chém hình vòng cung (Slash Arc Trail)
+        float slashCenterX = (float)pPos.x * Constants::TILE_SIZE + 16.0f + dirX * 12.0f;
+        float slashCenterY = (float)pPos.y * Constants::TILE_SIZE + 10.0f;
+        addSlashArc(Vector2{ slashCenterX, slashCenterY }, player.isFacingRight());
+
         // Chỉ quét quái vật ở cự ly cận chiến hợp lệ (ngang tầm, chéo trước, hoặc quái bay trên đầu)
         // TUYỆT ĐỐI KHÔNG đánh xuyên qua trần đá lên tầng trên khi đang đứng bên dưới!
         Position target1(pPos.x + dirX, pPos.y);      // Ngang tầm mắt 1 ô
@@ -510,6 +522,7 @@ void GameEngine::handleInput() {
         }
 
         if (targetMonster) {
+            triggerHitStop(0.06f);
             CombatSystem::attack(player, *targetMonster, combatLog, this);
             bool wasKilled = !targetMonster->isAlive();
             dungeon.removeDeadMonsters(player);
@@ -880,6 +893,16 @@ void GameEngine::handleInput() {
         }
     }
 
+    // Phím Kỹ năng Đỡ đòn & Phản đòn hoàn hảo [K]
+    if (IsKeyPressed(KEY_K)) {
+        if (!player.isBlocking() && player.getBlockCooldown() <= 0.0f) {
+            player.triggerBlock();
+            combatLog.push_back("[PHONG THU] Hiep si vung khien do don! (0.18s dau: Perfect Parry) [K]");
+        } else if (player.getBlockCooldown() > 0.0f) {
+            combatLog.push_back("[HOI CHIEU] Do khien con " + std::to_string(static_cast<int>(player.getBlockCooldown() + 0.9f)) + "s");
+        }
+    }
+
     // Phím Lưu game [F5] & Tải game [F9] - Bọc cơ chế Ngoại lệ (C++ Exception Handling)
     if (IsKeyPressed(KEY_F5)) {
         try {
@@ -909,7 +932,55 @@ void GameEngine::addDamagePopup(const std::string& text, float worldX, float wor
     activeDamagePopups.push_back(DamagePopup(text, worldX, worldY, color, duration));
 }
 
+void GameEngine::triggerHitStop(float duration) {
+    hitStopTimer = duration;
+}
+
+void GameEngine::addSlashArc(Vector2 center, bool facingRight) {
+    SlashArc arc;
+    arc.center = center;
+    arc.radius = 36.0f;
+    arc.facingRight = facingRight;
+    arc.startAngle = facingRight ? -65.0f : 115.0f;
+    arc.endAngle = facingRight ? 65.0f : 245.0f;
+    arc.maxLifetime = 0.18f;
+    arc.timer = 0.18f;
+    arc.baseColor = Color{ 255, 245, 180, 255 };
+    activeSlashArcs.push_back(arc);
+}
+
 void GameEngine::update(float deltaTime) {
+    // 0. Xử lý hiệu ứng khựng đòn (Hit Stop / Freeze Frame)
+    if (hitStopTimer > 0.0f) {
+        hitStopTimer -= deltaTime;
+        if (screenShake < 0.25f) screenShake = 0.25f;
+        if (screenShake > 0.0f) {
+            screenShake -= deltaTime * 1.5f;
+            if (screenShake < 0.0f) screenShake = 0.0f;
+        }
+        updateGoldParticles(deltaTime);
+        return;
+    }
+
+    // Cập nhật các vệt chém kiếm hình vòng cung (Slash Arc Trail)
+    for (auto it = activeSlashArcs.begin(); it != activeSlashArcs.end(); ) {
+        it->timer -= deltaTime;
+        if (it->timer <= 0.0f) {
+            it = activeSlashArcs.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    // Cập nhật thanh máu trễ mượt mà (Ghost Health Bar)
+    float targetHp = (float)player.getHp();
+    if (playerGhostHp > targetHp) {
+        playerGhostHp -= 40.0f * deltaTime;
+        if (playerGhostHp < targetHp) playerGhostHp = targetHp;
+    } else {
+        playerGhostHp = targetHp;
+    }
+
     if (moveTimer > 0.0f) moveTimer -= deltaTime;
     if (attackTimer > 0.0f) attackTimer -= deltaTime;
     if (edgeSlipTimer > 0.0f) edgeSlipTimer -= deltaTime;
@@ -1163,130 +1234,232 @@ void GameEngine::renderHUD() const {
     const Inventory& inv = player.getInventory();
 
     // =========================================================================
-    // 1. THANH TRẠNG THÁI TRÊN CÙNG (TOP HEADER BAR) - CHIỀU CAO 48px
+    // 0. HIỆU ỨNG VIỀN MÀN HÌNH (ATMOSPHERIC VIGNETTE OVERLAYS)
     // =========================================================================
-    DrawRectangle(0, 0, screenW, 48, Color{ 15, 13, 23, 245 });
-    DrawLine(0, 48, screenW, 48, Color{ 60, 52, 75, 255 });
-    DrawLine(0, 49, screenW, 49, Color{ 25, 20, 35, 180 });
+    if (state == GameState::RUNNING && player.isAlive()) {
+        // 0.1. Hiệu ứng Viền Tím Độc Tố (Poison Vignette): Rung nhịp khi dính nọc độc ong
+        if (player.isPoisoned()) {
+            float pPulse = 0.5f + 0.5f * std::sin((float)GetTime() * 4.5f);
+            Color pColor = Color{ 145, 30, 215, (unsigned char)(70 * pPulse) };
+            DrawRectangleGradientV(0, 0, screenW, 36, pColor, Color{ 0, 0, 0, 0 });
+            DrawRectangleGradientV(0, screenH - 36, screenW, 36, Color{ 0, 0, 0, 0 }, pColor);
+            DrawRectangleGradientH(0, 0, 36, screenH, pColor, Color{ 0, 0, 0, 0 });
+            DrawRectangleGradientH(screenW - 36, 0, 36, screenH, Color{ 0, 0, 0, 0 }, pColor);
+        }
 
-    // --- CỤM TRÁI: CẤP ĐỘ, VÀNG, THANH MÁU VÀ CÔNG/THỦ ---
-    // 1.1. Huy hiệu Cấp độ
-    DrawRectangleRounded(Rectangle{ 14, 9, 78, 30 }, 0.3f, 4, Color{ 26, 22, 38, 255 });
-    DrawRectangleRoundedLinesEx(Rectangle{ 14, 9, 78, 30 }, 0.3f, 4, 1.5f, Color{ 215, 165, 45, 255 });
-    drawText(TextFormat("CAP %d", player.getLevel()), 24, 14, 16, GOLD);
+        // 0.2. Hiệu ứng Viền Đỏ Cảnh Báo Nguy Cấp (Critical Low HP Vignette): Nhấp nháy khi HP < 25%
+        if ((float)player.getHp() / (float)player.getMaxHp() < 0.25f) {
+            float hPulse = 0.5f + 0.5f * std::sin((float)GetTime() * 6.5f);
+            Color hColor = Color{ 230, 25, 25, (unsigned char)(80 * hPulse) };
+            DrawRectangleGradientV(0, 0, screenW, 42, hColor, Color{ 0, 0, 0, 0 });
+            DrawRectangleGradientV(0, screenH - 42, screenW, 42, Color{ 0, 0, 0, 0 }, hColor);
+            DrawRectangleGradientH(0, 0, 42, screenH, hColor, Color{ 0, 0, 0, 0 });
+            DrawRectangleGradientH(screenW - 42, 0, 42, screenH, Color{ 0, 0, 0, 0 }, hColor);
+        }
+    }
 
-    // 1.2. Huy hiệu Vàng
-    DrawRectangleRounded(Rectangle{ 98, 9, 96, 30 }, 0.3f, 4, Color{ 26, 22, 38, 255 });
-    DrawRectangleRoundedLinesEx(Rectangle{ 98, 9, 96, 30 }, 0.3f, 4, 1.5f, Color{ 180, 140, 40, 255 });
+    // =========================================================================
+    // 1. THANH TRẠNG THÁI TRÊN CÙNG (TOP HEADER BAR) - CHIỀU CAO 50px
+    // =========================================================================
+    DrawRectangleGradientV(0, 0, screenW, 50, Color{ 15, 12, 22, 250 }, Color{ 24, 20, 35, 245 });
+    DrawLineEx(Vector2{ 0, 50 }, Vector2{ (float)screenW, 50 }, 1.5f, Color{ 200, 155, 45, 220 });
+    DrawLine(0, 52, screenW, 52, Color{ 35, 28, 20, 130 });
+
+    // --- CỤM TRÁI: CẤP ĐỘ, VÀNG, THANH MÁU HOÀNG GIA VÀ CHỈ SỐ ---
+    // 1.1. Huy hiệu Cấp độ (Embossed Level Crest)
+    DrawRectangleRounded(Rectangle{ 12, 10, 80, 30 }, 0.35f, 4, Color{ 28, 22, 40, 255 });
+    DrawRectangleRoundedLinesEx(Rectangle{ 12, 10, 80, 30 }, 0.35f, 4, 1.6f, Color{ 225, 175, 50, 255 });
+    drawText(TextFormat("CAP %d", player.getLevel()), 22, 15, 16, GOLD);
+
+    // 1.2. Huy hiệu Tiền Vàng (Treasure Badge)
+    DrawRectangleRounded(Rectangle{ 98, 10, 96, 30 }, 0.35f, 4, Color{ 28, 22, 40, 255 });
+    DrawRectangleRoundedLinesEx(Rectangle{ 98, 10, 96, 30 }, 0.35f, 4, 1.6f, Color{ 200, 150, 40, 255 });
     const TextureManager& tmHUD = TextureManager::getInstance();
     if (tmHUD.has("item_gold_coin")) {
         const Texture2D& cTex = tmHUD.get("item_gold_coin");
         DrawTexturePro(cTex, Rectangle{ 0, 0, (float)cTex.width, (float)cTex.height },
-                       Rectangle{ 104, 14, 20, 20 }, Vector2{ 0, 0 }, 0.0f, WHITE);
+                       Rectangle{ 104, 15, 20, 20 }, Vector2{ 0, 0 }, 0.0f, WHITE);
     }
-    drawText(TextFormat("%d", player.getGold()), 128, 14, 16, Color{ 255, 220, 80, 255 });
+    drawText(TextFormat("%d", player.getGold()), 128, 15, 16, Color{ 255, 225, 80, 255 });
 
-    // 1.3. Thanh Máu Người Chơi
-    int hpX = 205, hpY = 15, hpW = 165, hpH = 18;
+    // 1.3. Thanh Máu Hiệp Sĩ Hoàng Gia (Ornate Vitality Bar)
+    int hpX = 202, hpY = 12, hpW = 175, hpH = 26;
     float hpPercent = (float)player.getHp() / (float)player.getMaxHp();
     if (hpPercent < 0.0f) hpPercent = 0.0f;
     if (hpPercent > 1.0f) hpPercent = 1.0f;
 
-    DrawRectangle(hpX, hpY, hpW, hpH, Color{ 35, 25, 30, 255 });
-    DrawRectangle(hpX + 2, hpY + 2, (int)((hpW - 4) * hpPercent), hpH - 4, Color{ 215, 45, 45, 255 });
-    DrawRectangleLines(hpX, hpY, hpW, hpH, Color{ 110, 50, 50, 255 });
-    drawText(TextFormat("HP %d/%d", player.getHp(), player.getMaxHp()), hpX + 38, hpY + 2, 14, WHITE);
+    // Khung rãnh sâu tối
+    DrawRectangleRounded(Rectangle{ (float)hpX, (float)hpY, (float)hpW, (float)hpH }, 0.25f, 4, Color{ 22, 16, 22, 255 });
 
-    // 1.4. Chỉ số Tấn công & Phòng ngự
-    drawText(TextFormat("ATK %d", player.getAttack()), 386, 15, 16, Color{ 255, 165, 70, 255 });
-    drawText(TextFormat("DEF %d", player.getDefense()), 456, 15, 16, Color{ 120, 210, 255, 255 });
+    // Lớp máu trễ tụt chậm (Ghost Damage Bar)
+    float ghostPercent = playerGhostHp / (float)player.getMaxHp();
+    if (ghostPercent < 0.0f) ghostPercent = 0.0f;
+    if (ghostPercent > 1.0f) ghostPercent = 1.0f;
+    int ghostW = (int)((hpW - 4) * ghostPercent);
+    if (ghostW > 0) {
+        DrawRectangleRounded(Rectangle{ (float)(hpX + 2), (float)(hpY + 2), (float)ghostW, (float)(hpH - 4) }, 0.2f, 4, Color{ 245, 195, 90, 210 });
+    }
 
-    // --- CỤM GIỮA: TẦNG NGỤC & LỘ TRÌNH (KHÔNG CHỒNG ĐÈ CHỮ) ---
-    int midX = 525;
-    drawText(TextFormat("TANG %d", dungeon.getFloorLevel()), midX, 7, 15, Color{ 90, 205, 255, 255 });
+    // Lớp máu chính (Gradient Hồng ngọc hoặc Lục bảo ám tím nếu dính độc)
+    int fillHpW = (int)((hpW - 4) * hpPercent);
+    if (fillHpW > 0) {
+        if (player.isPoisoned()) {
+            DrawRectangleGradientV(hpX + 2, hpY + 2, fillHpW, hpH - 4, Color{ 160, 45, 230, 255 }, Color{ 45, 185, 95, 255 });
+        } else {
+            DrawRectangleGradientV(hpX + 2, hpY + 2, fillHpW, hpH - 4, Color{ 235, 45, 55, 255 }, Color{ 165, 20, 25, 255 });
+        }
+        // Vệt sáng gương phản chiếu nửa trên
+        DrawRectangle(hpX + 2, hpY + 2, fillHpW, (hpH - 4) / 2, Color{ 255, 255, 255, 45 });
+    }
 
+    // Vạch khấc chia mốc mỗi 25 HP
+    int maxHpVal = player.getMaxHp();
+    for (int notch = 25; notch < maxHpVal; notch += 25) {
+        int nX = hpX + 2 + (int)((float)notch / (float)maxHpVal * (hpW - 4));
+        DrawLine(nX, hpY + 3, nX, hpY + hpH - 3, Color{ 35, 15, 20, 160 });
+    }
+
+    // Viền kim loại đôi mạ vàng (nhấp nháy đỏ khi máu < 25%)
+    bool isLowHp = (hpPercent < 0.25f);
+    Color hpBorderCol = isLowHp ? (((int)(GetTime() * 8.0f) % 2 == 0) ? RED : YELLOW) : Color{ 215, 170, 50, 255 };
+    DrawRectangleRoundedLinesEx(Rectangle{ (float)hpX, (float)hpY, (float)hpW, (float)hpH }, 0.25f, 4, 1.8f, hpBorderCol);
+    drawText(TextFormat("HP %d/%d", player.getHp(), player.getMaxHp()), hpX + 38, hpY + 5, 14, WHITE);
+
+    // Huy hiệu Trúng Độc gắn kèm bên cạnh thanh máu khi bị nhiễm độc
+    int nextBadgeX = hpX + hpW + 8;
+    if (player.isPoisoned()) {
+        float pBadgePulse = 0.6f + 0.4f * std::sin((float)GetTime() * 8.0f);
+        Color pBorder = Color{ 210, 80, 255, (unsigned char)(255 * pBadgePulse) };
+        DrawRectangleRounded(Rectangle{ (float)nextBadgeX, (float)hpY, 88, (float)hpH }, 0.25f, 4, Color{ 38, 15, 52, 240 });
+        DrawRectangleRoundedLinesEx(Rectangle{ (float)nextBadgeX, (float)hpY, 88, (float)hpH }, 0.25f, 4, 1.5f, pBorder);
+        drawText(TextFormat("[DOC %.0fs]", player.getPoisonTimer()), nextBadgeX + 8, hpY + 5, 13, Color{ 235, 145, 255, 255 });
+        nextBadgeX += 94;
+    }
+
+    // 1.4. Huy hiệu Chỉ số Sức mạnh & Phòng vệ (ATK & DEF Badges)
+    DrawRectangleRounded(Rectangle{ (float)nextBadgeX, 10, 70, 30 }, 0.3f, 4, Color{ 36, 22, 18, 255 });
+    DrawRectangleRoundedLinesEx(Rectangle{ (float)nextBadgeX, 10, 70, 30 }, 0.3f, 4, 1.5f, Color{ 255, 145, 50, 255 });
+    drawText(TextFormat("ATK %d", player.getAttack()), nextBadgeX + 9, 15, 15, Color{ 255, 170, 80, 255 });
+
+    int defX = nextBadgeX + 75;
+    DrawRectangleRounded(Rectangle{ (float)defX, 10, 70, 30 }, 0.3f, 4, Color{ 18, 26, 42, 255 });
+    DrawRectangleRoundedLinesEx(Rectangle{ (float)defX, 10, 70, 30 }, 0.3f, 4, 1.5f, Color{ 85, 185, 255, 255 });
+    drawText(TextFormat("DEF %d", player.getDefense()), defX + 11, 15, 15, Color{ 130, 215, 255, 255 });
+
+    // --- CỤM GIỮA: THƯỚC ĐO VIỄN CHINH & TIẾN ĐỘ TẦNG NGỤC ---
+    int midX = defX + 82;
+    if (midX < 535) midX = 535;
+    drawText(TextFormat("TANG %d", dungeon.getFloorLevel()), midX, 8, 15, Color{ 95, 215, 255, 255 });
     const char* zoneName = dungeon.getZoneName(player.getPosition().x);
-    drawText(zoneName, midX, 26, 13, Color{ 255, 215, 90, 255 });
+    drawText(zoneName, midX, 27, 13, Color{ 255, 220, 95, 255 });
 
-    int pbX = midX + 165, pbY = 17, pbW = 110, pbH = 14;
+    int pbX = midX + 160, pbY = 18, pbW = 105, pbH = 14;
     int stairsX = dungeon.getStairsPos().x;
     float progress = (stairsX > 0) ? (float)player.getPosition().x / (float)stairsX : 0.0f;
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
 
-    DrawRectangle(pbX, pbY, pbW, pbH, Color{ 25, 20, 36, 255 });
-    DrawRectangle(pbX + 1, pbY + 1, (int)((pbW - 2) * progress), pbH - 2, Color{ 220, 165, 35, 255 });
-    DrawRectangleLines(pbX, pbY, pbW, pbH, Color{ 85, 75, 105, 255 });
+    DrawRectangle(pbX, pbY, pbW, pbH, Color{ 22, 18, 32, 255 });
+    DrawRectangle(pbX + 1, pbY + 1, (int)((pbW - 2) * progress), pbH - 2, Color{ 225, 170, 40, 255 });
+    DrawRectangleLines(pbX, pbY, pbW, pbH, Color{ 95, 85, 120, 255 });
     bool bossDefeated = dungeon.isBossDefeated();
-    drawText("CONG CUA", pbX + pbW + 8, pbY - 1, 13, bossDefeated ? GOLD : Color{ 205, 75, 75, 255 });
+    drawText("CONG CUA", pbX + pbW + 8, pbY, 13, bossDefeated ? GOLD : Color{ 210, 80, 80, 255 });
 
     // --- CỤM PHẢI: CÁC NÚT TƯƠNG TÁC TIÊU THỤ VÀNG & TÚI ĐỒ ---
-    Rectangle shopBtn = { (float)(screenW - 445), 8.0f, 142.0f, 32.0f };
+    Rectangle shopBtn = { (float)(screenW - 445), 9.0f, 142.0f, 32.0f };
     bool shopHover = CheckCollisionPointRec(mouse, shopBtn);
-    Color shopBg = showShop ? Color{ 65, 52, 28, 255 } : (shopHover ? Color{ 52, 42, 24, 255 } : Color{ 28, 24, 38, 255 });
-    Color shopBorder = showShop ? GOLD : (shopHover ? Color{ 245, 200, 70, 255 } : Color{ 120, 100, 60, 255 });
+    Color shopBg = showShop ? Color{ 68, 55, 30, 255 } : (shopHover ? Color{ 55, 44, 25, 255 } : Color{ 30, 25, 40, 255 });
+    Color shopBorder = showShop ? GOLD : (shopHover ? Color{ 255, 210, 75, 255 } : Color{ 130, 110, 65, 255 });
     DrawRectangleRounded(shopBtn, 0.25f, 4, shopBg);
     DrawRectangleRoundedLinesEx(shopBtn, 0.25f, 4, 1.5f, shopBorder);
     drawText("[P] CUA HANG", shopBtn.x + 14, shopBtn.y + 7, 15, (shopHover || showShop) ? GOLD : RAYWHITE);
 
-    Rectangle forgeBtn = { (float)(screenW - 295), 8.0f, 138.0f, 32.0f };
+    Rectangle forgeBtn = { (float)(screenW - 295), 9.0f, 138.0f, 32.0f };
     bool forgeHover = CheckCollisionPointRec(mouse, forgeBtn);
-    Color forgeBg = showForge ? Color{ 68, 38, 24, 255 } : (forgeHover ? Color{ 55, 30, 20, 255 } : Color{ 28, 24, 38, 255 });
-    Color forgeBorder = showForge ? ORANGE : (forgeHover ? Color{ 255, 140, 60, 255 } : Color{ 110, 70, 60, 255 });
+    Color forgeBg = showForge ? Color{ 72, 40, 25, 255 } : (forgeHover ? Color{ 58, 32, 22, 255 } : Color{ 30, 25, 40, 255 });
+    Color forgeBorder = showForge ? ORANGE : (forgeHover ? Color{ 255, 145, 65, 255 } : Color{ 120, 75, 65, 255 });
     DrawRectangleRounded(forgeBtn, 0.25f, 4, forgeBg);
     DrawRectangleRoundedLinesEx(forgeBtn, 0.25f, 4, 1.5f, forgeBorder);
     drawText(TextFormat("[U] DE REN (+%d)", player.getForgeLevel()), forgeBtn.x + 10, forgeBtn.y + 7, 14, (forgeHover || showForge) ? ORANGE : RAYWHITE);
 
-    Rectangle invBtn = { (float)(screenW - 150), 8.0f, 140.0f, 32.0f };
+    Rectangle invBtn = { (float)(screenW - 150), 9.0f, 140.0f, 32.0f };
     bool invHover = CheckCollisionPointRec(mouse, invBtn);
     bool isInvFull = inv.isFull();
-    Color invBg = showInventory ? Color{ 60, 48, 85, 255 } : (isInvFull ? (invHover ? Color{ 80, 25, 30, 255 } : Color{ 55, 20, 25, 255 }) : (invHover ? Color{ 45, 38, 65, 255 } : Color{ 28, 24, 40, 255 }));
-    Color invBorder = isInvFull ? RED : (showInventory ? GOLD : (invHover ? Color{ 240, 200, 70, 255 } : Color{ 85, 75, 105, 255 }));
+    Color invBg = showInventory ? Color{ 65, 52, 90, 255 } : (isInvFull ? (invHover ? Color{ 85, 25, 32, 255 } : Color{ 60, 22, 28, 255 }) : (invHover ? Color{ 48, 40, 70, 255 } : Color{ 30, 25, 42, 255 }));
+    Color invBorder = isInvFull ? RED : (showInventory ? GOLD : (invHover ? Color{ 245, 205, 75, 255 } : Color{ 95, 85, 115, 255 }));
     DrawRectangleRounded(invBtn, 0.25f, 4, invBg);
     DrawRectangleRoundedLinesEx(invBtn, 0.25f, 4, 1.5f, invBorder);
     const char* invLabel = isInvFull ? TextFormat("[B] TUI DO (%zu/%zu) [!]", inv.getSize(), inv.getCapacity()) : TextFormat("[B] TUI DO (%zu/%zu)", inv.getSize(), inv.getCapacity());
     Color invTextCol = isInvFull ? Color{ 255, 130, 130, 255 } : ((invHover || showInventory) ? YELLOW : RAYWHITE);
     drawText(invLabel, invBtn.x + (isInvFull ? 6 : 12), invBtn.y + 7, isInvFull ? 13 : 15, invTextCol);
 
-    // Hiển thị trạng thái các kỹ năng đa hình (Polymorphic Skills - Chương 6)
+    // =========================================================================
+    // 1.5. BỘ THẺ KỸ NĂNG CHIẾN ĐẤU (COMBAT ABILITY DECK)
+    // =========================================================================
     Skill* dashSkill = player.getSkill(1);
     Skill* healSkill = player.getSkill(2);
+
+    // Thẻ 1: [Shift] Lướt Né Đòn
     if (dashSkill) {
         bool ready = dashSkill->canExecute();
+        Rectangle cardRec = { 10.0f, 55.0f, 160.0f, 24.0f };
+        Color cardBg = ready ? Color{ 18, 36, 26, 225 } : Color{ 22, 20, 30, 200 };
+        Color cardBorder = ready ? Color{ 70, 220, 120, 255 } : Color{ 75, 70, 85, 255 };
+        DrawRectangleRounded(cardRec, 0.25f, 4, cardBg);
+        DrawRectangleRoundedLinesEx(cardRec, 0.25f, 4, 1.4f, cardBorder);
         std::string text = ready ? "[Shift] Luot: SAN SANG" : TextFormat("[Shift] Luot: %.1fs", dashSkill->getCurrentCooldown());
-        DrawRectangle(10, 52, 165, 22, Color{ 20, 18, 30, 210 });
-        DrawRectangleLines(10, 52, 165, 22, ready ? GREEN : DARKGRAY);
-        drawText(text.c_str(), 16, 56, 12, ready ? GREEN : LIGHTGRAY);
-    }
-    if (healSkill) {
-        bool ready = healSkill->canExecute();
-        std::string text = ready ? "[Q] Hoi mau: SAN SANG" : TextFormat("[Q] Hoi mau: %.1fs", healSkill->getCurrentCooldown());
-        DrawRectangle(180, 52, 170, 22, Color{ 20, 18, 30, 210 });
-        DrawRectangleLines(180, 52, 170, 22, ready ? SKYBLUE : DARKGRAY);
-        drawText(text.c_str(), 186, 56, 12, ready ? SKYBLUE : LIGHTGRAY);
+        drawText(text.c_str(), cardRec.x + 8, cardRec.y + 5, 13, ready ? Color{ 110, 250, 150, 255 } : LIGHTGRAY);
     }
 
-    // Thống kê quái vật qua thành viên tĩnh Monster::getActiveMonsterCount() (Chương 3)
+    // Thẻ 2: [Q] Hồi Máu Khẩn Cấp
+    if (healSkill) {
+        bool ready = healSkill->canExecute();
+        Rectangle cardRec = { 176.0f, 55.0f, 168.0f, 24.0f };
+        Color cardBg = ready ? Color{ 16, 32, 42, 225 } : Color{ 22, 20, 30, 200 };
+        Color cardBorder = ready ? Color{ 70, 195, 255, 255 } : Color{ 75, 70, 85, 255 };
+        DrawRectangleRounded(cardRec, 0.25f, 4, cardBg);
+        DrawRectangleRoundedLinesEx(cardRec, 0.25f, 4, 1.4f, cardBorder);
+        std::string text = ready ? "[Q] Hoi mau: SAN SANG" : TextFormat("[Q] Hoi mau: %.1fs", healSkill->getCurrentCooldown());
+        drawText(text.c_str(), cardRec.x + 8, cardRec.y + 5, 13, ready ? Color{ 110, 225, 255, 255 } : LIGHTGRAY);
+    }
+
+    // Thẻ 3: [K] Đỡ Đòn / Phản Đòn Hoàn Hảo (Block & Perfect Parry)
+    {
+        Rectangle cardRec = { 350.0f, 55.0f, 172.0f, 24.0f };
+        bool isParry = player.isParrying();
+        bool isBlock = player.isBlocking();
+        bool ready = (!isBlock && player.getBlockCooldown() <= 0.0f);
+
+        Color cardBg = isParry ? Color{ 65, 50, 16, 245 } : (isBlock ? Color{ 20, 42, 58, 235 } : (ready ? Color{ 36, 30, 20, 225 } : Color{ 22, 20, 30, 200 }));
+        Color cardBorder = isParry ? GOLD : (isBlock ? Color{ 100, 220, 255, 255 } : (ready ? Color{ 230, 185, 60, 255 } : Color{ 75, 70, 85, 255 }));
+        
+        DrawRectangleRounded(cardRec, 0.25f, 4, cardBg);
+        DrawRectangleRoundedLinesEx(cardRec, 0.25f, 4, 1.5f, cardBorder);
+
+        std::string text = isParry ? "[K] PARRY HOAN HAO!" : (isBlock ? "[K] DANG DO KHIEN" : (ready ? "[K] Do/Parry: SAN SANG" : TextFormat("[K] Do/Parry: %.1fs", player.getBlockCooldown())));
+        Color textCol = isParry ? GOLD : (isBlock ? Color{ 130, 230, 255, 255 } : (ready ? Color{ 255, 225, 110, 255 } : LIGHTGRAY));
+        drawText(text.c_str(), cardRec.x + 8, cardRec.y + 5, 13, textCol);
+    }
+
+    // Thống kê quái vật
     std::string mobStat = TextFormat("Quai song: %d  |  Da diet: %d", 
                                      Monster::getActiveMonsterCount(), 
                                      Monster::getTotalMonstersDefeated());
-    DrawRectangle(355, 52, 175, 22, Color{ 20, 18, 30, 210 });
-    DrawRectangleLines(355, 52, 175, 22, Color{ 180, 120, 50, 255 });
-    drawText(mobStat.c_str(), 361, 56, 12, Color{ 255, 210, 120, 255 });
+    Rectangle statRec = { 528.0f, 55.0f, 175.0f, 24.0f };
+    DrawRectangleRounded(statRec, 0.25f, 4, Color{ 22, 20, 32, 210 });
+    DrawRectangleRoundedLinesEx(statRec, 0.25f, 4, 1.2f, Color{ 185, 125, 55, 255 });
+    drawText(mobStat.c_str(), statRec.x + 10, statRec.y + 5, 12, Color{ 255, 215, 130, 255 });
 
     // =========================================================================
-    // 2. THANH MÁU TRÙM (BOSS HP BAR)
-    // =========================================================================
-    // =========================================================================
-    // 2. THANH MÁU TRÙM (BOSS HP BAR - HỖ TRỢ CẢ QUEEN BEE & BOAR KING)
+    // 2. THANH MÁU TRÙM HOÀNG GIA (ROYAL BOSS HEALTH BAR)
     // =========================================================================
     if (state == GameState::RUNNING) {
         Position pPos = player.getPosition();
         Monster* activeBoss = nullptr;
         std::string bossTitle = "";
         Color bossBorderColor = Color{ 200, 140, 45, 255 };
-        Color bossBarFill = Color{ 220, 50, 30, 255 };
-        Color bossBarHigh = Color{ 255, 120, 60, 160 };
+        Color bossBarFillTop = Color{ 235, 50, 30, 255 };
+        Color bossBarFillBot = Color{ 160, 20, 20, 255 };
 
         Monster* qBee = dungeon.getQueenBeeMonster();
         if (qBee && qBee->isAlive()) {
@@ -1294,10 +1467,10 @@ void GameEngine::renderHUD() const {
             int distQ = std::max(std::abs(pPos.x - qPos.x), std::abs(pPos.y - qPos.y));
             if (distQ <= 12) {
                 activeBoss = qBee;
-                bossTitle = "QUEEN BEE - HOANG HAU ONG CHUA";
+                bossTitle = "[!] QUEEN BEE - HOANG HAU ONG CHUA [!]";
                 bossBorderColor = Color{ 255, 215, 0, 255 };
-                bossBarFill = Color{ 230, 150, 20, 255 };
-                bossBarHigh = Color{ 255, 220, 80, 180 };
+                bossBarFillTop = Color{ 255, 175, 25, 255 };
+                bossBarFillBot = Color{ 190, 100, 15, 255 };
             }
         }
 
@@ -1308,34 +1481,36 @@ void GameEngine::renderHUD() const {
                 int distB = std::max(std::abs(pPos.x - bPos.x), std::abs(pPos.y - bPos.y));
                 if (bossCinematicTriggered || distB <= 14) {
                     activeBoss = bKing;
-                    bossTitle = "BOAR KING - CHUA HEO RUNG";
-                    bossBorderColor = Color{ 200, 140, 45, 255 };
-                    bossBarFill = Color{ 220, 50, 30, 255 };
-                    bossBarHigh = Color{ 255, 120, 60, 160 };
+                    bossTitle = "[!] BOAR KING - CHUA HEO RUNG [!]";
+                    bossBorderColor = Color{ 220, 150, 50, 255 };
+                    bossBarFillTop = Color{ 235, 45, 35, 255 };
+                    bossBarFillBot = Color{ 160, 20, 20, 255 };
                 }
             }
         }
 
         if (activeBoss && activeBoss->isAlive()) {
-            int bossBarW = 440, bossBarH = 20;
+            int bossBarW = 460, bossBarH = 22;
             int bossBarX = screenW / 2 - bossBarW / 2;
-            int bossBarY = 56;
+            int bossBarY = 60;
             float bossHp = (float)activeBoss->getHp() / (float)activeBoss->getMaxHp();
             if (bossHp < 0.0f) bossHp = 0.0f;
             if (bossHp > 1.0f) bossHp = 1.0f;
 
-            DrawRectangle(bossBarX - 10, bossBarY - 6, bossBarW + 20, bossBarH + 28, Color{ 16, 12, 22, 235 });
-            DrawRectangleLines(bossBarX - 10, bossBarY - 6, bossBarW + 20, bossBarH + 28, bossBorderColor);
+            DrawRectangle(bossBarX - 12, bossBarY - 8, bossBarW + 24, bossBarH + 32, Color{ 14, 10, 18, 240 });
+            DrawRectangleLinesEx(Rectangle{ (float)(bossBarX - 12), (float)(bossBarY - 8), (float)(bossBarW + 24), (float)(bossBarH + 32) }, 1.8f, bossBorderColor);
             
-            drawText(bossTitle.c_str(), bossBarX + 70, bossBarY - 2, 16, bossBorderColor);
+            drawText(bossTitle.c_str(), bossBarX + 60, bossBarY - 4, 16, bossBorderColor);
             
-            DrawRectangle(bossBarX, bossBarY + 18, bossBarW, bossBarH, Color{ 40, 15, 15, 255 });
+            DrawRectangle(bossBarX, bossBarY + 18, bossBarW, bossBarH, Color{ 35, 14, 14, 255 });
             int fillBossW = (int)((bossBarW - 4) * bossHp);
-            DrawRectangle(bossBarX + 2, bossBarY + 20, fillBossW, bossBarH - 4, bossBarFill);
-            DrawRectangle(bossBarX + 2, bossBarY + 20, fillBossW, (bossBarH - 4) / 2, bossBarHigh);
-            DrawRectangleLines(bossBarX, bossBarY + 18, bossBarW, bossBarH, Color{ 140, 50, 40, 255 });
+            if (fillBossW > 0) {
+                DrawRectangleGradientV(bossBarX + 2, bossBarY + 20, fillBossW, bossBarH - 4, bossBarFillTop, bossBarFillBot);
+                DrawRectangle(bossBarX + 2, bossBarY + 20, fillBossW, (bossBarH - 4) / 2, Color{ 255, 255, 255, 45 });
+            }
+            DrawRectangleLines(bossBarX, bossBarY + 18, bossBarW, bossBarH, Color{ 150, 60, 45, 255 });
             
-            drawText(TextFormat("HP: %d/%d", activeBoss->getHp(), activeBoss->getMaxHp()), bossBarX + bossBarW / 2 - 40, bossBarY + 20, 14, WHITE);
+            drawText(TextFormat("HP: %d/%d", activeBoss->getHp(), activeBoss->getMaxHp()), bossBarX + bossBarW / 2 - 42, bossBarY + 21, 14, WHITE);
         }
     }
 
@@ -1377,7 +1552,7 @@ void GameEngine::renderHUD() const {
     int hintY = logY - 22;
     DrawRectangle(0, hintY, screenW, 22, Color{ 14, 12, 20, 195 });
     DrawLine(0, hintY, screenW, hintY, Color{ 45, 40, 60, 255 });
-    drawText("Phim: [A][D] Chay | [W][S] Leo | [Space] Nhay | [J][F] Danh | [B] Tui do | [1-8] Dung nhanh | [L] Nhat ky", 
+    drawText("Phim: [A][D] Chay | [W][S] Leo | [Space] Nhay | [J][F] Danh | [K] Do/Parry | [B] Tui do | [1-8] Dung nhanh | [L] Nhat ky", 
              16, hintY + 3, 14, Color{ 210, 210, 230, 230 });
 
     DrawRectangle(0, logY, screenW, logH, Color{ 12, 10, 18, 225 });
@@ -1671,6 +1846,33 @@ void GameEngine::render(const std::string& screenshotPath) const {
         DrawText(popup.text.c_str(), static_cast<int>(popup.x), static_cast<int>(popup.y), 18, popCol);
     }
 
+    // 5.3. Vẽ vệt kiếm chém hình vòng cung (Slash Arc Trail)
+    for (const auto& arc : activeSlashArcs) {
+        float progress = 1.0f - (arc.timer / arc.maxLifetime);
+        float alpha = 1.0f - progress;
+        if (alpha < 0.0f) alpha = 0.0f;
+
+        int segments = 24;
+        float angleStep = (arc.endAngle - arc.startAngle) / (float)segments;
+        float curRadius = arc.radius + progress * 10.0f;
+        float thickness = 8.0f * (1.0f - progress * 0.45f);
+
+        for (int s = 0; s < segments; ++s) {
+            float a1 = (arc.startAngle + s * angleStep) * (3.14159265f / 180.0f);
+            float a2 = (arc.startAngle + (s + 1) * angleStep) * (3.14159265f / 180.0f);
+            float segAlpha = alpha * ((float)(s + 1) / (float)segments);
+
+            Vector2 p1 = { arc.center.x + curRadius * std::cos(a1), arc.center.y + curRadius * std::sin(a1) };
+            Vector2 p2 = { arc.center.x + curRadius * std::cos(a2), arc.center.y + curRadius * std::sin(a2) };
+
+            Color colOuter = Color{ 255, 220, 110, (unsigned char)(170 * segAlpha) };
+            Color colInner = Color{ 255, 255, 255, (unsigned char)(255 * segAlpha) };
+
+            DrawLineEx(p1, p2, thickness, colOuter);
+            DrawLineEx(p1, p2, thickness * 0.45f, colInner);
+        }
+    }
+
     EndMode2D();
 
     // 6. Vẽ giao diện người dùng
@@ -1792,6 +1994,31 @@ void GameEngine::run(const std::string& autoScreenshot) {
                     }
                 }
                 takeNow = (testFrames >= 26);
+            } else if (autoScreenshot.find("hud_polished") != std::string::npos) {
+                if (testFrames == 2) {
+                    player.addGold(145);
+                    player.takeDamage(20);
+                }
+                takeNow = (testFrames >= 8);
+            } else if (autoScreenshot.find("parry_shield") != std::string::npos) {
+                if (testFrames == 2) {
+                    player.triggerBlock();
+                }
+                takeNow = (testFrames >= 5);
+            } else if (autoScreenshot.find("poison_dot") != std::string::npos) {
+                if (testFrames == 2) {
+                    player.applyPoison(4.0f, 3);
+                    addDamagePopup("-3 POISON", player.getVisualPosition().x + 10.0f, player.getVisualPosition().y - 20.0f, PURPLE, 1.2f);
+                }
+                takeNow = (testFrames >= 6);
+            } else if (autoScreenshot.find("slash_arc") != std::string::npos) {
+                if (testFrames == 2) {
+                    float slashX = player.getVisualPosition().x + 32.0f;
+                    float slashY = player.getVisualPosition().y + 10.0f;
+                    addSlashArc(Vector2{ slashX, slashY }, true);
+                    player.triggerAttack();
+                }
+                takeNow = (testFrames >= 5);
             } else {
                 takeNow = (testFrames >= 10);
             }
@@ -2587,7 +2814,51 @@ void GameEngine::runOOPAcademicTests() {
     std::cout << "  [PASS] Trao doi chien luoc thoi gian thuc (Runtime Swap): " 
               << strategyMonster->getStrategy()->getStrategyName() << "\n";
 
+    // -------------------------------------------------------------------------
+    // TEST 10: TÍNH NĂNG MỚI - BLOCK/PARRY, POISON DoT VÀ AUDIOSYSTEM SINGLETON
+    // -------------------------------------------------------------------------
+    std::cout << "\n[TEST 10] CO CHE CHIEN DAU & PHAN HE AM THANH (Block, Parry, Poison, Audio):\n";
+    Player heroTest("Hero Combat Test", Position(10, 10), 100, 20, 5);
+    
+    // 1. Kiểm thử Đỡ đòn & Cửa sổ phản đòn (Block / Perfect Parry [K])
+    assert(!heroTest.isBlocking() && !heroTest.isParrying());
+    heroTest.triggerBlock();
+    assert(heroTest.isBlocking());
+    assert(heroTest.isParrying()); // Trong 0.18s đầu là Parry
+    std::cout << "  [PASS] Kich hoat Thu Khien: isBlocking() = true, isParrying() = true (Parry Window 0.18s)\n";
+
+    heroTest.update(0.20f); // Trôi qua 0.20s -> Hết cửa sổ Parry, còn trong Block thường
+    assert(heroTest.isBlocking());
+    assert(!heroTest.isParrying());
+    std::cout << "  [PASS] Chuyen tiep trang thai: isParrying() = false, isBlocking() = true (Block giam 75% dmg)\n";
+
+    heroTest.update(0.30f); // Trôi qua 0.30s nữa -> Hết thời gian Block
+    assert(!heroTest.isBlocking());
+    std::cout << "  [PASS] Ket thuc chu ky do don: isBlocking() = false\n";
+
+    // 2. Kiểm thử Trúng Độc theo thời gian (Poison DoT System)
+    assert(!heroTest.isPoisoned());
+    heroTest.applyPoison(4.0f, 3); // Nhiễm độc 4s, 3 dmg/s
+    assert(heroTest.isPoisoned());
+    assert(heroTest.getPoisonDmgPerTick() == 3);
+    std::cout << "  [PASS] Nhiem doc ong: isPoisoned() = true, 3 dmg/s trong 4.0s\n";
+
+    int hpBeforeTick = heroTest.getHp();
+    heroTest.update(1.05f); // Trôi qua 1.05s -> kích hoạt 1 tick độc rút máu
+    assert(heroTest.getHp() == hpBeforeTick - 3);
+    std::cout << "  [PASS] Doc to rut mau theo chu ky 1s: -" << 3 << " HP (con " << heroTest.getHp() << " HP)\n";
+
+    heroTest.curePoison(); // Dùng phép thanh tẩy hoặc giải độc
+    assert(!heroTest.isPoisoned());
+    std::cout << "  [PASS] Thanh tay doc to thanh cong: isPoisoned() = false\n";
+
+    // 3. Kiểm thử AudioSystem Singleton Pattern
+    AudioSystem& audio1 = AudioSystem::getInstance();
+    AudioSystem& audio2 = AudioSystem::getInstance();
+    assert(&audio1 == &audio2);
+    std::cout << "  [PASS] Singleton AudioSystem: Tham chieu duy nhat tai " << (void*)&audio1 << "\n";
+
     std::cout << "\n======================================================================\n";
-    std::cout << "   TAT CA 9 PHAN KIEM THU HOC THUAT OOP & DESIGN PATTERNS [100% PASS]\n";
+    std::cout << "   TAT CA 10 PHAN KIEM THU HOC THUAT OOP & GAME MECHANICS [100% PASS]\n";
     std::cout << "======================================================================\n\n";
 }

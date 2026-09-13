@@ -14,7 +14,9 @@ Player::Player(const std::string& name, const Position& pos, int hp, int attack,
       sinkVisualOffset(0.0f),
       fallTimer(0.0f), fallAirDuration(0.0f), fallTotalDuration(0.0f),
       startFallY(0.0f), targetFallY(0.0f),
-      facingRight(true) {
+      facingRight(true),
+      blockTimer(0.0f), parryWindowTimer(0.0f), blockCooldown(0.0f),
+      poisonTimer(0.0f), poisonTickTimer(0.0f), poisonDmgPerTick(0) {
     // Khởi tạo các kỹ năng đa hình
     skills.push_back(std::make_unique<SlashSkill>());
     skills.push_back(std::make_unique<DashSkill>());
@@ -104,6 +106,27 @@ void Player::triggerAttack() {
     }
 }
 
+void Player::triggerBlock() {
+    if (fallTimer > 0.0f || !alive) return;
+    if (blockCooldown > 0.0f) return;
+
+    blockTimer = 0.45f;
+    parryWindowTimer = 0.18f;
+    blockCooldown = 0.70f;
+}
+
+void Player::applyPoison(float duration, int dmgPerTick) {
+    poisonTimer = std::max(poisonTimer, duration);
+    poisonDmgPerTick = std::max(poisonDmgPerTick, dmgPerTick);
+    poisonTickTimer = 0.0f;
+}
+
+void Player::curePoison() {
+    poisonTimer = 0.0f;
+    poisonTickTimer = 0.0f;
+    poisonDmgPerTick = 0;
+}
+
 void Player::setFacingRight(bool right) {
     facingRight = right;
     for (auto& pair : anims) {
@@ -168,6 +191,37 @@ void Player::update(float deltaTime) {
     // Cập nhật hồi chiêu các kỹ năng
     for (auto& s : skills) {
         if (s) s->update(deltaTime);
+    }
+
+    // Cập nhật thời gian Đỡ đòn & Phản đòn
+    if (blockTimer > 0.0f) {
+        blockTimer -= deltaTime;
+        if (blockTimer < 0.0f) blockTimer = 0.0f;
+    }
+    if (parryWindowTimer > 0.0f) {
+        parryWindowTimer -= deltaTime;
+        if (parryWindowTimer < 0.0f) parryWindowTimer = 0.0f;
+    }
+    if (blockCooldown > 0.0f) {
+        blockCooldown -= deltaTime;
+        if (blockCooldown < 0.0f) blockCooldown = 0.0f;
+    }
+
+    // Cập nhật Trúng Độc DoT (rút máu độc lập mỗi giây)
+    if (alive && poisonTimer > 0.0f) {
+        poisonTimer -= deltaTime;
+        poisonTickTimer += deltaTime;
+        if (poisonTickTimer >= 1.0f) {
+            poisonTickTimer -= 1.0f;
+            hp -= poisonDmgPerTick;
+            if (hp <= 0) {
+                hp = 0;
+                alive = false;
+            }
+        }
+        if (poisonTimer <= 0.0f) {
+            curePoison();
+        }
     }
 
     if (!alive) {
@@ -328,6 +382,35 @@ void Player::render(float scale, Vector2 offset) const {
     };
 
     anim->draw(screenPos, scale);
+
+    // Vẽ hào quang khiên chắn khi đang trong thế Đỡ đòn hoặc Phản đòn [K]
+    if (isBlocking() && alive) {
+        float cx = visualPos.x + Constants::TILE_SIZE / 2.0f + (facingRight ? 18.0f : -18.0f) + offset.x;
+        float cy = visualPos.y + Constants::TILE_SIZE / 2.0f - 4.0f + offset.y - jumpLift + sinkVisualOffset;
+
+        if (isParrying()) {
+            // Hiệu ứng Perfect Parry: Hào quang hoàng kim rực sáng, tia sét kim loại
+            float pulse = 1.0f + 0.15f * std::sin((float)GetTime() * 30.0f);
+            DrawCircleGradient(Vector2{ cx, cy }, 22.0f * pulse, Color{ 255, 230, 100, 170 }, Color{ 255, 180, 20, 0 });
+            DrawCircleLines((int)cx, (int)cy, 18.0f * pulse, GOLD);
+            DrawCircleLines((int)cx, (int)cy, 13.0f, Color{ 255, 255, 255, 230 });
+            // Tia phản đòn chữ thập sáng chói
+            DrawLine((int)(cx - 16), (int)cy, (int)(cx + 16), (int)cy, Color{ 255, 240, 140, 255 });
+            DrawLine((int)cx, (int)(cy - 16), (int)cx, (int)(cy + 16), Color{ 255, 240, 140, 255 });
+        } else {
+            // Hiệu ứng Block thông thường: Khiên năng lượng lam ngọc tinh thể vững chãi
+            DrawCircleGradient(Vector2{ cx, cy }, 18.0f, Color{ 80, 180, 255, 120 }, Color{ 20, 90, 200, 0 });
+            DrawCircleLines((int)cx, (int)cy, 16.0f, Color{ 130, 215, 255, 240 });
+            Vector2 p1 = { cx, cy - 10 };
+            Vector2 p2 = { cx + 8, cy - 3 };
+            Vector2 p3 = { cx, cy + 10 };
+            Vector2 p4 = { cx - 8, cy - 3 };
+            DrawLineEx(p1, p2, 2.0f, Color{ 170, 235, 255, 240 });
+            DrawLineEx(p2, p3, 2.0f, Color{ 170, 235, 255, 240 });
+            DrawLineEx(p3, p4, 2.0f, Color{ 170, 235, 255, 240 });
+            DrawLineEx(p4, p1, 2.0f, Color{ 170, 235, 255, 240 });
+        }
+    }
 }
 
 bool Player::moveBy(int dx, int dy, Dungeon& dungeon) {
@@ -381,9 +464,14 @@ void Player::resetStats(const Position& startPos) {
     fallAirDuration = 0.0f;
     fallTotalDuration = 0.0f;
     startFallY = 0.0f;
-    
     targetFallY = 0.0f;
     facingRight = true;
+    blockTimer = 0.0f;
+    parryWindowTimer = 0.0f;
+    blockCooldown = 0.0f;
+    poisonTimer = 0.0f;
+    poisonTickTimer = 0.0f;
+    poisonDmgPerTick = 0;
     for (auto& pair : anims) {
         if (pair.second) pair.second->reset();
     }

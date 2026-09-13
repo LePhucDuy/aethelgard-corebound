@@ -608,18 +608,464 @@ Image generatePotionElixir() {
     return img;
 }
 
+// =============================================================================
+// 7. ĐỒNG XU VÀNG HOÀNG GIA (gold_coin.png) - 32x32
+// =============================================================================
+Image generateGoldCoin() {
+    Image img = GenImageColor(32, 32, BLANK);
+    Color outline   = Color{ 70, 45, 10, 255 };
+    Color goldDark  = Color{ 150, 100, 20, 255 };
+    Color goldMid   = Color{ 225, 170, 35, 255 };
+    Color goldLite  = Color{ 255, 225, 80, 255 };
+    Color goldWhite = Color{ 255, 250, 190, 255 };
+    Color sparkle   = Color{ 255, 255, 255, 255 };
+
+    // Vẽ hình tròn đồng xu vàng đường kính ~18px, tâm (16, 16)
+    float cx = 15.5f, cy = 15.5f, r = 8.5f;
+    for (int y = 5; y <= 26; ++y) {
+        for (int x = 5; x <= 26; ++x) {
+            float dist = std::hypot((float)x - cx, (float)y - cy);
+            if (dist <= r) {
+                if (dist > r - 1.2f) {
+                    setP(img, x, y, outline);
+                } else if (dist > r - 2.4f) {
+                    // Viền nổi 3D: góc trên trái sáng, góc dưới phải tối
+                    if (x + y < 31) setP(img, x, y, goldLite);
+                    else setP(img, x, y, goldDark);
+                } else {
+                    // Thân đồng xu
+                    if (x < 14 && y < 14) setP(img, x, y, goldLite);
+                    else if (x > 18 || y > 18) setP(img, x, y, goldMid);
+                    else setP(img, x, y, goldLite);
+                }
+            }
+        }
+    }
+
+    // Điểm phản quang bóng loáng góc trên trái
+    setP(img, 11, 10, goldWhite);
+    setP(img, 12, 10, goldWhite);
+    setP(img, 10, 11, goldWhite);
+    setP(img, 11, 11, goldWhite);
+
+    // Hoa văn vương miện chạm khắc nổi ở tâm đồng xu
+    setP(img, 13, 14, goldWhite); setP(img, 15, 13, goldWhite); setP(img, 17, 14, goldWhite);
+    setP(img, 13, 15, goldDark);  setP(img, 15, 14, goldDark);  setP(img, 17, 15, goldDark);
+    for (int x = 13; x <= 17; ++x) {
+        setP(img, x, 16, goldDark);
+        setP(img, x, 17, goldWhite);
+        setP(img, x, 18, goldDark);
+    }
+
+    // Các tia sáng lấp lánh (Sparkles) 4 phương
+    setP(img, 24, 7, sparkle);
+    setP(img, 24, 6, Color{ 255, 240, 150, 220 }); setP(img, 24, 8, Color{ 255, 240, 150, 220 });
+    setP(img, 23, 7, Color{ 255, 240, 150, 220 }); setP(img, 25, 7, Color{ 255, 240, 150, 220 });
+
+    setP(img, 6, 21, sparkle);
+    setP(img, 6, 20, Color{ 255, 240, 150, 200 }); setP(img, 6, 22, Color{ 255, 240, 150, 200 });
+    setP(img, 5, 21, Color{ 255, 240, 150, 200 }); setP(img, 7, 21, Color{ 255, 240, 150, 200 });
+
+    return img;
+}
+
+// =============================================================================
+// 8. ĐỐNG TIỀN VÀNG KHO BÁU (gold_pile.png) - 32x32
+// =============================================================================
+Image generateGoldPile() {
+    Image img = GenImageColor(32, 32, BLANK);
+    Color outline   = Color{ 60, 38, 8, 255 };
+    Color goldDark  = Color{ 140, 90, 15, 255 };
+    Color goldMid   = Color{ 215, 160, 30, 255 };
+    Color goldLite  = Color{ 255, 225, 75, 255 };
+    Color goldWhite = Color{ 255, 255, 180, 255 };
+    Color sparkle   = Color{ 255, 255, 255, 255 };
+
+    // Tầng đáy: đống tiền vàng trải rộng từ x=4..27, y=20..28
+    auto drawSmallCoin = [&](int cx, int cy, int rx, int ry) {
+        for (int y = cy - ry; y <= cy + ry; ++y) {
+            for (int x = cx - rx; x <= cx + rx; ++x) {
+                float dx = (float)(x - cx) / rx;
+                float dy = (float)(y - cy) / ry;
+                if (dx * dx + dy * dy <= 1.0f) {
+                    if (dx * dx + dy * dy >= 0.75f) setP(img, x, y, outline);
+                    else if (y < cy) setP(img, x, y, goldLite);
+                    else setP(img, x, y, goldMid);
+                }
+            }
+        }
+        setP(img, cx - 1, cy - 1, goldWhite);
+    };
+
+    // Đống tiền vàng nhiều tầng
+    drawSmallCoin(8,  25, 4, 3);
+    drawSmallCoin(15, 26, 5, 3);
+    drawSmallCoin(22, 25, 4, 3);
+    drawSmallCoin(11, 22, 4, 3);
+    drawSmallCoin(19, 22, 5, 3);
+    drawSmallCoin(15, 18, 4, 3);
+    drawSmallCoin(12, 15, 3, 2);
+    drawSmallCoin(17, 14, 4, 3);
+    drawSmallCoin(15, 11, 3, 2);
+
+    // Tia sáng hào quang chớp nháy
+    setP(img, 15, 6, sparkle);
+    setP(img, 15, 5, goldWhite); setP(img, 15, 7, goldWhite);
+    setP(img, 14, 6, goldWhite); setP(img, 16, 6, goldWhite);
+
+    setP(img, 7, 16, sparkle);
+    setP(img, 24, 18, sparkle);
+
+    return img;
+}
+
+// =============================================================================
+// 9. RƯƠNG KHO BÁU ĐÓNG KHÓA VÀNG (chest_gold_closed.png) - 32x32
+// =============================================================================
+Image generateChestClosed() {
+    Image img = GenImageColor(32, 32, BLANK);
+    Color outline   = Color{ 25, 18, 12, 255 };
+    Color woodDark  = Color{ 95, 55, 22, 255 };
+    Color woodMid   = Color{ 145, 85, 38, 255 };
+    Color woodLite  = Color{ 185, 115, 55, 255 };
+    Color goldDark  = Color{ 135, 90, 15, 255 };
+    Color goldMid   = Color{ 220, 165, 30, 255 };
+    Color goldLite  = Color{ 255, 230, 85, 255 };
+    Color lockHole  = Color{ 15, 10, 5, 255 };
+
+    // Thân rương: x=5..26, y=10..27
+    // Viền ngoài
+    for (int x = 5; x <= 26; ++x) {
+        setP(img, x, 10, outline);
+        setP(img, x, 27, outline);
+    }
+    for (int y = 10; y <= 27; ++y) {
+        setP(img, 5, y, outline);
+        setP(img, 26, y, outline);
+    }
+
+    // Ruột gỗ
+    for (int y = 11; y <= 26; ++y) {
+        for (int x = 6; x <= 25; ++x) {
+            if (y < 16) setP(img, x, y, (x % 4 == 0) ? woodDark : woodLite);
+            else if (y == 16) setP(img, x, y, outline); // Rãnh nắp rương
+            else setP(img, x, y, (x % 4 == 0) ? woodDark : woodMid);
+        }
+    }
+
+    // 3 đai vàng kim gia cố rương (Trái x=7..9, Giữa x=14..17, Phải x=22..24)
+    int straps[] = { 7, 8, 14, 15, 16, 17, 23, 24 };
+    for (int sx : straps) {
+        for (int y = 10; y <= 27; ++y) {
+            if (y == 10 || y == 27) setP(img, sx, y, outline);
+            else if (y < 16) setP(img, sx, y, goldLite);
+            else setP(img, sx, y, goldMid);
+        }
+    }
+
+    // Ổ khóa vàng hoàng gia ở chính giữa (x=14..17, y=15..19)
+    for (int y = 15; y <= 20; ++y) {
+        for (int x = 14; x <= 17; ++x) {
+            setP(img, x, y, goldLite);
+        }
+    }
+    setP(img, 13, 15, outline); setP(img, 18, 15, outline);
+    setP(img, 13, 20, outline); setP(img, 18, 20, outline);
+    // Lỗ khóa
+    setP(img, 15, 17, lockHole);
+    setP(img, 16, 17, lockHole);
+    setP(img, 15, 18, lockHole);
+
+    // Chân đế rương
+    setP(img, 6, 28, outline); setP(img, 7, 28, outline);
+    setP(img, 24, 28, outline); setP(img, 25, 28, outline);
+
+    return img;
+}
+
+// =============================================================================
+// 10. RƯƠNG KHO BÁU MỞ NẮP TỎA HÀO QUANG (chest_gold_open.png) - 32x32
+// =============================================================================
+Image generateChestOpen() {
+    Image img = GenImageColor(32, 32, BLANK);
+    Color outline   = Color{ 25, 18, 12, 255 };
+    Color woodDark  = Color{ 95, 55, 22, 255 };
+    Color woodMid   = Color{ 145, 85, 38, 255 };
+    Color goldMid   = Color{ 220, 165, 30, 255 };
+    Color goldLite  = Color{ 255, 235, 90, 255 };
+    Color glow      = Color{ 255, 250, 180, 220 };
+    Color white     = Color{ 255, 255, 255, 255 };
+
+    // Nắp rương mở ngửa lên trên: y=5..13
+    for (int x = 5; x <= 26; ++x) {
+        setP(img, x, 5, outline);
+        setP(img, x, 12, outline);
+    }
+    for (int y = 6; y <= 11; ++y) {
+        for (int x = 6; x <= 25; ++x) {
+            setP(img, x, y, woodDark);
+        }
+    }
+
+    // Ánh hào quang vàng kim tỏa ra từ lòng rương: y=10..16
+    for (int y = 9; y <= 15; ++y) {
+        for (int x = 8; x <= 23; ++x) {
+            if ((x + y) % 2 == 0) setP(img, x, y, glow);
+            else setP(img, x, y, goldLite);
+        }
+    }
+    // Hạt châu báu lấp lánh
+    setP(img, 11, 12, white); setP(img, 15, 10, white); setP(img, 20, 11, white);
+    setP(img, 13, 8, white);  setP(img, 18, 7, white);
+
+    // Thân rương dưới: y=16..27
+    for (int y = 16; y <= 27; ++y) {
+        for (int x = 5; x <= 26; ++x) {
+            if (x == 5 || x == 26 || y == 27) setP(img, x, y, outline);
+            else setP(img, x, y, woodMid);
+        }
+    }
+    // Đai vàng thân rương
+    int straps[] = { 7, 8, 14, 15, 16, 17, 23, 24 };
+    for (int sx : straps) {
+        for (int y = 16; y <= 26; ++y) {
+            setP(img, sx, y, goldMid);
+        }
+    }
+
+    return img;
+}
+
+// =============================================================================
+// 11. BIỂU TƯỢNG CỬA HÀNG / TÚI TIỀN THƯƠNG NHÂN (icon_shop.png) - 32x32
+// =============================================================================
+Image generateIconShop() {
+    Image img = GenImageColor(32, 32, BLANK);
+    Color outline  = Color{ 35, 15, 15, 255 };
+    Color pouchRed = Color{ 195, 35, 45, 255 };
+    Color pouchLite= Color{ 235, 65, 75, 255 };
+    Color pouchDark= Color{ 130, 20, 30, 255 };
+    Color goldLite = Color{ 255, 230, 85, 255 };
+    Color goldMid  = Color{ 215, 160, 25, 255 };
+    Color white    = Color{ 255, 255, 255, 255 };
+
+    // Thân túi tròn: tâm (16, 19), bán kính rx=9, ry=8
+    for (int y = 11; y <= 27; ++y) {
+        for (int x = 6; x <= 26; ++x) {
+            float dx = (float)(x - 16) / 9.5f;
+            float dy = (float)(y - 19) / 8.5f;
+            if (dx * dx + dy * dy <= 1.0f) {
+                if (dx * dx + dy * dy >= 0.85f) setP(img, x, y, outline);
+                else if (x < 14 && y < 18) setP(img, x, y, pouchLite);
+                else if (x > 18 || y > 21) setP(img, x, y, pouchDark);
+                else setP(img, x, y, pouchRed);
+            }
+        }
+    }
+
+    // Cổ túi thắt nơ vàng kim: y=10..13, x=12..20
+    for (int x = 12; x <= 20; ++x) {
+        setP(img, x, 12, goldLite);
+        setP(img, x, 13, goldMid);
+    }
+    // Nơ vàng 2 cánh
+    setP(img, 10, 11, goldLite); setP(img, 11, 12, goldLite);
+    setP(img, 21, 12, goldLite); setP(img, 22, 11, goldLite);
+
+    // Miệng túi xòe ra ở trên: y=6..10
+    for (int y = 6; y <= 10; ++y) {
+        for (int x = 11; x <= 21; ++x) {
+            if (x == 11 || x == 21 || y == 6) setP(img, x, y, outline);
+            else setP(img, x, y, (x % 2 == 0) ? pouchLite : pouchRed);
+        }
+    }
+
+    // Biểu tượng đồng tiền vàng đính giữa thân túi
+    for (int y = 17; y <= 21; ++y) {
+        for (int x = 14; x <= 18; ++x) {
+            setP(img, x, y, goldLite);
+        }
+    }
+    setP(img, 16, 18, white);
+    setP(img, 16, 20, goldMid);
+
+    return img;
+}
+
+// =============================================================================
+// 12. BIỂU TƯỢNG ĐE RÈN CƯỜNG HÓA VŨ KHÍ (icon_forge.png) - 32x32
+// =============================================================================
+Image generateIconForge() {
+    Image img = GenImageColor(32, 32, BLANK);
+    Color outline   = Color{ 20, 20, 25, 255 };
+    Color ironDark  = Color{ 65, 70, 85, 255 };
+    Color ironMid   = Color{ 110, 120, 140, 255 };
+    Color ironLite  = Color{ 175, 185, 205, 255 };
+    Color fireRed   = Color{ 245, 60, 20, 255 };
+    Color fireGold  = Color{ 255, 200, 30, 255 };
+    Color gold      = Color{ 255, 225, 75, 255 };
+    Color spark     = Color{ 255, 255, 255, 255 };
+
+    // Thân đe sắt (Anvil): y=14..26
+    // Mặt đe phẳng trên cùng: y=14..16, x=5..27
+    for (int x = 5; x <= 27; ++x) {
+        setP(img, x, 14, outline);
+        setP(img, x, 15, ironLite);
+        setP(img, x, 16, ironMid);
+    }
+    // Mũi nhọn bên trái: (4, 15), (5, 15)
+    setP(img, 4, 15, outline);
+    // Eo đe thu hẹp: x=11..21, y=17..21
+    for (int y = 17; y <= 21; ++y) {
+        for (int x = 11; x <= 21; ++x) {
+            if (x == 11 || x == 21) setP(img, x, y, outline);
+            else setP(img, x, y, ironDark);
+        }
+    }
+    // Đế đe loe rộng: x=7..25, y=22..26
+    for (int y = 22; y <= 26; ++y) {
+        for (int x = 7; x <= 25; ++x) {
+            if (x == 7 || x == 25 || y == 26) setP(img, x, y, outline);
+            else setP(img, x, y, ironMid);
+        }
+    }
+
+    // Búa thợ rèn gõ trên đe: cán từ (26, 4) xuống (17, 13)
+    for (int i = 0; i < 9; ++i) {
+        setP(img, 25 - i, 5 + i, Color{ 120, 70, 30, 255 });
+    }
+    // Đầu búa vàng kim đặt tại (15, 12):
+    for (int y = 10; y <= 13; ++y) {
+        for (int x = 14; x <= 18; ++x) {
+            setP(img, x, y, gold);
+        }
+    }
+
+    // Tia lửa rèn tóe sáng (Sparks)
+    setP(img, 13, 11, spark);
+    setP(img, 19, 10, spark);
+    setP(img, 12, 13, fireGold);
+    setP(img, 20, 12, fireRed);
+
+    return img;
+}
+
+// =============================================================================
+// 13. KHIÊN HỘ MỆNH THÉP VIỀN VÀNG (armor_shield.png) - 32x32
+// =============================================================================
+Image generateArmorShield() {
+    Image img = GenImageColor(32, 32, BLANK);
+    Color outline   = Color{ 20, 20, 25, 255 };
+    Color goldMid   = Color{ 220, 165, 35, 255 };
+    Color goldLite  = Color{ 255, 230, 85, 255 };
+    Color steelDark = Color{ 85, 100, 125, 255 };
+    Color steelMid  = Color{ 140, 160, 190, 255 };
+    Color steelLite = Color{ 205, 225, 250, 255 };
+    Color gemGreen  = Color{ 40, 225, 120, 255 };
+
+    // Dáng khiên hình khiên hiệp sĩ cổ điển: x=6..25, y=5..27
+    for (int y = 5; y <= 27; ++y) {
+        int halfW = (y <= 16) ? 9 : (9 - (y - 16) * 9 / 11);
+        int lx = 15 - halfW;
+        int rx = 16 + halfW;
+        for (int x = lx; x <= rx; ++x) {
+            if (x == lx || x == rx || y == 5 || y == 27) {
+                setP(img, x, y, outline);
+            } else if (x == lx + 1 || x == rx - 1 || y == 6) {
+                setP(img, x, y, goldLite);
+            } else if (x == lx + 2 || x == rx - 2) {
+                setP(img, x, y, goldMid);
+            } else {
+                if (x < 16) setP(img, x, y, steelLite);
+                else setP(img, x, y, steelDark);
+            }
+        }
+    }
+
+    // Viên ngọc bích hộ mệnh ở tâm khiên (15, 14)
+    for (int y = 12; y <= 16; ++y) {
+        for (int x = 14; x <= 17; ++x) {
+            setP(img, x, y, gemGreen);
+        }
+    }
+    setP(img, 15, 13, Color{ 255, 255, 255, 255 });
+
+    return img;
+}
+
+// =============================================================================
+// 14. NHẪN MA THUẬT CỔ NGỮ (ring_power.png) - 32x32
+// =============================================================================
+Image generateRingPower() {
+    Image img = GenImageColor(32, 32, BLANK);
+    Color outline   = Color{ 30, 20, 10, 255 };
+    Color goldDark  = Color{ 145, 95, 20, 255 };
+    Color goldMid   = Color{ 220, 165, 30, 255 };
+    Color goldLite  = Color{ 255, 230, 80, 255 };
+    Color rubyDark  = Color{ 150, 15, 35, 255 };
+    Color rubyMid   = Color{ 230, 35, 65, 255 };
+    Color rubyLite  = Color{ 255, 110, 140, 255 };
+    Color rubyWhite = Color{ 255, 240, 245, 255 };
+
+    // Thân vòng nhẫn vàng kim elip: tâm (16, 18), rx=8, ry=6
+    for (int y = 12; y <= 25; ++y) {
+        for (int x = 7; x <= 25; ++x) {
+            float dx = (float)(x - 16) / 8.5f;
+            float dy = (float)(y - 18) / 6.5f;
+            float d = dx * dx + dy * dy;
+            if (d <= 1.0f && d >= 0.50f) {
+                if (d > 0.88f) setP(img, x, y, outline);
+                else if (y < 18) setP(img, x, y, goldLite);
+                else setP(img, x, y, goldMid);
+            }
+        }
+    }
+
+    // Viên đá quý Ruby đỏ hình thoi giác cắt kim cương ở đỉnh nhẫn (x=16, y=10)
+    int gemCoords[7][7] = {
+        {0, 0, 0, 1, 0, 0, 0},
+        {0, 0, 1, 2, 1, 0, 0},
+        {0, 1, 2, 3, 2, 1, 0},
+        {1, 2, 3, 4, 3, 2, 1},
+        {0, 1, 2, 3, 2, 1, 0},
+        {0, 0, 1, 2, 1, 0, 0},
+        {0, 0, 0, 1, 0, 0, 0}
+    };
+    for (int gy = 0; gy < 7; ++gy) {
+        for (int gx = 0; gx < 7; ++gx) {
+            int val = gemCoords[gy][gx];
+            int px = 13 + gx;
+            int py = 7 + gy;
+            if (val == 1) setP(img, px, py, outline);
+            else if (val == 2) setP(img, px, py, rubyDark);
+            else if (val == 3) setP(img, px, py, rubyMid);
+            else if (val == 4) setP(img, px, py, rubyWhite);
+        }
+    }
+
+    return img;
+}
+
 int main() {
     std::cout << "[Item Asset Generator] Dang khoi tao thu muc assets/items..." << std::endl;
     MKDIR("assets");
     MKDIR("assets/items");
 
     std::vector<std::pair<std::string, Image>> items = {
-        { "assets/items/sword_steel.png",     generateSwordSteel() },
-        { "assets/items/sword_mystic.png",    generateSwordMystic() },
-        { "assets/items/potion_starter.png",  generatePotionStarter() },
-        { "assets/items/potion_health.png",   generatePotionHealth() },
-        { "assets/items/potion_strength.png", generatePotionStrength() },
-        { "assets/items/potion_elixir.png",   generatePotionElixir() }
+        { "assets/items/sword_steel.png",        generateSwordSteel() },
+        { "assets/items/sword_mystic.png",       generateSwordMystic() },
+        { "assets/items/potion_starter.png",     generatePotionStarter() },
+        { "assets/items/potion_health.png",      generatePotionHealth() },
+        { "assets/items/potion_strength.png",    generatePotionStrength() },
+        { "assets/items/potion_elixir.png",      generatePotionElixir() },
+        { "assets/items/gold_coin.png",          generateGoldCoin() },
+        { "assets/items/gold_pile.png",          generateGoldPile() },
+        { "assets/items/chest_gold_closed.png",  generateChestClosed() },
+        { "assets/items/chest_gold_open.png",    generateChestOpen() },
+        { "assets/items/icon_shop.png",          generateIconShop() },
+        { "assets/items/icon_forge.png",         generateIconForge() },
+        { "assets/items/armor_shield.png",       generateArmorShield() },
+        { "assets/items/ring_power.png",         generateRingPower() }
     };
 
     for (auto& pair : items) {
