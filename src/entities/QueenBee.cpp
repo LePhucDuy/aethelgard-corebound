@@ -22,7 +22,9 @@ QueenBee::QueenBee(const Position& pos)
       evasionChance(25),
       isRushing(false),
       rushDirX(0),
-      rushTargetX(pos.x) {
+      rushTargetX(pos.x),
+      callSwarmRequested(false),
+      summonCooldown(0.0f) {
     // Hoạt họa Ong Chúa dùng bộ spritesheet ong chất lượng cao
     addAnimation("idle",   std::make_unique<Animation>("bee_fly",    4, 64, 64, 0.11f, true));
     addAnimation("run",    std::make_unique<Animation>("bee_fly",    4, 64, 64, 0.07f, true));
@@ -50,6 +52,7 @@ void QueenBee::update(float deltaTime) {
     if (stingCooldown > 0.0f) stingCooldown -= deltaTime;
     if (rushCooldown > 0.0f) rushCooldown -= deltaTime;
     if (specialTimer > 0.0f) specialTimer -= deltaTime;
+    if (summonCooldown > 0.0f) summonCooldown -= deltaTime;
 
     // Kiểm tra kích hoạt Cuồng Nộ khi máu giảm sâu (< 50%)
     if (alive && hp <= (maxHp / 2) && !enraged) {
@@ -59,6 +62,9 @@ void QueenBee::update(float deltaTime) {
 
 void QueenBee::takeDamage(int amount) {
     if (dying) return;
+
+    // Khi người chơi tấn công Ong Chúa: kích hoạt yêu cầu triệu hồi đàn ong ngay!
+    callSwarmRequested = true;
 
     // 1. Tỉ lệ né đòn phản xạ hoàng gia
     if ((std::rand() % 100) < evasionChance && !isRushing) {
@@ -98,31 +104,46 @@ void QueenBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
     };
 
     // =========================================================================
-    // KỸ NĂNG 1: TRIỆU HỒI ĐÀN TIỂU ONG HỘ VỆ (SUMMON SWARM khi HP < 50%)
+    // KỸ NĂNG ĐẶC BIỆT: KHI BỊ TẤN CÔNG -> TRIỆU HỒI ĐÀN ONG VÀO TẤN CÔNG NGƯỜI CHƠI
     // =========================================================================
-    if (hp <= (maxHp * 5 / 10) && !swarmSummoned) {
-        swarmSummoned = true;
-        combatLog.push_back(">>> [TRIEU HOI HOANG GIA!] Queen Bee ru len mot hoi! Dan ong ho ve xuat hien tro chien! <<<");
-        std::cout << "[BOSS KY NANG] Queen Bee trieu hoi ong ho ve!" << std::endl;
+    if (callSwarmRequested && summonCooldown <= 0.0f) {
+        callSwarmRequested = false;
+        summonCooldown = 5.0f; // Thời gian hồi 5s giữa các đợt gọi viện binh
+        combatLog.push_back(">>> [ONG CHUA RA LENH!] Queen Bee bi tan cong va phat tin hieu trieu tap dan ong! <<<");
+        std::cout << "[BOSS BI TAN CONG] Queen Bee bi danh, trieu tap dan ong tan cong nguoi choi!" << std::endl;
 
-        // Triệu hồi 2 chú ong phụ tá ở hai bên
-        Position s1(pos.x - 2, pos.y);
-        Position s2(pos.x + 2, pos.y);
-        if (canFlyTo(s1)) {
-            dungeon.spawnMonster(MonsterType::SMALL_BEE, s1);
+        // 1. Triệu hồi 2-3 tiểu ong phụ tá mới xuất hiện ở các vị trí trống xung quanh
+        Position offsets[] = { {-2, 0}, {2, 0}, {0, -2} };
+        for (const auto& off : offsets) {
+            Position sp(pos.x + off.x, pos.y + off.y);
+            dungeon.spawnMonster(MonsterType::SMALL_BEE, sp);
         }
-        if (canFlyTo(s2)) {
-            dungeon.spawnMonster(MonsterType::SMALL_BEE, s2);
+
+        // 2. Kích hoạt toàn bộ quái ong trong bán kính 25 ô lập tức lao vào tấn công người chơi
+        for (auto& m : dungeon.getMonsters()) {
+            if (m && m.get() != this) {
+                SmallBee* sb = dynamic_cast<SmallBee*>(m.get());
+                if (sb && sb->isAlive()) {
+                    int dist = std::max(std::abs(sb->getPosition().x - pos.x), std::abs(sb->getPosition().y - pos.y));
+                    if (dist <= 25) {
+                        sb->setAggro(true);
+                        sb->setAIState(MonsterAIState::CHASE);
+                        sb->faceTowards(pPos);
+                        sb->setState("run");
+                    }
+                }
+            }
         }
-        setState("idle");
-        actionTimer = 0.5f;
+
+        actionTimer = 0.35f;
         return;
     }
 
     // =========================================================================
-    // KỸ NĂNG 2: ĐÒN CHÍCH NỌC ĐỘC HOÀNG KIM (Cận chiến <= 1 ô)
+    // KỸ NĂNG 2: ĐÒN CHÍCH NỌC ĐỘC HOÀNG KIM (Cận chiến hoặc ngay trên đầu)
     // =========================================================================
-    if (cheb <= 1 && player.isAlive()) {
+    bool inQueenStingRange = (cheb <= 1 || (std::abs(dx) <= 1 && dy >= -1 && dy <= 2));
+    if (inQueenStingRange && player.isAlive()) {
         faceTowards(pPos);
         if (stingCooldown <= 0.0f) {
             setState("attack");
@@ -144,7 +165,7 @@ void QueenBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
             }
             return;
         }
-        actionTimer = 0.25f;
+        actionTimer = 0.22f;
         return;
     }
 

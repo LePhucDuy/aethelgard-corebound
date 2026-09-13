@@ -173,7 +173,10 @@ bool Monster::hasLineOfSight(Dungeon& dungeon, const Position& target) const {
     for (int i = 1; i < steps; ++i) {
         int checkX = (int)std::round(pos.x + i * xStep);
         int checkY = (int)std::round(pos.y + i * yStep);
-        if (!dungeon.isWalkable(Position(checkX, checkY))) return false;
+        Position cp(checkX, checkY);
+        if (!dungeon.isValidPos(cp)) return false;
+        // Tầm nhìn bị chặn nếu gặp tường đá đặc (WALL)
+        if (dungeon.getTileType(cp) == TileType::WALL) return false;
     }
     return true;
 }

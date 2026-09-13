@@ -466,7 +466,7 @@ void GameEngine::handleInput() {
         player.triggerAttack();
 
         int dirX = player.isFacingRight() ? 1 : -1;
-        // Chỉ quét quái vật ở cự ly cận chiến hợp lệ (cùng tầng hoặc trên bậc thang mở phía trước)
+        // Chỉ quét quái vật ở cự ly cận chiến hợp lệ (ngang tầm, chéo trước, hoặc quái bay trên đầu)
         // TUYỆT ĐỐI KHÔNG đánh xuyên qua trần đá lên tầng trên khi đang đứng bên dưới!
         Position target1(pPos.x + dirX, pPos.y);      // Ngang tầm mắt 1 ô
         Position target2(pPos.x + dirX * 2, pPos.y);  // Ngang tầm mắt 2 ô
@@ -474,10 +474,20 @@ void GameEngine::handleInput() {
 
         Monster* targetMonster = dungeon.getMonsterAt(target1);
         if (!targetMonster) targetMonster = dungeon.getMonsterAt(target2);
-        // Bậc dốc chéo phía trước: chỉ đánh tới được nếu ô ngay trước mặt là lối đi
-        // (không cho đòn chéo xuyên qua góc khối đá)
-        if (!targetMonster && dungeon.isWalkable(Position(pPos.x + dirX, pPos.y))) {
+        
+        // Bậc dốc chéo hoặc quái bay phía trước mặt (chỉ trúng nếu không bị vách đá che chắn)
+        if (!targetMonster && dungeon.isValidPos(target3) && dungeon.getTileType(target3) != TileType::WALL) {
             targetMonster = dungeon.getMonsterAt(target3);
+        }
+
+        // Quái bay đang lơ lửng ngay trên đỉnh đầu hiệp sĩ (y - 1 hoặc y - 2) trong không gian thoáng (EMPTY)
+        Position headUp1(pPos.x, pPos.y - 1);
+        if (!targetMonster && dungeon.isValidPos(headUp1) && dungeon.getTileType(headUp1) == TileType::EMPTY) {
+            targetMonster = dungeon.getMonsterAt(headUp1);
+        }
+        Position headUp2(pPos.x, pPos.y - 2);
+        if (!targetMonster && dungeon.isValidPos(headUp2) && dungeon.getTileType(headUp1) == TileType::EMPTY) {
+            targetMonster = dungeon.getMonsterAt(headUp2);
         }
 
         if (targetMonster) {
@@ -492,11 +502,12 @@ void GameEngine::handleInput() {
                 combatLog.push_back(">>> Hay leo len be vang (x126) va nhan [Space] de chien thang! <<<");
             }
         } else {
-            // Kiểm tra xem có quái vật ở trên đầu / trần nhà không để thông báo rõ ràng
+            // Kiểm tra xem có quái vật ở trên tầng trên bị trần đá che chắn không
             Position abovePos1(pPos.x, pPos.y - 1);
             Position abovePos2(pPos.x, pPos.y - 2);
             Position abovePos3(pPos.x + dirX, pPos.y - 2);
-            if (dungeon.getMonsterAt(abovePos1) || dungeon.getMonsterAt(abovePos2) || dungeon.getMonsterAt(abovePos3)) {
+            bool blockedByCeiling = (dungeon.isValidPos(abovePos1) && dungeon.getTileType(abovePos1) != TileType::EMPTY);
+            if (blockedByCeiling && (dungeon.getMonsterAt(abovePos2) || dungeon.getMonsterAt(abovePos3))) {
                 combatLog.push_back("Quai vat o tang tren bi san da che chan! Hay nhay len [Space] de chien dau.");
             } else {
                 combatLog.push_back("Hiep si vung kiem chem vao khong khi!");
@@ -1713,6 +1724,20 @@ void GameEngine::run(const std::string& autoScreenshot) {
                     interactWithChest();
                 }
                 takeNow = (testFrames >= 10);
+            } else if (autoScreenshot.find("small_bee_sight") != std::string::npos) {
+                // Kiểm tra quái ong phát hiện người chơi khi vào tầm nhìn
+                takeNow = (testFrames >= 8);
+            } else if (autoScreenshot.find("small_bee_strike") != std::string::npos) {
+                // Kiểm tra quái ong tung đòn chích nọc độc và hiển thị hoạt ảnh attack
+                takeNow = (testFrames >= 14);
+            } else if (autoScreenshot.find("queen_bee_summon") != std::string::npos) {
+                if (testFrames == 2) {
+                    Monster* qBee = dungeon.getQueenBeeMonster();
+                    if (qBee) {
+                        CombatSystem::attack(player, *qBee, combatLog, this);
+                    }
+                }
+                takeNow = (testFrames >= 26);
             } else {
                 takeNow = (testFrames >= 10);
             }

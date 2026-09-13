@@ -59,7 +59,10 @@ void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
     Position pPos = player.getPosition();
     int dx = pPos.x - pos.x;
     int dy = pPos.y - pos.y;
-    bool inMeleeRange = (std::abs(dx) <= 1 && std::abs(dy) <= 1);
+
+    // Quái ong bay trên không, người chơi cao 2.5 ô (chân ở y, thân ở y-1, đầu ở y-2)
+    // Cự ly chích nọc độc: khi ong ở ngang đầu, ngang ngực hoặc chân người chơi (dy từ -1 đến 2, |dx| <= 1)
+    bool inStrikeRange = (std::abs(dx) <= 1 && dy >= -1 && dy <= 2);
 
     auto canFlyTo = [&](const Position& c) {
         return dungeon.isValidPos(c)
@@ -69,10 +72,33 @@ void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
     };
 
     // -------------------------------------------------------------------------
-    // TRƯỜNG HỢP 1: CHƯA BỊ ĐÁNH TRÚNG (!isAggro) -> HOÀN TOÀN HÒA BÌNH TUẦN TRA
-    // Quái ong chỉ bay lượn lơ lửng, KHÔNG chủ động tấn công dù người chơi ở cạnh
+    // TRƯỜNG HỢP 1: CHƯA BỊ KÍCH HOẠT THÙ ĐỊCH (!isAggro)
+    // Tự động phát hiện người chơi khi vào tầm nhìn HOẶC khi người chơi tới gần (<= 8 ô)
     // -------------------------------------------------------------------------
     if (!isAggro) {
+        bool playerDetected = canSeePlayer(dungeon, player) || (std::abs(dx) <= 8 && std::abs(dy) <= 6);
+        if (playerDetected) {
+            isAggro = true;
+            isAlerted = true;
+            aiState = MonsterAIState::CHASE;
+            faceTowards(pPos);
+            combatLog.push_back("[VO VE!] Small Bee phat hien ban va lao toi chich!");
+
+            // Nếu người chơi đã đứng ngay trong tầm chích -> tấn công lập tức!
+            if (inStrikeRange && player.isAlive() && attackCooldown <= 0.0f) {
+                setState("attack");
+                combatLog.push_back("[CHICH NOC!] Small Bee lao toi chich noc doc!");
+                CombatSystem::attack(*this, player, combatLog);
+                attackCooldown = 0.9f;
+                actionTimer = 0.32f;
+                return;
+            }
+
+            setState("run");
+            actionTimer = 0.08f;
+            return;
+        }
+
         setState("idle");
         setMoveLerpSpeed(4.5f);
 
@@ -91,34 +117,27 @@ void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
     }
 
     // -------------------------------------------------------------------------
-    // TRƯỜNG HỢP 2: ĐÃ BỊ ĐÁNH TRÚNG (isAggro == true) -> PHẢN CÔNG & TRUY ĐUỔI
+    // TRƯỜNG HỢP 2: ĐANG TRUY ĐUỔI / PHẢN CÔNG (isAggro == true)
     // -------------------------------------------------------------------------
 
-    // 2.1. Đòn tấn công chích nọc độc khi ở cạnh người chơi (Khoảng cách <= 1 ô)
-    if (inMeleeRange && player.isAlive()) {
+    // 2.1. TẤN CÔNG CHÍCH NỌC ĐỘC NGAY KHI VÀO TẦM ĐÁNH (TRÊN ĐẦU HOẶC BÊN CẠNH NGƯỜI CHƠI)
+    if (inStrikeRange && player.isAlive()) {
         faceTowards(pPos);
         if (attackCooldown <= 0.0f) {
             setState("attack");
-            combatLog.push_back("[CHICH NOC!] Small Bee hung han lao toi chich noc doc!");
+            combatLog.push_back("[CHICH NOC!] Small Bee lao toi chich noc doc!");
             CombatSystem::attack(*this, player, combatLog);
-            attackCooldown = 1.0f;
+            attackCooldown = 0.9f;
             actionTimer = 0.32f; // Giữ trạng thái cho hoạt ảnh chích Attack-Sheet hoàn thành
-
-            // Sau khi chích, bay lùi nhẹ 1 ô tạo khoảng cách lượn
-            int awayX = (dx > 0) ? -1 : (dx < 0 ? 1 : 0);
-            Position retreat(pos.x + awayX, pos.y - 1);
-            if (canFlyTo(retreat)) {
-                setPosition(retreat);
-            }
             return;
         }
-        actionTimer = 0.25f;
+        actionTimer = 0.18f;
         return;
     }
 
     // 2.2. Nếu người chơi chạy quá xa -> bỏ truy đuổi, quay về vị trí ban đầu
     int cheb = std::max(std::abs(dx), std::abs(dy));
-    if (cheb > aggroRange + 5) {
+    if (cheb > aggroRange + 8) {
         aiState = MonsterAIState::RETURNING;
         isAlerted = false;
         isAggro = false; // Bình tĩnh lại sau khi người chơi đã thoát xa
@@ -126,35 +145,47 @@ void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
         return;
     }
 
-    // 2.3. Đang truy đuổi (CHASE): bay nhanh áp sát người chơi
+    // 2.3. Đang truy đuổi (CHASE): bay bổ nhào trực diện áp sát đỉnh đầu / thân người chơi
     if (aiState == MonsterAIState::CHASE) {
         setState("run");
         setMoveLerpSpeed(13.0f);
         setFacing(pPos.x > pos.x);
 
-        // Mục tiêu bay: áp sát quanh người chơi (ưu tiên phía trên đầu hoặc ngang hông)
-        int side = (pos.x >= pPos.x) ? 1 : -1;
-        Position targetSpot(pPos.x + side, pPos.y - 1);
-        if (!canFlyTo(targetSpot)) {
-            targetSpot = Position(pPos.x + side, pPos.y);
+        // Danh sách các điểm tiếp cận quanh người chơi (đỉnh đầu, thân trên hai bên)
+        Position targetSpots[] = {
+            Position(pPos.x, pPos.y - 1),
+            Position(pPos.x + (pos.x >= pPos.x ? 1 : -1), pPos.y - 1),
+            Position(pPos.x, pPos.y - 2),
+            Position(pPos.x - (pos.x >= pPos.x ? 1 : -1), pPos.y - 1)
+        };
+
+        Position bestSpot = targetSpots[0];
+        for (const auto& ts : targetSpots) {
+            if (canFlyTo(ts) || ts == pos) {
+                bestSpot = ts;
+                break;
+            }
         }
 
-        int tdx = targetSpot.x - pos.x;
-        int tdy = targetSpot.y - pos.y;
-        Position step(pos.x + (tdx == 0 ? 0 : (tdx > 0 ? 1 : -1)),
-                      pos.y + (tdy == 0 ? 0 : (tdy > 0 ? 1 : -1)));
+        int tdx = bestSpot.x - pos.x;
+        int tdy = bestSpot.y - pos.y;
+        int stepX = (tdx == 0) ? 0 : (tdx > 0 ? 1 : -1);
+        int stepY = (tdy == 0) ? 0 : (tdy > 0 ? 1 : -1);
 
-        if (step != pos && canFlyTo(step)) {
-            setPosition(step);
-            actionTimer = 0.18f;
-            return;
+        // Thử bước di chuyển bổ nhào trực tiếp
+        Position stepDiag(pos.x + stepX, pos.y + stepY);
+        Position stepVert(pos.x, pos.y + stepY);
+        Position stepHoriz(pos.x + stepX, pos.y);
+
+        if (stepDiag != pos && canFlyTo(stepDiag)) {
+            setPosition(stepDiag);
+        } else if (stepVert != pos && canFlyTo(stepVert)) {
+            setPosition(stepVert);
+        } else if (stepHoriz != pos && canFlyTo(stepHoriz)) {
+            setPosition(stepHoriz);
         }
 
-        Position altX(pos.x + (tdx > 0 ? 1 : -1), pos.y);
-        Position altY(pos.x, pos.y + (tdy > 0 ? 1 : -1));
-        if (tdx != 0 && canFlyTo(altX)) setPosition(altX);
-        else if (canFlyTo(altY)) setPosition(altY);
-        actionTimer = 0.20f;
+        actionTimer = 0.15f;
         return;
     }
 

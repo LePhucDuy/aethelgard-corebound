@@ -26,6 +26,8 @@ private:
     bool isRushing;             // Đang trong trạng thái lao nọc thần tốc
     int rushDirX;               // Hướng lao ngang
     int rushTargetX;            // Vị trí đích đến của cú lao
+    bool callSwarmRequested;    // Cờ báo hiệu bị người chơi tấn công -> lập tức triệu hồi đàn ong
+    float summonCooldown;       // Thời gian hồi chiêu triệu hồi đàn ong cứu viện
 
 public:
     explicit QueenBee(const Position& pos);
