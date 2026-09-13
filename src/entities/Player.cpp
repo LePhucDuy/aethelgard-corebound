@@ -1,4 +1,5 @@
 #include "entities/Player.h"
+#include "systems/EventSystem.h"
 #include "core/Constants.h"
 #include "core/Templates.h"
 #include <iostream>
@@ -51,6 +52,7 @@ void Player::addGold(int amount) {
     if (amount <= 0) return;
     gold += amount;
     std::cout << "[Vang] +" << amount << " vang (Tong: " << gold << ")" << std::endl;
+    EventDispatcher::getInstance().notify(GameEvent(GameEventType::GOLD_GAINED, amount, "+" + std::to_string(amount) + " vang", this));
 }
 
 bool Player::spendGold(int amount) {
@@ -73,6 +75,7 @@ bool Player::upgradeForge() {
     attack += bonus;
     std::cout << "[De ren] Cuong hoa thanh cong! Vu khi len Cap +" << forgeLevel 
               << ", tang +" << bonus << " ATK! (Tong ATK: " << attack << ")" << std::endl;
+    EventDispatcher::getInstance().notify(GameEvent(GameEventType::FORGE_UPGRADED, forgeLevel, "Upgrade Level " + std::to_string(forgeLevel), this));
     return true;
 }
 
@@ -378,6 +381,7 @@ void Player::resetStats(const Position& startPos) {
     fallAirDuration = 0.0f;
     fallTotalDuration = 0.0f;
     startFallY = 0.0f;
+    
     targetFallY = 0.0f;
     facingRight = true;
     for (auto& pair : anims) {

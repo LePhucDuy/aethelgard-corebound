@@ -1,6 +1,7 @@
 #include "entities/Monster.h"
 #include "entities/Player.h"
 #include "map/Dungeon.h"
+#include "systems/AIStrategy.h"
 #include <cstdlib>
 
 // Khởi tạo các thành viên tĩnh (Static Members - Slide 36-39 Chương 3)
@@ -240,6 +241,10 @@ bool Monster::canSeePlayer(Dungeon& dungeon, const Player& player) const {
     return true;
 }
 
+void Monster::setStrategy(std::unique_ptr<IAIStrategy> newStrategy) {
+    aiStrategy = std::move(newStrategy);
+}
+
 void Monster::updateAI(float deltaTime, Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) {
     if (!alive || dying) return;
 
@@ -251,6 +256,12 @@ void Monster::updateAI(float deltaTime, Dungeon& dungeon, Player& player, std::v
     }
 
     if (actionTimer <= 0.0f) {
-        act(dungeon, player, combatLog);
+        // Đa hình Chiến lược (Strategy Pattern): nếu có chiến lược được cấu hình động,
+        // ủy quyền xử lý cho Strategy; nếu không, gọi hàm ảo act() của lớp con
+        if (aiStrategy) {
+            aiStrategy->execute(*this, dungeon, player, combatLog);
+        } else {
+            act(dungeon, player, combatLog);
+        }
     }
 }

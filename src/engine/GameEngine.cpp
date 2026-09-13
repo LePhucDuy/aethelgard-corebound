@@ -13,6 +13,8 @@
 #include "entities/QueenBee.h"
 #include "entities/Boar.h"
 #include "entities/BoarKing.h"
+#include "systems/EventSystem.h"
+#include "systems/AIStrategy.h"
 #include "core/Constants.h"
 #include <rlgl.h>
 #include <iostream>
@@ -54,6 +56,10 @@ GameEngine::GameEngine(int spawnX, int spawnY, bool startWithInventory, bool sta
       forgeNotification(""),
       forgeNotificationColor(WHITE),
       forgeNotificationTimer(0.0f),
+      achievementObserver(nullptr),
+      combatLogObserver(nullptr),
+      achievementBanner(""),
+      achievementBannerTimer(0.0f),
       spawnOverrideX(spawnX),
       spawnOverrideY(spawnY),
       startLethalOverride(startLethal) {
@@ -65,12 +71,25 @@ GameEngine::GameEngine(int spawnX, int spawnY, bool startWithInventory, bool sta
 }
 
 GameEngine::~GameEngine() {
+    EventDispatcher::getInstance().clear();
     if (fontMain.texture.id != 0 && fontMain.texture.id != GetFontDefault().texture.id) {
         UnloadFont(fontMain);
     }
 }
 
 void GameEngine::init() {
+    // 0. Khởi tạo hệ thống Mẫu thiết kế Observer Pattern (GoF Behavioral Pattern)
+    achievementObserver = std::make_unique<AchievementObserver>();
+    combatLogObserver = std::make_unique<CombatLogObserver>(&combatLog);
+
+    EventDispatcher& dispatcher = EventDispatcher::getInstance();
+    dispatcher.clear();
+    dispatcher.subscribe(GameEventType::MONSTER_KILLED, achievementObserver.get());
+    dispatcher.subscribe(GameEventType::BOSS_DEFEATED, achievementObserver.get());
+    dispatcher.subscribe(GameEventType::GOLD_GAINED, achievementObserver.get());
+    dispatcher.subscribe(GameEventType::FORGE_UPGRADED, achievementObserver.get());
+    dispatcher.subscribe(GameEventType::CHEST_OPENED, achievementObserver.get());
+    dispatcher.subscribe(GameEventType::ACHIEVEMENT_UNLOCKED, combatLogObserver.get());
     // 0. Tải Font TrueType sắc nét từ Windows để chống lỗi bể chữ, nhòe chữ
     if (FileExists("C:/Windows/Fonts/segoeui.ttf")) {
         fontMain = LoadFontEx("C:/Windows/Fonts/segoeui.ttf", 24, nullptr, 0);
@@ -908,6 +927,15 @@ void GameEngine::update(float deltaTime) {
         if (screenShake < 0.0f) screenShake = 0.0f;
     }
 
+    // Cập nhật thông báo Thành Tựu Danh Giá từ Observer Pattern
+    if (achievementBannerTimer > 0.0f) {
+        achievementBannerTimer -= deltaTime;
+        if (achievementBannerTimer <= 0.0f) achievementBanner.clear();
+    } else if (achievementObserver && achievementObserver->hasPendingBanner()) {
+        achievementBanner = achievementObserver->popLatestBanner();
+        achievementBannerTimer = 3.5f;
+    }
+
     // Cập nhật mảng động các số sát thương nổi (Class Template DynamicArray - Chương 7)
     for (size_t pIdx = 0; pIdx < activeDamagePopups.size(); ) {
         activeDamagePopups[pIdx].update(deltaTime);
@@ -1490,6 +1518,32 @@ void GameEngine::renderHUD() const {
     // Modal Đe rèn cường hóa vũ khí (phím U)
     if (showForge) {
         renderForge();
+    }
+
+    // =========================================================================
+    // 4.5. BANNER THÔNG BÁO THÀNH TỰU DANH GIÁ (OBSERVER PATTERN)
+    // =========================================================================
+    if (achievementBannerTimer > 0.0f && !achievementBanner.empty()) {
+        int banW = 560;
+        int banH = 46;
+        int banX = (screenW - banW) / 2;
+        int banY = 56;
+
+        float alphaRatio = (achievementBannerTimer > 0.4f) ? 1.0f : (achievementBannerTimer / 0.4f);
+        unsigned char bgA = (unsigned char)(240.0f * alphaRatio);
+        unsigned char lineA = (unsigned char)(255.0f * alphaRatio);
+
+        DrawRectangle(banX, banY, banW, banH, Color{ 20, 16, 32, bgA });
+        DrawRectangleLines(banX, banY, banW, banH, Color{ 255, 215, 0, lineA });
+        DrawRectangleLines(banX + 2, banY + 2, banW - 4, banH - 4, Color{ 218, 165, 32, (unsigned char)(120.0f * alphaRatio) });
+
+        DrawCircle(banX + 24, banY + banH / 2, 14, Color{ 255, 205, 50, lineA });
+        DrawCircleLines(banX + 24, banY + banH / 2, 14, Color{ 255, 255, 180, lineA });
+        drawText("*", banX + 18, banY + 13, 20, BLACK);
+
+        Color goldText = GOLD;
+        goldText.a = lineA;
+        drawText(achievementBanner.c_str(), banX + 46, banY + 13, 16, goldText);
     }
 
     // =========================================================================
@@ -2485,7 +2539,55 @@ void GameEngine::runOOPAcademicTests() {
 
     std::cout << "  [PASS] Thanh vien tinh Monster::getActiveMonsterCount() = " << Monster::getActiveMonsterCount() << "\n";
 
+    // -------------------------------------------------------------------------
+    // TEST 8: DESIGN PATTERN - OBSERVER PATTERN (BỘ LẮNG NGHE SỰ KIỆN GIẢI MÃ GHÉP NỐI)
+    // -------------------------------------------------------------------------
+    std::cout << "\n[TEST 8] DESIGN PATTERN: OBSERVER PATTERN (Decoupled Event System & Achievements):\n";
+    EventDispatcher& testDispatcher = EventDispatcher::getInstance();
+    testDispatcher.clear();
+
+    AchievementObserver testAchObserver;
+    testDispatcher.subscribe(GameEventType::MONSTER_KILLED, &testAchObserver);
+    testDispatcher.subscribe(GameEventType::BOSS_DEFEATED, &testAchObserver);
+    testDispatcher.subscribe(GameEventType::GOLD_GAINED, &testAchObserver);
+
+    // Phát sự kiện diệt quái vật đầu tiên -> mở khóa First Blood
+    testDispatcher.notify(GameEvent(GameEventType::MONSTER_KILLED, 25, "Small Bee"));
+    assert(testAchObserver.hasAchievement("First Blood"));
+    std::cout << "  [PASS] Observer nhan su kien MONSTER_KILLED va mo khoa thanh tuu 'First Blood'\n";
+
+    // Phát sự kiện tích lũy 100 vàng -> mở khóa Gold Hoarder
+    testDispatcher.notify(GameEvent(GameEventType::GOLD_GAINED, 120, "+120 vang"));
+    assert(testAchObserver.hasAchievement("Gold Hoarder"));
+    std::cout << "  [PASS] Observer nhan su kien GOLD_GAINED va mo khoa thanh tuu 'Gold Hoarder'\n";
+
+    // Phát sự kiện hạ gục Boss Ong Chúa -> mở khóa Queen Vanquisher
+    testDispatcher.notify(GameEvent(GameEventType::BOSS_DEFEATED, 150, "Queen Bee"));
+    assert(testAchObserver.hasAchievement("Queen Vanquisher"));
+    std::cout << "  [PASS] Observer nhan su kien BOSS_DEFEATED va mo khoa thanh tuu 'Queen Vanquisher'\n";
+
+    testDispatcher.clear();
+
+    // -------------------------------------------------------------------------
+    // TEST 9: DESIGN PATTERN - STRATEGY PATTERN (CHIẾN LƯỢC AI ĐỘNG & COMPOSITION)
+    // -------------------------------------------------------------------------
+    std::cout << "\n[TEST 9] DESIGN PATTERN: STRATEGY PATTERN (Runtime Behavior Swapping):\n";
+    auto strategyMonster = std::make_unique<Boar>(Position(20, 15));
+    assert(strategyMonster->getStrategy() == nullptr); // Mặc định dùng act() kế thừa
+
+    // Gắn động chiến lược tuần tra mặt đất (Composition over Inheritance)
+    strategyMonster->setStrategy(std::make_unique<GroundPatrolStrategy>());
+    assert(strategyMonster->getStrategy() != nullptr);
+    assert(strategyMonster->getStrategy()->getStrategyName() == "GroundPatrolStrategy");
+    std::cout << "  [PASS] Gan dong chien luoc: " << strategyMonster->getStrategy()->getStrategyName() << "\n";
+
+    // Tráo đổi chiến lược sang Cuồng Nộ BossBerserk ngay trong runtime
+    strategyMonster->setStrategy(std::make_unique<BossRageStrategy>());
+    assert(strategyMonster->getStrategy()->getStrategyName() == "BossRageStrategy");
+    std::cout << "  [PASS] Trao doi chien luoc thoi gian thuc (Runtime Swap): " 
+              << strategyMonster->getStrategy()->getStrategyName() << "\n";
+
     std::cout << "\n======================================================================\n";
-    std::cout << "   TAT CA 7 PHAN KIEM THU HOC THUAT OOP TOAN DIEN DEU DAT [100%]\n";
+    std::cout << "   TAT CA 9 PHAN KIEM THU HOC THUAT OOP & DESIGN PATTERNS [100% PASS]\n";
     std::cout << "======================================================================\n\n";
 }

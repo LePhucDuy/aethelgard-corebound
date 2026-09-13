@@ -4,6 +4,7 @@
 #include "graphics/TextureManager.h"
 #include "items/Potion.h"
 #include "items/Weapon.h"
+#include "systems/EventSystem.h"
 #include "core/Constants.h"
 #include <iostream>
 #include <cmath>
@@ -71,6 +72,7 @@ bool Chest::tryOpen(Player& player, GameEngine* engine) {
 
     std::cout << "[Ruong Bau] Da mo khoa Ruong Hoang Kim! Nhan +" << expReward 
               << " EXP va vat pham: " << rewardName << "!" << std::endl;
+    EventDispatcher::getInstance().notify(GameEvent(GameEventType::CHEST_OPENED, expReward, rewardName, &player));
     return true;
 }
 

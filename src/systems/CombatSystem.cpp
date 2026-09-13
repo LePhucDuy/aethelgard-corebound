@@ -1,4 +1,5 @@
 #include "systems/CombatSystem.h"
+#include "systems/EventSystem.h"
 #include "engine/GameEngine.h"
 #include "entities/Monster.h"
 #include "core/Constants.h"
@@ -40,8 +41,24 @@ bool CombatSystem::attack(Entity& attacker, Entity& defender, std::vector<std::s
 
     if (!defender.isAlive()) {
         logMsg += " -> " + defender.getName() + " da bi tieu diet!";
-        // Kích hoạt hiệu ứng văng hạt vàng rơi ra thế giới (Gold Burst Effect)
+        
         Monster* m = dynamic_cast<Monster*>(&defender);
+
+        // Phát tán sự kiện qua Mẫu thiết kế Observer Pattern (EventDispatcher)
+        bool isBoss = (defender.getName().find("Queen") != std::string::npos ||
+                       defender.getName().find("Boar King") != std::string::npos ||
+                       defender.getName().find("Ong Chua") != std::string::npos ||
+                       defender.getName().find("Chua Heo") != std::string::npos);
+
+        if (isBoss) {
+            GameEvent bossEvent(GameEventType::BOSS_DEFEATED, m ? m->getExpReward() : 100, defender.getName(), &attacker, &defender);
+            EventDispatcher::getInstance().notify(bossEvent);
+        } else {
+            GameEvent killEvent(GameEventType::MONSTER_KILLED, m ? m->getExpReward() : 20, defender.getName(), &attacker, &defender);
+            EventDispatcher::getInstance().notify(killEvent);
+        }
+
+        // Kích hoạt hiệu ứng văng hạt vàng rơi ra thế giới (Gold Burst Effect)
         if (m && engine && !m->isGoldDropped()) {
             m->setGoldDropped(true);
             Vector2 mPos = m->getVisualPosition();
@@ -50,6 +67,9 @@ bool CombatSystem::attack(Entity& attacker, Entity& defender, std::vector<std::s
             int coinCount = (gReward >= 50) ? 14 : ((gReward >= 20) ? 8 : 5);
             engine->spawnGoldBurst(mPos.x + 16.0f, mPos.y + 4.0f, groundY, gReward, coinCount);
         }
+    } else if (damageTaken > 0 && defender.getName().find("Hiep Si") != std::string::npos) {
+        GameEvent dmgEvent(GameEventType::PLAYER_DAMAGED, damageTaken, "Player damaged", &attacker, &defender);
+        EventDispatcher::getInstance().notify(dmgEvent);
     }
 
     combatLog.push_back(logMsg);

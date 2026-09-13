@@ -6,6 +6,7 @@
 #include "core/Position.h"
 #include "core/DynamicArray.h"
 #include "core/Templates.h"
+#include "systems/EventSystem.h"
 #include "entities/Player.h"
 #include "graphics/DamagePopup.h"
 #include "graphics/GoldParticle.h"
@@ -89,6 +90,12 @@ private:
     std::string forgeNotification;
     Color forgeNotificationColor;
     float forgeNotificationTimer;
+
+    // Hệ thống Observer Pattern (GoF Behavioral Pattern)
+    std::unique_ptr<AchievementObserver> achievementObserver;
+    std::unique_ptr<CombatLogObserver> combatLogObserver;
+    std::string achievementBanner;
+    float achievementBannerTimer;
 
     // Ghi đè vị trí xuất phát (tuỳ chọn, phục vụ debug/test từng khu: --spawn X Y)
     int spawnOverrideX;
