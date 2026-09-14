@@ -5,6 +5,7 @@
 #include "entities/Monster.h"
 #include "entities/Player.h"
 #include "core/Constants.h"
+#include "core/Templates.h"
 #include <cstdlib>
 #include <iostream>
 
@@ -21,9 +22,9 @@ bool CombatSystem::attack(Entity& attacker, Entity& defender, std::vector<std::s
             // 1. PERFECT PARRY (Cửa sổ 0.18s đầu tiên)
             // =================================================================
             // - Sát thương nhận vào = 0 (Hoàn toàn miễn nhiễm)
-            // - Phản phệ 150% sát thương của quái vật dội ngược trở lại
+            // - Phản phệ 150% sát thương của quái vật dội ngược trở lại (dùng CoreTemplates::getMaxValue)
             // - Phát âm thanh keng kim loại parry_clash và tia sét hoàng kim
-            int reflectDmg = std::max(6, static_cast<int>(attacker.getAttack() * 1.5f));
+            int reflectDmg = CoreTemplates::getMaxValue(6, static_cast<int>(attacker.getAttack() * 1.5f));
             int oldAttackerHp = attacker.getHp();
             attacker.takeDamage(reflectDmg);
             int actualReflect = oldAttackerHp - attacker.getHp();
@@ -81,7 +82,7 @@ bool CombatSystem::attack(Entity& attacker, Entity& defender, std::vector<std::s
     }
 
     if (isBlocked) {
-        baseAtk = std::max(1, static_cast<int>(baseAtk * 0.25f)); // Giảm 75% sát thương
+        baseAtk = CoreTemplates::getMaxValue(1, static_cast<int>(baseAtk * 0.25f)); // Giảm 75% sát thương
     }
 
     int oldHp = defender.getHp();

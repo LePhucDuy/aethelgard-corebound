@@ -1,0 +1,2273 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Báo Cáo Bài Tập Lớn OOP - Aethelgard: Corebound</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        pre { background: #161b22; color: #c9d1d9; padding: 12px; border-radius: 6px; overflow-x: auto; }
+        .code-kw { color: #ff7b72; font-weight: bold; }
+        .code-tp { color: #d2a8ff; font-weight: bold; }
+        .code-fn { color: #79c0ff; }
+        .code-cm { color: #8b949e; font-style: italic; }
+        .code-str { color: #a5d6ff; }
+        .code-num { color: #79c0ff; }
+        /* Toàn màn hình (Full Width) không giới hạn chiều rộng ở giữa */
+        .header-container, main { width: 100% !important; max-width: 100% !important; margin-left: 0 !important; margin-right: 0 !important; }
+        main { padding: 1.5rem 2.5rem !important; }
+        header { padding: 1.2rem 2.5rem !important; }
+
+        /* Phân bố thẻ nhóm và chú thích nhiệm vụ hiển thị rộng rãi, không bị ép chữ */
+        .team-grid {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)) !important;
+            gap: 1.5rem !important;
+            margin-bottom: 2.5rem !important;
+        }
+        .team-file-list {
+            margin: 1.1rem 0 0.5rem 0 !important;
+            list-style: none !important;
+            padding-left: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0.65rem !important;
+        }
+        .team-file-list li,
+        .team-file-item {
+            margin-bottom: 0 !important;
+            background: rgba(255, 255, 255, 0.025) !important;
+            border: 1px solid rgba(255, 255, 255, 0.07) !important;
+            border-radius: 7px !important;
+            padding: 0.6rem 0.8rem !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 0.35rem !important;
+            line-height: 1.45 !important;
+            box-sizing: border-box !important;
+            transition: all 0.2s ease !important;
+        }
+        .team-file-list li:hover,
+        .team-file-item:hover {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border-color: rgba(255, 255, 255, 0.15) !important;
+        }
+        .team-file-list li::before {
+            display: none !important;
+        }
+        .file-name {
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            flex-wrap: wrap !important;
+            width: 100% !important;
+            font-size: 0.86rem !important;
+            font-weight: 600 !important;
+        }
+        .file-name code {
+            background: rgba(88, 166, 255, 0.12) !important;
+            color: #58a6ff !important;
+            padding: 2px 7px !important;
+            border-radius: 4px !important;
+            font-family: var(--font-code) !important;
+            font-size: 0.83rem !important;
+            word-break: break-all !important;
+        }
+        .file-note {
+            display: block !important;
+            width: 100% !important;
+            font-size: 0.82rem !important;
+            color: #e3b341 !important;
+            line-height: 1.4 !important;
+            padding-left: 1.2rem !important;
+            position: relative !important;
+            box-sizing: border-box !important;
+        }
+        .file-note::before {
+            content: "↳" !important;
+            position: absolute !important;
+            left: 0.2rem !important;
+            top: 0 !important;
+            color: #8b949e !important;
+            font-weight: bold !important;
+            font-size: 0.85rem !important;
+        }
+
+        /* Tab 4: Phân công 4 thành viên & Bộ chọn Selection */
+        .member-selector-bar {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.2rem 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+        }
+        .member-select-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            flex: 1;
+            min-width: 280px;
+        }
+        .member-select-dropdown {
+            background: var(--bg-tertiary);
+            color: #fff;
+            border: 1px solid var(--accent-gold);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+        .member-select-dropdown:focus {
+            box-shadow: 0 0 0 2px rgba(227, 179, 65, 0.4);
+        }
+        .member-pill-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .member-pill-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .member-pill-btn:hover {
+            border-color: var(--accent-blue);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+        .member-pill-btn.active {
+            background: linear-gradient(135deg, rgba(88, 166, 255, 0.25), rgba(227, 179, 65, 0.25));
+            border-color: var(--accent-gold);
+            color: var(--accent-gold);
+            box-shadow: 0 0 12px rgba(227, 179, 65, 0.3);
+        }
+        .member-card-container {
+            margin-bottom: 2.5rem;
+        }
+        .member-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.8rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+            border-top: 5px solid var(--accent-blue);
+        }
+        .member-panel.duy { border-top-color: #ff7b72; }
+        .member-panel.thien { border-top-color: #58a6ff; }
+        .member-panel.truyen { border-top-color: #d2a8ff; }
+        .member-panel.vinh { border-top-color: #7ee787; }
+
+        .member-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .member-name-block h3 {
+            font-size: 1.4rem;
+            color: #fff;
+            margin: 0 0 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .member-subtitle {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        .member-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .badge-weight {
+            background: rgba(227, 179, 65, 0.15);
+            color: var(--accent-gold);
+            border: 1px solid rgba(227, 179, 65, 0.3);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+        .badge-level {
+            background: rgba(255, 123, 114, 0.15);
+            color: #ff7b72;
+            border: 1px solid rgba(255, 123, 114, 0.3);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+        .member-section-box {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            padding: 1.2rem;
+            margin-bottom: 1.2rem;
+        }
+        .member-section-box h4 {
+            color: var(--accent-gold);
+            font-size: 1.05rem;
+            margin: 0 0 0.8rem 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .member-oop-list {
+            margin: 0;
+            padding-left: 1.2rem;
+            color: var(--text-primary);
+            line-height: 1.6;
+            font-size: 0.92rem;
+        }
+        .member-oop-list li {
+            margin-bottom: 0.4rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="header-container">
+            <div class="project-brand">
+                <h1>⚔️ AETHELGARD: COREBOUND</h1>
+                <p>Báo Cáo Học Thuật Bài Tập Lớn Lập Trình Hướng Đối Tượng (OOP - C++17)</p>
+            </div>
+            <nav class="nav-tabs">
+                <button class="nav-tab-btn" onclick="switchTab('tab-syntax', event)">
+                    <span>📖</span> Trang 1: Giải Thích Cú Pháp OOP
+                </button>
+                <button class="nav-tab-btn active" onclick="switchTab('tab-map', event)">
+                    <span>🗺️</span> Trang 2: Bản Đồ & Logic Toàn Bộ Phương Thức
+                </button>
+                <button class="nav-tab-btn" onclick="switchTab('tab-qa', event)">
+                    <span>🎓</span> Trang 3: Vấn Đáp Giảng Viên (Hỏi - Đáp)
+                </button>
+                <button class="nav-tab-btn" onclick="switchTab('tab-team4', event)" style="border-color: rgba(227, 179, 65, 0.4);">
+                    <span style="color: var(--accent-gold);">👥</span> Trang 4: Phân Công 4 Thành Viên (Duy - Thiện - Truyền - Vinh)
+                </button>
+            </nav>
+            <div class="action-buttons">
+                <button class="btn-print" onclick="window.print()">
+                    <span>🖨️</span> In / Xuất PDF
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+
+        <!-- ===================================================================
+             TRANG 1: GIẢI THÍCH TỪNG CÚ PHÁP ĐƯỢC SỬ DỤNG TRONG DỰ ÁN
+             =================================================================== -->
+        <section id="tab-syntax" class="tab-pane">
+            <h2 class="section-title"><span>📚</span> Trang 1: Cẩm Nang Giải Thích Từng Cú Pháp OOP Trong Dự Án</h2>
+            <p class="section-subtitle">Phân tích chuyên sâu từng cú pháp, từ khóa C++17 và nguyên lý OOP tương ứng với đề cương môn học, kèm ví dụ thực tế trích từ mã nguồn của game.</p>
+
+            <div class="search-bar-container">
+                <input type="text" id="syntax-search" class="search-input" placeholder="🔍 Gõ cú pháp hoặc từ khóa cần tra (vd: virtual, friend, dynamic_cast, template, operator...)" onkeyup="filterCards('syntax-card', this.value)">
+            </div>
+
+            <div class="card-grid">
+
+                <!-- Card 1: Encapsulation & Access Specifiers -->
+                <article class="syntax-card">
+                    <div class="card-header">
+                        <h3 class="card-title">1. Đóng gói & Phạm vi truy cập</h3>
+                        <span class="badge badge-core">Chương 3: Class</span>
+                    </div>
+                    <p class="card-desc">Ẩn giấu dữ liệu nhạy cảm bên trong lớp, chỉ cho phép truy xuất có kiểm soát qua các phương thức công khai.</p>
+                    <ul class="explanation-list">
+                        <li><code class="inline-code">private</code>: Chỉ có các phương thức nội bộ của lớp được truy cập. Áp dụng cho các thuộc tính sống còn như <code class="inline-code">inventory</code>, <code class="inline-code">gold</code>, <code class="inline-code">poisonTimer</code>.</li>
+                        <li><code class="inline-code">protected</code>: Lớp hiện tại và các lớp con kế thừa được phép truy cập. Dùng cho lớp cha <code class="inline-code">Entity</code> để các lớp con <code class="inline-code">Player</code>, <code class="inline-code">Monster</code> kế thừa chỉ số HP, ATK, DEF.</li>
+                        <li><code class="inline-code">public</code>: Giao diện mở cho toàn bộ chương trình tương tác (Getters, Setters, hàm cập nhật logic).</li>
+                    </ul>
+                    <pre><code><span class="code-cm">// Trích từ include/entities/Entity.h</span>
+<span class="code-kw">class</span> <span class="code-tp">Entity</span> : <span class="code-kw">public</span> <span class="code-tp">IRenderable</span>, <span class="code-kw">public</span> <span class="code-tp">IDamageable</span> {
+<span class="code-kw">protected</span>:
+    <span class="code-tp">std::string</span> name;
+    <span class="code-tp">Position</span> pos;
+    <span class="code-tp">int</span> hp, maxHp, attack, defense;
+    <span class="code-tp">bool</span> alive;
+<span class="code-kw">public</span>:
+    <span class="code-tp">int</span> <span class="code-fn">getHp</span>() <span class="code-kw">const</span> { <span class="code-kw">return</span> hp; } <span class="code-cm">// Phương thức hằng không làm đổi trạng thái</span>
+    <span class="code-tp">void</span> <span class="code-fn">takeDamage</span>(<span class="code-tp">int</span> amount) <span class="code-kw">override</span>;
+};</code></pre>
+                </article>
+
+                <!-- Card 2: Constructor, Member Initializer List & Copy Constructor -->
+                <article class="syntax-card">
+                    <div class="card-header">
+                        <h3 class="card-title">2. Constructor & Khởi tạo Danh sách</h3>
+                        <span class="badge badge-core">Chương 3: Lifecycle</span>
+                    </div>
+                    <p class="card-desc">Khởi tạo trạng thái ban đầu của đối tượng và giải phóng tài nguyên khi hủy.</p>
+                    <ul class="explanation-list">
+                        <li><code class="inline-code">: var(val)</code>: <strong>Member Initializer List</strong> khởi tạo biến trực tiếp, tránh bước tạo giá trị rác rồi gán đè (tối ưu hiệu năng cao).</li>
+                        <li><code class="inline-code">explicit</code>: Ngăn chặn trình biên dịch tự động ép kiểu ngầm định không mong muốn khi gọi Constructor 1 tham số.</li>
+                        <li><code class="inline-code">Copy Constructor</code>: Sao chép sâu đối tượng, đặc biệt quan trọng với mảng động con trỏ.</li>
+                    </ul>
+                    <pre><code><span class="code-cm">// Trích từ include/core/Position.h & DynamicArray.h</span>
+<span class="code-kw">struct</span> <span class="code-tp">Position</span> {
+    <span class="code-tp">int</span> x, y;
+    <span class="code-cm">// Member Initializer List</span>
+    <span class="code-fn">Position</span>(<span class="code-tp">int</span> x, <span class="code-tp">int</span> y) : x(x), y(y) {}
+    <span class="code-cm">// Copy Constructor (Sao chép tọa độ)</span>
+    <span class="code-fn">Position</span>(<span class="code-kw">const</span> <span class="code-tp">Position</span>& other) : x(other.x), y(other.y) {}
+};</code></pre>
+                </article>
+
+                <!-- Card 3: Con trỏ this & Method Chaining -->
+                <article class="syntax-card">
+                    <div class="card-header">
+                        <h3 class="card-title">3. Con trỏ this & Method Chaining</h3>
+                        <span class="badge badge-core">Chương 3: Pointers</span>
+                    </div>
+                    <p class="card-desc">Con trỏ ngầm định trỏ tới chính đối tượng đang thực thi phương thức.</p>
+                    <ul class="explanation-list">
+                        <li>Kiểm tra tự gán: <code class="inline-code">if (this != &other)</code> trong toán tử gán, chống tự hủy dữ liệu của chính mình.</li>
+                        <li><strong>Method Chaining</strong>: Trả về <code class="inline-code">*this</code> dưới dạng tham chiếu <code class="inline-code">Player&</code> cho phép gọi hàm liên hoàn dạng chuỗi: <code class="inline-code">hero.setHp(100).setAttack(30);</code></li>
+                    </ul>
+                    <pre><code><span class="code-cm">// Trích từ include/entities/Player.h</span>
+<span class="code-tp">Player</span>& <span class="code-fn">setHp</span>(<span class="code-tp">int</span> val) { hp = val; <span class="code-kw">return</span> *<span class="code-kw">this</span>; }
+<span class="code-tp">Player</span>& <span class="code-fn">setAttack</span>(<span class="code-tp">int</span> val) { attack = val; <span class="code-kw">return</span> *<span class="code-kw">this</span>; }
+
+<span class="code-cm">// Sử dụng thực tế trong kiểm thử:</span>
+player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">25</span>).setDefense(<span class="code-num">10</span>);</code></pre>
+                </article>
+
+                <!-- Card 4: Static Members -->
+                <article class="syntax-card">
+                    <div class="card-header">
+                        <h3 class="card-title">4. Thuộc tính & Phương thức static</h3>
+                        <span class="badge badge-core">Chương 3: Static</span>
+                    </div>
+                    <p class="card-desc">Thành viên dùng chung cho toàn bộ lớp thay vì thuộc riêng về một cá thể đối tượng cụ thể.</p>
+                    <ul class="explanation-list">
+                        <li><code class="inline-code">static int nextInstanceId</code>: Tự tăng khi sinh đối tượng mới, cấp phát ID duy nhất cho thực thể.</li>
+                        <li><code class="inline-code">static int activeMonsterCount</code>: Đếm số lượng quái vật hiện diện trên sân; tăng trong Constructor, giảm trong Destructor.</li>
+                        <li>Khai báo trong header, nhưng bắt buộc định nghĩa vùng nhớ trong file <code class="inline-code">.cpp</code>.</li>
+                    </ul>
+                    <pre><code><span class="code-cm">// Trích từ src/core/IGameObject.cpp</span>
+<span class="code-tp">int</span> <span class="code-tp">IGameObject</span>::nextInstanceId = <span class="code-num">0</span>;
+
+<span class="code-cm">// Trích từ src/entities/Monster.cpp</span>
+<span class="code-tp">int</span> <span class="code-tp">Monster</span>::activeMonsterCount = <span class="code-num">0</span>;
+<span class="code-tp">int</span> <span class="code-tp">Monster</span>::totalMonstersDefeated = <span class="code-num">0</span>;</code></pre>
+                </article>
+
+                <!-- Card 5: Friend Class & Friend Function -->
+                <article class="syntax-card">
+                    <div class="card-header">
+                        <h3 class="card-title">5. Lớp bạn & Hàm bạn (friend)</h3>
+                        <span class="badge badge-core">Chương 3: Friend</span>
+                    </div>
+                    <p class="card-desc">Cấp quyền đặc biệt cho lớp hoặc hàm bên ngoài truy cập biến private/protected mà không cần mở public.</p>
+                    <ul class="explanation-list">
+                        <li><code class="inline-code">friend class CombatSystem;</code>: Cho phép hệ thống tính sát thương truy cập trực tiếp chỉ số mà không phá vỡ tính bao bọc.</li>
+                        <li><code class="inline-code">friend std::ostream& operator<<</code>: Hàm bạn nạp chồng toán tử xuất stream để in thông tin đối tượng ra màn hình hoặc ghi file.</li>
+                    </ul>
+                    <pre><code><span class="code-cm">// Trích từ include/entities/Entity.h</span>
+<span class="code-kw">class</span> <span class="code-tp">Entity</span> {
+    <span class="code-kw">friend class</span> <span class="code-tp">CombatSystem</span>;
+    <span class="code-kw">friend class</span> <span class="code-tp">SaveLoadManager</span>;
+    <span class="code-cm">// Hàm bạn xuất thông tin</span>
+    <span class="code-kw">friend</span> <span class="code-tp">std::ostream</span>& <span class="code-kw">operator</span><<(<span class="code-tp">std::ostream</span>& os, <span class="code-kw">const</span> <span class="code-tp">Entity</span>& entity) {
+        os << <span class="code-str">"["</span> << entity.name << <span class="code-str">"] HP: "</span> << entity.hp;
+        <span class="code-kw">return</span> os;
+    }
+};</code></pre>
+                </article>
+
+                <!-- Card 6: Operator Overloading -->
+                <article class="syntax-card">
+                    <div class="card-header">
+                        <h3 class="card-title">6. Nạp chồng toán tử toàn diện</h3>
+                        <span class="badge badge-core">Chương 4: Operators</span>
+                    </div>
+                    <p class="card-desc">Định nghĩa lại ý nghĩa của các toán tử chuẩn C++ cho các cấu trúc tùy biến.</p>
+                    <ul class="explanation-list">
+                        <li><strong>Số học</strong>: <code class="inline-code">operator+</code>, <code class="inline-code">operator-</code> để cộng trừ vector vị trí.</li>
+                        <li><strong>1 ngôi tiền tố & hậu tố</strong>: <code class="inline-code">operator++()</code> tăng stack bình thuốc hoặc tọa độ.</li>
+                        <li><strong>Chỉ số mảng</strong>: <code class="inline-code">operator[]</code> dùng trong <code class="inline-code">Inventory</code> và <code class="inline-code">DynamicArray</code>.</li>
+                        <li><strong>Chuyển đổi kiểu</strong>: <code class="inline-code">operator Vector2() const</code> tự động chuyển ô grid sang pixel Raylib.</li>
+                    </ul>
+                    <pre><code><span class="code-cm">// Trích từ include/core/Position.h</span>
+<span class="code-tp">Position</span> <span class="code-kw">operator</span>+(<span class="code-kw">const</span> <span class="code-tp">Position</span>& offset) <span class="code-kw">const</span> {
+    <span class="code-kw">return</span> <span class="code-fn">Position</span>(x + offset.x, y + offset.y);
+}
+<span class="code-cm">// Toán tử chuyển đổi kiểu sang Raylib Vector2</span>
+<span class="code-kw">operator</span> <span class="code-tp">Vector2</span>() <span class="code-kw">const</span> {
+    <span class="code-kw">return</span> <span class="code-tp">Vector2</span>{ <span class="code-kw">static_cast</span>&lt;<span class="code-tp">float</span>&gt;(x * <span class="code-num">32</span>), <span class="code-kw">static_cast</span>&lt;<span class="code-tp">float</span>&gt;(y * <span class="code-num">32</span>) };
+}</code></pre>
+                </article>
+
+                <!-- Card 7: Diamond Problem & Virtual Base Class -->
+                <article class="syntax-card">
+                    <div class="card-header">
+                        <h3 class="card-title">7. Kế thừa kim cương (Diamond Problem)</h3>
+                        <span class="badge badge-poly">Chương 5: Inheritance</span>
+                    </div>
+                    <p class="card-desc">Giải quyết hiện tượng nhập nhằng thuộc tính khi một lớp kế thừa từ 2 lớp con có chung 1 lớp cha gốc.</p>
+                    <ul class="explanation-list">
+                        <li>Lớp <code class="inline-code">IRenderable</code> và <code class="inline-code">IDamageable</code> cùng kế thừa từ <code class="inline-code">IGameObject</code>.</li>
+                        <li>Lớp <code class="inline-code">Entity</code> đa kế thừa từ cả hai giao diện trên.</li>
+                        <li>Sử dụng cú pháp <code class="inline-code">virtual public IGameObject</code> giúp <code class="inline-code">Entity</code> chỉ sở hữu <strong>DUY NHẤT 1 bản sao</strong> của <code class="inline-code">instanceId</code>.</li>
+                    </ul>
+                    <pre><code><span class="code-cm">// Trích từ include/core/IDamageable.h & IRenderable.h</span>
+<span class="code-kw">class</span> <span class="code-tp">IDamageable</span> : <span class="code-kw">virtual public</span> <span class="code-tp">IGameObject</span> { ... };
+<span class="code-kw">class</span> <span class="code-tp">IRenderable</span> : <span class="code-kw">virtual public</span> <span class="code-tp">IGameObject</span> { ... };
+
+<span class="code-cm">// Entity kế thừa đồng thời 2 giao diện</span>
+<span class="code-kw">class</span> <span class="code-tp">Entity</span> : <span class="code-kw">public</span> <span class="code-tp">IRenderable</span>, <span class="code-kw">public</span> <span class="code-tp">IDamageable</span> { ... };</code></pre>
+                </article>
+
+                <!-- Card 8: Pure Virtual Functions & Late Binding -->
+                <article class="syntax-card">
+                    <div class="card-header">
+                        <h3 class="card-title">8. Lớp trừu tượng & Đa hình động</h3>
+                        <span class="badge badge-poly">Chương 6: Polymorphism</span>
+                    </div>
+                    <p class="card-desc">Cơ chế liên kết động (Late Binding) gọi đúng phương thức của lớp con thông qua con trỏ lớp cha lúc chạy.</p>
+                    <ul class="explanation-list">
+                        <li>Phương thức thuần ảo: <code class="inline-code">virtual void act(...) = 0;</code> biến lớp thành Abstract Class.</li>
+                        <li>Từ khóa <code class="inline-code">override</code>: Yêu cầu trình biên dịch kiểm tra tính hợp lệ của hàm ghi đè ở lớp con.</li>
+                        <li><strong>Virtual Destructor</strong>: <code class="inline-code">virtual ~Entity() = default;</code> giải phóng bộ nhớ an toàn.</li>
+                    </ul>
+                    <pre><code><span class="code-cm">// Trích từ include/entities/Monster.h & Boar.h</span>
+<span class="code-kw">class</span> <span class="code-tp">Monster</span> : <span class="code-kw">public</span> <span class="code-tp">Entity</span> {
+<span class="code-kw">public</span>:
+    <span class="code-kw">virtual void</span> <span class="code-fn">act</span>(<span class="code-tp">Dungeon</span>& d, <span class="code-tp">Player</span>& p, <span class="code-tp">std::vector</span>&lt;<span class="code-tp">std::string</span>&gt;& log) = <span class="code-num">0</span>;
+    <span class="code-kw">virtual void</span> <span class="code-fn">onDeath</span>(<span class="code-tp">Player</span>& player) = <span class="code-num">0</span>;
+};</code></pre>
+                </article>
+
+                <!-- Card 9: RTTI & dynamic_cast -->
+                <article class="syntax-card">
+                    <div class="card-header">
+                        <h3 class="card-title">9. RTTI & Ép kiểu an toàn dynamic_cast</h3>
+                        <span class="badge badge-poly">Chương 6: RTTI</span>
+                    </div>
+                    <p class="card-desc">Xác định kiểu dữ liệu thực sự của đối tượng trong thời gian chạy (Run-Time Type Information).</p>
+                    <ul class="explanation-list">
+                        <li><code class="inline-code">dynamic_cast&lt;T*&gt;(ptr)</code>: Trả về con trỏ đích nếu đối tượng đúng là kiểu con, ngược lại trả về <code class="inline-code">nullptr</code>.</li>
+                        <li>Được dùng khi Save/Load file để phân biệt vật phẩm trong túi là <code class="inline-code">Weapon</code> hay <code class="inline-code">Potion</code>.</li>
+                    </ul>
+                    <pre><code><span class="code-cm">// Trích từ src/systems/SaveLoadManager.cpp</span>
+<span class="code-kw">const</span> <span class="code-tp">Item</span>* item = inv[i];
+<span class="code-kw">const</span> <span class="code-tp">Weapon</span>* w = <span class="code-kw">dynamic_cast</span>&lt;<span class="code-kw">const</span> <span class="code-tp">Weapon</span>*&gt;(item);
+<span class="code-kw">if</span> (w) {
+    outFile &lt;&lt; <span class="code-str">"Item="</span> &lt;&lt; w-&gt;getName() &lt;&lt; <span class="code-str">"|...|WEAPON|"</span> &lt;&lt; w-&gt;getBonusAttack() &lt;&lt; <span class="code-str">"\n"</span>;
+}</code></pre>
+                </article>
+
+                <!-- Card 10: Templates -->
+                <article class="syntax-card">
+                    <div class="card-header">
+                        <h3 class="card-title">10. Khuôn mẫu (Templates)</h3>
+                        <span class="badge badge-sys">Chương 7: Templates</span>
+                    </div>
+                    <ul class="explanation-list">
+                        <li><strong>Function Templates (Khuôn mẫu hàm Slide 4-13 Chương 7):</strong> Bộ 8 hàm mẫu tổng quát dùng chung:
+                            <code class="inline-code">clampValue&lt;T&gt;</code>, 
+                            <code class="inline-code">swapValues&lt;T&gt;</code>, 
+                            <code class="inline-code">getMaxValue&lt;T&gt;</code>, 
+                            <code class="inline-code">getMinValue&lt;T&gt;</code>, 
+                            <code class="inline-code">isInRange&lt;T&gt;</code>, 
+                            <code class="inline-code">lerpValue&lt;T&gt;</code>, 
+                            <code class="inline-code">calculateDistance2D&lt;PosA, PosB&gt;</code>, 
+                            <code class="inline-code">calculateChebyshevDistance&lt;T1, T2&gt;</code>.
+                        </li>
+                        <li><strong>Class Template (Khuôn mẫu lớp Slide 14-25 Chương 7):</strong> <code class="inline-code">DynamicArray&lt;T&gt;</code> tự co giãn bộ nhớ trên Heap.</li>
+                    </ul>
+                    <pre><code><span class="code-cm">// Trích từ include/core/DynamicArray.h</span>
+<span class="code-kw">template</span> &lt;<span class="code-kw">typename</span> <span class="code-tp">T</span>&gt;
+<span class="code-kw">class</span> <span class="code-tp">DynamicArray</span> {
+<span class="code-kw">private</span>:
+    <span class="code-tp">T</span>* data;
+    <span class="code-tp">size_t</span> capacity, count;
+<span class="code-kw">public</span>:
+    <span class="code-tp">void</span> <span class="code-fn">push_back</span>(<span class="code-kw">const</span> <span class="code-tp">T</span>& item);
+    <span class="code-tp">T</span>& <span class="code-kw">operator</span>[](<span class="code-tp">size_t</span> index);
+};</code></pre>
+                </article>
+
+                <!-- Card 11: Exceptions -->
+                <article class="syntax-card">
+                    <div class="card-header">
+                        <h3 class="card-title">11. Xử lý ngoại lệ (Exceptions)</h3>
+                        <span class="badge badge-sys">Ngoại lệ</span>
+                    </div>
+                    <p class="card-desc">Bắt và xử lý lỗi lúc runtime mà không làm sập ứng dụng game đột ngột.</p>
+                    <ul class="explanation-list">
+                        <li>Kế thừa <code class="inline-code">std::runtime_error</code> để tạo cây ngoại lệ riêng biệt.</li>
+                        <li>Dùng khối <code class="inline-code">try - catch</code> bao bọc quá trình nạp file save hoặc tệp tài nguyên.</li>
+                    </ul>
+                    <pre><code><span class="code-cm">// Trích từ include/core/GameException.h</span>
+<span class="code-kw">class</span> <span class="code-tp">SaveLoadException</span> : <span class="code-kw">public</span> <span class="code-tp">GameException</span> {
+<span class="code-kw">public</span>:
+    <span class="code-kw">explicit</span> <span class="code-fn">SaveLoadException</span>(<span class="code-kw">const</span> <span class="code-tp">std::string</span>& msg) 
+        : <span class="code-tp">GameException</span>(<span class="code-str">"[SaveLoadException] "</span> + msg) {}
+};</code></pre>
+                </article>
+
+                <!-- Card 12: Design Patterns -->
+                <article class="syntax-card">
+                    <div class="card-header">
+                        <h3 class="card-title">12. Mẫu thiết kế (Design Patterns)</h3>
+                        <span class="badge badge-pattern">GoF Patterns</span>
+                    </div>
+                    <p class="card-desc">Khuôn mẫu thiết kế giúp mã nguồn phân tách độc lập, dễ mở rộng.</p>
+                    <ul class="explanation-list">
+                        <li><strong>Meyers' Singleton</strong>: <code class="inline-code">AudioSystem</code>, <code class="inline-code">TextureManager</code>.</li>
+                        <li><strong>Factory Method</strong>: <code class="inline-code">MonsterFactory::create()</code>.</li>
+                        <li><strong>Observer Pattern</strong>: <code class="inline-code">EventDispatcher</code>.</li>
+                        <li><strong>Strategy Pattern</strong>: <code class="inline-code">IAIStrategy</code>.</li>
+                    </ul>
+                    <pre><code><span class="code-cm">// Trích từ include/systems/AudioSystem.h (Meyers' Singleton)</span>
+<span class="code-kw">static</span> <span class="code-tp">AudioSystem</span>& <span class="code-fn">getInstance</span>() {
+    <span class="code-kw">static</span> <span class="code-tp">AudioSystem</span> instance;
+    <span class="code-kw">return</span> instance;
+}</code></pre>
+                </article>
+
+            </div>
+        </section>
+
+        <!-- ===================================================================
+             TRANG 2: BẢN ĐỒ DỰ ÁN, PHÂN CÔNG NHÓM & DANH MỤC TOÀN BỘ PHƯƠNG THỨC
+             =================================================================== -->
+        <section id="tab-map" class="tab-pane active">
+            <h2 class="section-title"><span>🗺️</span> Trang 2: Bản Đồ Kiến Trúc, Phân Công Nhóm & Toàn Bộ Phương Thức</h2>
+            <p class="section-subtitle">Tài liệu đầy đủ nhất để phân chia nhiệm vụ cho các thành viên trong nhóm và tra cứu toàn bộ phương thức trong toàn dự án với lời chú giải tiếng Việt chuẩn xác, input, output rõ ràng.</p>
+
+            <!-- PHẦN 1: BẢNG PHÂN CHIA NHIỆM VỤ THÀNH VIÊN TRONG NHÓM -->
+            <h3 style="color: var(--accent-gold); margin-bottom: 1rem;">👥 BẢNG PHÂN CÔNG NHIỆM VỤ THEO 6 PHÂN HỆ (MODULES)</h3>
+            <div class="team-grid">
+
+                <div class="team-card core">
+                    <div class="team-card-header">
+                        <span class="team-module-title">MODULE 1: CỐT LÕI & TOÁN HỌC (CORE)</span>
+                        <span class="member-tag">Thành viên 1</span>
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--text-muted);">Phụ trách nền tảng hướng đối tượng, tọa độ lưới, quản lý mảng động Heap và khuôn mẫu dùng chung.</p>
+                    <ul class="team-file-list">
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/core/Position.h</code></div>
+                            <div class="file-note">Toán tử số học (+, -, *), toán tử 1 ngôi (++), ép kiểu ngầm định Vector2 Raylib</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/core/DynamicArray.h</code></div>
+                            <div class="file-note">Class Template tự co giãn mảng con trỏ trên vùng nhớ Heap, giải phóng bộ nhớ an toàn</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/core/Templates.h</code></div>
+                            <div class="file-note">Function Templates tổng quát (clamp khống chế chỉ số, swap hoán vị giá trị)</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/core/IGameObject.h</code></div>
+                            <div class="file-note">Virtual Base Class gốc kế thừa ảo, giải quyết triệt để bài toán kim cương (Diamond Problem)</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/core/IDamageable.h & IRenderable.h</code></div>
+                            <div class="file-note">Bộ giao diện trừu tượng thuần ảo (Pure Virtual Interfaces: nhận sát thương, vẽ đồ họa)</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/core/GameException.h</code></div>
+                            <div class="file-note">Cây phả hệ biệt lệ tự định nghĩa kế thừa std::exception (SaveLoad, OutOfBounds, NullPointer)</div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="team-card entities">
+                    <div class="team-card-header">
+                        <span class="team-module-title">MODULE 2: THỰC THỂ & QUÁI VẬT (ENTITIES)</span>
+                        <span class="member-tag">Thành viên 2</span>
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--text-muted);">Phụ trách sinh mệnh thực thể, nhân vật hiệp sĩ, cơ chế đỡ/phản đòn [K] và hành vi đa hình của các loài quái vật.</p>
+                    <ul class="team-file-list">
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/entities/Entity.h & src/entities/Entity.cpp</code></div>
+                            <div class="file-note">Lớp cơ sở trừu tượng thực thể sống, LERP nội suy tọa độ mượt mà giữa các ô lưới</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/entities/Player.h & src/entities/Player.cpp</code></div>
+                            <div class="file-note">Nhân vật Hiệp sĩ, tích lũy EXP lên cấp, cơ chế Đỡ đòn (Block) và Phản đòn hoàn hảo (Parry)</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/entities/Monster.h & src/entities/Monster.cpp</code></div>
+                            <div class="file-note">Lớp quái vật trừu tượng, quản lý thanh máu HP, trạng thái cuồng nộ và tỷ lệ rơi đồ</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>GroundMonster.h & FlyingMonster.h</code></div>
+                            <div class="file-note">Phân cấp kế thừa quái vật đi bộ trên cạn và quái vật bay lơ lửng vượt chướng ngại</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>Boar.h, WhiteBoar.h, BoarKing.h</code></div>
+                            <div class="file-note">Chuỗi kế thừa sâu 5 tầng: Heo rừng thường → Heo trắng rừng rậm → Trùm Cuối BoarKing Đền Thờ</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>SmallBee.h, QueenBee.h, Snail.h</code></div>
+                            <div class="file-note">Kỹ năng đặc thù: Ong thợ bảo vệ Ong chúa, Ốc sên rút vỏ phòng thủ bất tử</div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="team-card items">
+                    <div class="team-card-header">
+                        <span class="team-module-title">MODULE 3: VẬT PHẨM & KINH TẾ (ITEMS)</span>
+                        <span class="member-tag">Thành viên 3</span>
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--text-muted);">Phụ trách cây phả hệ vật phẩm, trang bị, bình thuốc, rương báu hoàng kim và túi đồ nhân vật.</p>
+                    <ul class="team-file-list">
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/items/Item.h</code></div>
+                            <div class="file-note">Lớp trừu tượng gốc (Abstract Class) quản lý ID, tên gọi, độ hiếm và giá vàng mua/bán</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/items/Weapon.h & Armor.h</code></div>
+                            <div class="file-note">Kế thừa đa hình: Vũ khí gia tăng sức tấn công (ATK), Áo giáp gia tăng chỉ số phòng thủ (DEF)</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/items/Potion.h</code></div>
+                            <div class="file-note">Bình thuốc hồi sinh lực/mana, quá tải toán tử tăng/giảm (++ / --) xếp chồng stack dược phẩm</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/items/Accessory.h</code></div>
+                            <div class="file-note">Trang sức nhẫn ngọc tăng đồng thời nhiều thuộc tính và khuếch đại sát thương bạo kích</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/items/Chest.h</code></div>
+                            <div class="file-note">Rương kho báu hoàng kim, tương tác mở khóa giải phóng trang bị và tiền vàng ngẫu nhiên</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/items/Inventory.h & src/items/Inventory.cpp</code></div>
+                            <div class="file-note">Quản lý túi đồ nhân vật bằng std::vector&lt;Item*&gt;, trang bị vũ khí, tháo giáp và dọn rác bộ nhớ</div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="team-card map">
+                    <div class="team-card-header">
+                        <span class="team-module-title">MODULE 4: ĐỊA HÌNH & BẢN ĐỒ (MAP & WORLD)</span>
+                        <span class="member-tag">Thành viên 4</span>
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--text-muted);">Phụ trách thuật toán sinh địa hình 2D Side 165 ô, đầm lầy lún, hố vực, kịch bản 6 khu vực và phân bổ quái vật.</p>
+                    <ul class="team-file-list">
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/map/Tile.h & src/map/Tile.cpp</code></div>
+                            <div class="file-note">Ô địa hình đa hình: Đất thường, Đầm lầy làm chậm 50% di chuyển, Hố vực tử thần sát thương tức tử</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/map/Dungeon.h & src/map/Dungeon.cpp</code></div>
+                            <div class="file-note">Kiến tạo ma trận màn chơi 165 ô trải dài qua 6 khu vực (Cánh Đồng, Rừng Rậm, Đầm Lầy, Hang Động, Phế Tích, Đền Thờ)</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/map/Dungeon.cpp (Thuật toán xoắn ốc)</code></div>
+                            <div class="file-note">Thuật toán Spiral Search dò tìm ô đất trống an toàn để đặt quái vật và rương báu, chống kẹt trong vách đá</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>include/map/Dungeon.h (Cổng phong ấn & Bệ đá)</code></div>
+                            <div class="file-note">Kịch bản kích hoạt phong ấn: tiêu diệt toàn bộ Boss khu vực mới mở cổng dịch chuyển qua màn tiếp theo</div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="team-card systems">
+                    <div class="team-card-header">
+                        <span class="team-module-title">MODULE 5: GIAO TRANH, SỰ KIỆN & TỆP (SYSTEMS)</span>
+                        <span class="member-tag">Thành viên 5</span>
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--text-muted);">Phụ trách tính toán chiến đấu, Factory tạo quái, Strategy AI, Observer thành tựu và lưu/nạp file.</p>
+                    <ul class="team-file-list">
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>systems/CombatSystem.h & .cpp</code></div>
+                            <div class="file-note">Tính sát thương vật lý, công thức trừ phòng thủ giáp, tỷ lệ né đòn, bạo kích và hiệu ứng sát thương theo thời gian (DoT)</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>systems/MonsterFactory.h & .cpp</code></div>
+                            <div class="file-note">Áp dụng Factory Method Pattern: tạo đối tượng quái vật đa hình tương ứng theo từng khu vực màn chơi</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>systems/Skill.h & .cpp</code></div>
+                            <div class="file-note">Đa hình kỹ năng chủ động: Chém xoáy diện rộng, Lướt nhanh né đòn phản kích, Hồi phục thần tốc</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>systems/AIStrategy.h & .cpp</code></div>
+                            <div class="file-note">Áp dụng Strategy Pattern: hoán đổi linh hoạt thuật toán ra quyết định của quái vật (Tuần tra, Truy sát, Bỏ chạy)</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>systems/EventSystem.h & .cpp</code></div>
+                            <div class="file-note">Áp dụng Observer Pattern: phát tín hiệu thông báo sự kiện chiến đấu và mở khóa danh hiệu thành tựu</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>systems/SaveLoadManager.h & .cpp</code></div>
+                            <div class="file-note">Lưu và nạp toàn bộ trạng thái màn chơi, chỉ số nhân vật, túi đồ vào tệp tin bằng std::fstream</div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="team-card engine">
+                    <div class="team-card-header">
+                        <span class="team-module-title">MODULE 6: ĐỒ HỌA, ENGINE & TEST (ENGINE)</span>
+                        <span class="member-tag">Trưởng nhóm / TV 6</span>
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--text-muted);">Phụ trách tổng hợp âm thanh thủ tục, quản lý Texture VRAM, Facade GameEngine và bộ kiểm thử học thuật.</p>
+                    <ul class="team-file-list">
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>graphics/Animation.h</code></div>
+                            <div class="file-note">Cắt khung hình spritesheet tuần tự, tính toán tốc độ khung hình và lật hướng vẽ hình học trái/phải</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>graphics/TextureManager.h</code></div>
+                            <div class="file-note">Áp dụng Singleton Pattern: nạp, lưu trữ và tự động dọn sạch tài nguyên Texture trên GPU VRAM</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>graphics/DamagePopup.h & GoldParticle.h</code></div>
+                            <div class="file-note">Hệ thống hoạt họa nổi: chữ số sát thương bay lượn đổi màu và hạt đồng tiền vàng vật lý văng tung tóe</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>systems/AudioSystem.h & .cpp</code></div>
+                            <div class="file-note">Singleton âm thanh, thuật toán xử lý tín hiệu DSP tự tạo sóng âm WAV không phụ thuộc file âm thanh ngoài</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>engine/GameEngine.h & .cpp</code></div>
+                            <div class="file-note">Áp dụng Facade Pattern: điều phối vòng lặp game, giao diện HUD, menu Cửa hàng Shop và Bàn rèn Forge</div>
+                        </li>
+                        <li class="team-file-item">
+                            <div class="file-name">📄 <code>engine/GameEngine_Tests.cpp</code></div>
+                            <div class="file-note">Bộ 10 phần kiểm thử học thuật tự động (Academic Test Suite) chứng minh 100% đáp ứng mọi tiêu chuẩn môn OOP</div>
+                        </li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <!-- PHẦN 2: BẢN ĐỒ KIẾN TRÚC -->
+            <div class="map-container">
+                <h3 style="color: var(--accent-gold); margin-bottom: 1rem;">SƠ ĐỒ TỔNG QUAN PHÂN TẦNG VÀ MỐI QUAN HỆ HƯỚNG ĐỐI TƯỢNG</h3>
+                <div class="hierarchy-diagram">
+                    <div class="diagram-layer">
+                        <div class="layer-title">TẦNG 1: LỚP ẢO CƠ SỞ & GIAO DIỆN (Core Abstract Interfaces)</div>
+                        <div class="layer-grid">
+                            <div class="node-box interface"><div class="node-title"><span>IGameObject</span> <span class="badge badge-poly">Virtual Base</span></div><div class="node-desc">Gốc phả hệ của mọi thực thể, giải quyết triệt để bài toán kim cương.</div></div>
+                            <div class="node-box interface"><div class="node-title"><span>IRenderable</span> <span class="badge badge-poly">Interface</span></div><div class="node-desc">Giao diện vẽ đồ họa: <code>render(scale, offset) = 0</code></div></div>
+                            <div class="node-box interface"><div class="node-title"><span>IDamageable</span> <span class="badge badge-poly">Interface</span></div><div class="node-desc">Giao diện sinh mệnh: <code>takeDamage(), heal(), isAlive() = 0</code></div></div>
+                        </div>
+                    </div>
+                    <div class="diagram-layer">
+                        <div class="layer-title">TẦNG 2: THỰC THỂ SỐNG (Abstract Entities & Hierarchical Inheritance)</div>
+                        <div class="layer-grid">
+                            <div class="node-box abstract"><div class="node-title"><span>Entity</span> <span class="badge badge-poly">Abstract Base 1</span></div><div class="node-desc">Đa kế thừa từ IRenderable & IDamageable. Quản lý HP, ATK, DEF, LERP visualPos.</div></div>
+                            <div class="node-box"><div class="node-title"><span>Player</span> <span class="badge badge-core">Derived Class</span></div><div class="node-desc">Nhân vật chính. Hợp thành <code>Inventory</code>, đa hình <code>Skill</code>, Perfect Parry.</div></div>
+                            <div class="node-box abstract"><div class="node-title"><span>Monster</span> <span class="badge badge-poly">Abstract Base 2</span></div><div class="node-desc">Lớp cha của quái vật. Hợp thành với <code>IAIStrategy</code> (Strategy Pattern).</div></div>
+                            <div class="node-box"><div class="node-title"><span>BoarKing</span> <span class="badge badge-poly">Multi-level 5 tầng</span></div><div class="node-desc">IGameObject -> Entity -> Monster -> GroundMonster -> Boar -> BoarKing.</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PHẦN 3: DANH MỤC TOÀN BỘ PHƯƠNG THỨC TRONG TOÀN DỰ ÁN -->
+            <h3 style="color: var(--accent-gold); margin: 2rem 0 1rem;">📖 TỪ ĐIỂN TOÀN BỘ PHƯƠNG THỨC TRONG TOÀN BỘ DỰ ÁN (KÈM COMMENT TIẾNG VIỆT)</h3>
+            <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.95rem;">Bảng dưới đây thống kê đầy đủ toàn bộ phương thức của các lớp trong dự án, giải thích chi tiết logic bám sát comment tiếng Việt có trong code, làm rõ Input (tham số) và Output (kết quả trả về).</p>
+
+            <div class="filter-buttons-container">
+                <button class="filter-btn active" onclick="filterByModule('all', this)">Tất cả Modules (30+ Lớp)</button>
+                <button class="filter-btn" onclick="filterByModule('core', this)">1. Core & Math</button>
+                <button class="filter-btn" onclick="filterByModule('entities', this)">2. Entities & Quái vật</button>
+                <button class="filter-btn" onclick="filterByModule('items', this)">3. Items & Túi đồ</button>
+                <button class="filter-btn" onclick="filterByModule('map', this)">4. Map & Dungeon</button>
+                <button class="filter-btn" onclick="filterByModule('systems', this)">5. Systems & Logic</button>
+                <button class="filter-btn" onclick="filterByModule('engine', this)">6. Graphics & Engine</button>
+            </div>
+
+            <div class="search-bar-container">
+                <input type="text" id="method-search" class="search-input" placeholder="🔍 Tìm kiếm nhanh tên phương thức, lớp, logic hoặc từ khóa..." onkeyup="filterTable('method-table-body', this.value)">
+            </div>
+
+            <table class="method-table">
+                <thead>
+                    <tr>
+                        <th style="width: 22%;">Lớp & Phương thức</th>
+                        <th style="width: 38%;">Ý nghĩa & Logic hoạt động (Comment Tiếng Việt)</th>
+                        <th style="width: 20%;">Input (Tham số đầu vào)</th>
+                        <th style="width: 20%;">Output (Giá trị trả về)</th>
+                    </tr>
+                </thead>
+                <tbody id="method-table-body">
+
+                    <!-- ================= MODULE 1: CORE ================= -->
+                    <tr data-module="core">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(188, 140, 255, 0.2); color: var(--accent-purple);">Core</span><br>
+                            <strong>IGameObject</strong><br>
+                            <code>getInstanceId()</code>
+                        </td>
+                        <td>
+                            Lấy mã định danh duy nhất của thực thể. <code>instanceId</code> được tự động tăng lên nhờ biến tĩnh <code>nextInstanceId</code> mỗi khi có một đối tượng mới sinh ra trong game.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br>Không có tham số.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>int</code>: Mã định danh ID duy nhất của đối tượng.</td>
+                    </tr>
+
+                    <tr data-module="core">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(188, 140, 255, 0.2); color: var(--accent-purple);">Core</span><br>
+                            <strong>Position</strong><br>
+                            <code>manhattanDistanceTo()</code>
+                        </td>
+                        <td>
+                            Tính khoảng cách lưới chuẩn Manhattan giữa hai tọa độ: <code>|x1 - x2| + |y1 - y2|</code>. Dùng để xác định khoảng cách bước đi và tầm nhìn trong game roguelike.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>const Position& other</code>: Tọa độ đích cần so sánh.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>int</code>: Khoảng cách bước lưới.</td>
+                    </tr>
+
+                    <tr data-module="core">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(188, 140, 255, 0.2); color: var(--accent-purple);">Core</span><br>
+                            <strong>Position</strong><br>
+                            <code>operator Vector2()</code>
+                        </td>
+                        <td>
+                            Toán tử chuyển đổi kiểu người dùng định nghĩa (User-Defined Conversion Operator). Tự động chuyển đổi tọa độ ô tile (x, y) sang tọa độ Vector2 của Raylib (pixel thế giới = x*32, y*32).
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br>Không có tham số.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>Vector2</code>: Tọa độ pixel thế giới thực trong Raylib.</td>
+                    </tr>
+
+                    <tr data-module="core">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(188, 140, 255, 0.2); color: var(--accent-purple);">Core</span><br>
+                            <strong>Position</strong><br>
+                            <code>operator<< / >></code>
+                        </td>
+                        <td>
+                            Nạp chồng toán tử nhập / xuất luồng stream qua hàm bạn (friend function). Cho phép xuất thông tin tọa độ dạng <code>(x, y)</code> ra màn hình hoặc tệp, và đọc khôi phục dữ liệu từ tệp save.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>std::ostream& os</code> hoặc <code>std::istream& is</code>, <code>const Position& pos</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>std::ostream&</code> hoặc <code>std::istream&</code>: Tham chiếu luồng để tiếp tục chuỗi stream.</td>
+                    </tr>
+
+                    <tr data-module="core">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(188, 140, 255, 0.2); color: var(--accent-purple);">Core</span><br>
+                            <strong>DynamicArray&lt;T&gt;</strong><br>
+                            <code>push_back()</code>
+                        </td>
+                        <td>
+                            Thêm một phần tử vào cuối mảng động. Nếu số lượng phần tử đạt tới ngưỡng sức chứa (<code>count >= capacity</code>), hàm tự động gọi hàm nội bộ <code>resize(capacity * 2)</code> để nhân đôi vùng nhớ Heap.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>const T& item</code>: Phần tử cần thêm vào mảng.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>void</code>.</td>
+                    </tr>
+
+                    <tr data-module="core">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(188, 140, 255, 0.2); color: var(--accent-purple);">Core</span><br>
+                            <strong>DynamicArray&lt;T&gt;</strong><br>
+                            <code>operator[]</code>
+                        </td>
+                        <td>
+                            Nạp chồng toán tử truy xuất chỉ số mảng. Có kiểm tra giới hạn (bound check): nếu <code>index >= count</code> thì ném ra ngoại lệ <code>std::out_of_range</code>. Hỗ trợ cả 2 phiên bản const và non-const.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>size_t index</code>: Vị trí phần tử cần truy cập.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>T&</code> hoặc <code>const T&</code>: Tham chiếu phần tử tại vị trí index.</td>
+                    </tr>
+
+                    <tr data-module="core">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(188, 140, 255, 0.2); color: var(--accent-purple);">Core</span><br>
+                            <strong>CoreTemplates</strong><br>
+                            <code>clampValue()</code>
+                        </td>
+                        <td>
+                            Khuôn mẫu hàm (Function Template Slide 4-8 Chương 7) giới hạn giá trị trong đoạn <code>[minVal, maxVal]</code>. Dùng trong <code>Player</code> (giới hạn thời gian rơi không trung), <code>BoarKing</code> (giới hạn tọa độ knockback và lướt húc không văng khỏi map).
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>T val</code>, <code>T minVal</code>, <code>T maxVal</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>T</code>: Giá trị sau khi kẹp an toàn.</td>
+                    </tr>
+
+                    <tr data-module="core">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(188, 140, 255, 0.2); color: var(--accent-purple);">Core</span><br>
+                            <strong>CoreTemplates</strong><br>
+                            <code>swapValues()</code>
+                        </td>
+                        <td>
+                            Khuôn mẫu hàm hoán vị 2 biến sử dụng tham chiếu <code>T&</code> (Slide 9-11 Chương 7). Dùng đổi chỗ trang bị, tọa độ hoặc các phần tử trong thuật toán sắp xếp mảng.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>T& a</code>, <code>T& b</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>void</code> (Hoán đổi trực tiếp giá trị 2 biến).</td>
+                    </tr>
+
+                    <tr data-module="core">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(188, 140, 255, 0.2); color: var(--accent-purple);">Core</span><br>
+                            <strong>CoreTemplates</strong><br>
+                            <code>getMaxValue()</code> / <code>getMinValue()</code>
+                        </td>
+                        <td>
+                            Khuôn mẫu hàm tìm giá trị lớn nhất / nhỏ nhất giữa 2 phần tử bất kỳ. Dùng trong <code>CombatSystem</code> (đảm bảo sát thương phản đòn tối thiểu >= 6, sát thương sau block >= 1), <code>Player</code> (thời gian nhiễm độc tối đa), <code>BoarKing</code> (tính biên vẽ vệt cảnh báo húc đòn).
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>T a</code>, <code>T b</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>T</code>: Giá trị lớn hơn hoặc nhỏ hơn.</td>
+                    </tr>
+
+                    <tr data-module="core">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(188, 140, 255, 0.2); color: var(--accent-purple);">Core</span><br>
+                            <strong>CoreTemplates</strong><br>
+                            <code>isInRange()</code>
+                        </td>
+                        <td>
+                            Khuôn mẫu hàm kiểm tra giá trị có nằm trong khoảng kín <code>[minVal, maxVal]</code>. Dùng trong AI Boss Boar King kiểm tra cự ly kích hoạt Lão Húc (cách 3 đến 9 ô), và đàn Ong kiểm tra cự ly chọc nọc độc (dy từ -1 đến 2).
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>T val</code>, <code>T minVal</code>, <code>T maxVal</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>bool</code> (true nếu nằm trong khoảng).</td>
+                    </tr>
+
+                    <tr data-module="core">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(188, 140, 255, 0.2); color: var(--accent-purple);">Core</span><br>
+                            <strong>CoreTemplates</strong><br>
+                            <code>lerpValue()</code>
+                        </td>
+                        <td>
+                            Khuôn mẫu hàm nội suy tuyến tính (Linear Interpolation) <code>start + (end - start) * t</code>. Dùng trong <code>Entity::update()</code> để di chuyển mượt mà giữa các ô gạch với số thực float/double độc lập với FPS.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>T start</code>, <code>T end</code>, <code>float t</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>T</code>: Tọa độ nội suy mượt mà.</td>
+                    </tr>
+
+                    <tr data-module="core">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(188, 140, 255, 0.2); color: var(--accent-purple);">Core</span><br>
+                            <strong>CoreTemplates</strong><br>
+                            <code>calculateDistance2D()</code>
+                        </td>
+                        <td>
+                            Khuôn mẫu hàm nhận 2 kiểu dữ liệu vị trí bất kỳ có trường <code>.x</code>, <code>.y</code> (Khuôn mẫu đa tham số kiểu). Dùng trong <code>Monster::hasLineOfSight()</code> và <code>GameEngine::pathFlyable()</code> để xác định số bước tia kiểm tra va chạm.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>const PosA& a</code>, <code>const PosB& b</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>int</code>: Khoảng cách Chebyshev tối đại giữa 2 tọa độ.</td>
+                    </tr>
+
+                    <tr data-module="core">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(188, 140, 255, 0.2); color: var(--accent-purple);">Core</span><br>
+                            <strong>CoreTemplates</strong><br>
+                            <code>calculateChebyshevDistance()</code>
+                        </td>
+                        <td>
+                            Khuôn mẫu hàm nâng cao với 2 tham số hình thức kiểu <code>template &lt;typename T1, typename T2&gt;</code> (Slide 11 Chương 7). Tính khoảng cách giữa 2 thực thể bất kỳ có phương thức <code>getPosition()</code> (Monster, Player, Boss). Dùng trong <code>AIStrategy</code>, <code>QueenBee</code>, <code>SmallBee</code>, <code>GameEngine</code>.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>const T1& obj1</code>, <code>const T2& obj2</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>int</code>: Khoảng cách lưới bàn cờ (Chebyshev distance).</td>
+                    </tr>
+
+                    <!-- ================= MODULE 2: ENTITIES ================= -->
+                    <tr data-module="entities">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(255, 123, 114, 0.2); color: var(--accent-red);">Entities</span><br>
+                            <strong>Entity</strong><br>
+                            <code>takeDamage()</code>
+                        </td>
+                        <td>
+                            Phương thức xử lý trừ sinh lực khi chịu đòn: sát thương thực tế = <code>std::max(1, amount - defense)</code> (luôn chịu tối thiểu 1 sát thương). Nếu HP tụt về 0, chuyển cờ <code>alive = false</code>.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>int amount</code>: Lượng sát thương nhận vào trước khi trừ giáp.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>void</code> (Cập nhật thuộc tính HP nội bộ của thực thể).</td>
+                    </tr>
+
+                    <tr data-module="entities">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(255, 123, 114, 0.2); color: var(--accent-red);">Entities</span><br>
+                            <strong>Entity</strong><br>
+                            <code>update()</code>
+                        </td>
+                        <td>
+                            Cập nhật frame hoạt họa hiện tại và thực hiện nội suy tọa độ hiển thị mượt mà (Visual LERP) theo hàm mũ thời gian thực độc lập với FPS: <code>visualPos += (targetPos - visualPos) * t</code>.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>float deltaTime</code>: Thời gian trôi qua giữa 2 frame render (giây).</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>void</code>.</td>
+                    </tr>
+
+                    <tr data-module="entities">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(255, 123, 114, 0.2); color: var(--accent-red);">Entities</span><br>
+                            <strong>Player</strong><br>
+                            <code>triggerBlock()</code>
+                        </td>
+                        <td>
+                            Kích hoạt tư thế Đỡ đòn & Phản đòn hoàn hảo [phím K]. Thiết lập <code>blockTimer = 0.45s</code>, mở cửa sổ Perfect Parry trong <code>0.18s</code> đầu tiên, và áp dụng thời gian hồi chiêu <code>blockCooldown = 0.70s</code>.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br>Không có tham số.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>void</code>.</td>
+                    </tr>
+
+                    <tr data-module="entities">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(255, 123, 114, 0.2); color: var(--accent-red);">Entities</span><br>
+                            <strong>Player</strong><br>
+                            <code>applyPoison() / curePoison()</code>
+                        </td>
+                        <td>
+                            Cơ chế trúng độc theo thời gian (Poison DoT). <code>applyPoison</code> nạp thời gian trúng độc và sát thương rút máu mỗi giây; <code>curePoison</code> xóa sạch độc tố khi dùng bình giải độc hoặc phép thánh quang.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>float duration</code> (thời gian nhiễm độc), <code>int dmgPerTick</code> (sát thương mỗi giây).</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>void</code>.</td>
+                    </tr>
+
+                    <tr data-module="entities">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(255, 123, 114, 0.2); color: var(--accent-red);">Entities</span><br>
+                            <strong>Player</strong><br>
+                            <code>triggerFall()</code>
+                        </td>
+                        <td>
+                            Kích hoạt hoạt ảnh rơi tự do chuẩn gia tốc trọng trường khi người chơi bước hụt xuống hố vực: Giai đoạn 1 rơi trong không trung theo parabol gia tốc $g$, Giai đoạn 2 tiếp đất giảm chấn gập gối thu kiếm.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>float airDuration = 0.52f</code>, <code>float landDuration = 0.22f</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>void</code>.</td>
+                    </tr>
+
+                    <tr data-module="entities">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(255, 123, 114, 0.2); color: var(--accent-red);">Entities</span><br>
+                            <strong>Player</strong><br>
+                            <code>upgradeForge()</code>
+                        </td>
+                        <td>
+                            Nâng cấp vũ khí tại Đe Rèn (Blacksmith Forge). Kiểm tra số vàng người chơi tích lũy, nếu đủ sẽ trừ vàng, tăng cấp <code>forgeLevel++</code> và cộng trực tiếp sức tấn công vĩnh viễn: <code>attack += bonus</code>.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br>Không có tham số.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>bool</code>: true nếu nâng cấp thành công, false nếu không đủ vàng.</td>
+                    </tr>
+
+                    <tr data-module="entities">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(255, 123, 114, 0.2); color: var(--accent-red);">Entities</span><br>
+                            <strong>Monster</strong><br>
+                            <code>canSeePlayer()</code>
+                        </td>
+                        <td>
+                            Thuật toán kiểm tra tầm nhìn quái vật: Kiểm tra khoảng cách khoảng nhìn ngang, kiểm tra chênh lệch độ cao và <strong>kiểm tra hướng quay mặt</strong> (nếu quái đang quay lưng thì không thấy), kèm kiểm tra tường chắn <code>hasLineOfSight</code>.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>Dungeon& dungeon</code>, <code>const Player& player</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>bool</code>: true nếu người chơi lọt vào tầm mắt phía trước quái vật.</td>
+                    </tr>
+
+                    <tr data-module="entities">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(255, 123, 114, 0.2); color: var(--accent-red);">Entities</span><br>
+                            <strong>Boar</strong><br>
+                            <code>act()</code>
+                        </td>
+                        <td>
+                            Hành vi AI của lợn rừng: Nếu người chơi ở cự ly cận chiến -> tấn công (mỗi 4 lượt tung cú húc mạnh gấp 1.5 lần dame). Nếu phát hiện người chơi phía trước -> chuyển sang Chase tăng tốc lao tới. Nếu không -> tuần tra nhịp nhàng.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>Dungeon& dungeon</code>, <code>Player& player</code>, <code>vector&lt;string&gt;& combatLog</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>void</code>.</td>
+                    </tr>
+
+                    <tr data-module="entities">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(255, 123, 114, 0.2); color: var(--accent-red);">Entities</span><br>
+                            <strong>BoarKing</strong><br>
+                            <code>act()</code>
+                        </td>
+                        <td>
+                            Máy trạng thái (FSM) Boss Tối Thượng: Khi máu tụt dưới 45% kích hoạt <strong>Cuồng nộ</strong> (+10 ATK, +3 DEF). Khoảng cách 3-9 ô: Dậm chân lấy đà telegraph rồi <strong>Lão húc phóng như tên bắn (22 ô/s)</strong>. Nếu húc trúng hất bay người chơi; nếu húc hụt tông vào tường sẽ <strong>Bị choáng 1.2s</strong>.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>Dungeon& dungeon</code>, <code>Player& player</code>, <code>vector&lt;string&gt;& combatLog</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>void</code>.</td>
+                    </tr>
+
+                    <tr data-module="entities">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(255, 123, 114, 0.2); color: var(--accent-red);">Entities</span><br>
+                            <strong>QueenBee</strong><br>
+                            <code>act()</code>
+                        </td>
+                        <td>
+                            Hành vi Boss Ong Chúa bay: <strong>Khi bị tấn công</strong>, lập tức phát lệnh triệu hồi 2-3 tiểu ong phụ tá xuất hiện quanh mình và kích hoạt toàn bộ ong trong bán kính 25 ô lao vào hội đồng Player. Tấn công nọc độc hoàng kim DoT và phi thân lao nọc (Queen's Rush).
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>Dungeon& dungeon</code>, <code>Player& player</code>, <code>vector&lt;string&gt;& combatLog</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>void</code>.</td>
+                    </tr>
+
+                    <tr data-module="entities">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(255, 123, 114, 0.2); color: var(--accent-red);">Entities</span><br>
+                            <strong>Snail</strong><br>
+                            <code>takeDamage()</code>
+                        </td>
+                        <td>
+                            Ghi đè chịu sát thương: Khi HP giảm xuống dưới 50% (<code class="inline-code">hp &le; maxHp / 2</code>), kích hoạt kỹ năng đặc biệt <strong>Rút Vào Vỏ</strong>: tăng vọt thêm 8 điểm giáp (Defense), chuyển sprite <code>snail_hide</code> và hồi 3 HP mỗi chu kỳ.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>int amount</code>: Sát thương nhận vào.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>void</code>.</td>
+                    </tr>
+
+                    <!-- ================= MODULE 3: ITEMS ================= -->
+                    <tr data-module="items">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(241, 196, 15, 0.2); color: var(--accent-gold);">Items</span><br>
+                            <strong>Item</strong><br>
+                            <code>use()</code>
+                        </td>
+                        <td>
+                            Phương thức thuần ảo đại diện cho hiệu ứng sử dụng vật phẩm: <code>virtual bool use(Player* target) = 0;</code>. Cho phép áp dụng tính đa hình trong túi đồ.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>Player* target</code>: Con trỏ người chơi nhận hiệu ứng.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>bool</code>: true nếu dùng thành công, false nếu thất bại.</td>
+                    </tr>
+
+                    <tr data-module="items">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(241, 196, 15, 0.2); color: var(--accent-gold);">Items</span><br>
+                            <strong>Potion</strong><br>
+                            <code>operator++ / --</code>
+                        </td>
+                        <td>
+                            Nạp chồng toán tử 1 ngôi tiền tố cho bình thuốc: <code>operator++()</code> tăng số lượng stack khi nhặt thêm bình thuốc cùng loại; <code>operator--()</code> giảm số lượng khi người chơi uống thuốc.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br>Không có tham số.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>Potion&</code>: Tham chiếu chính đối tượng bình thuốc hiện tại.</td>
+                    </tr>
+
+                    <tr data-module="items">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(241, 196, 15, 0.2); color: var(--accent-gold);">Items</span><br>
+                            <strong>Chest</strong><br>
+                            <code>tryOpen()</code>
+                        </td>
+                        <td>
+                            Xử lý tương tác mở Rương Kho Báu Hoàng Kim: Kiểm tra túi đồ đầy hay chưa, kiểm tra số vàng của người chơi có đủ <code>unlockCost</code> hay không. Nếu đủ, trừ vàng, mở rương, cộng EXP và thêm vật phẩm quý (Kiếm thần thoại hoặc Thần dược) vào túi đồ.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>Player& player</code>, <code>GameEngine* engine</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>bool</code>: true nếu mở khóa thành công, false nếu thiếu vàng hoặc đầy túi.</td>
+                    </tr>
+
+                    <tr data-module="items">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(241, 196, 15, 0.2); color: var(--accent-gold);">Items</span><br>
+                            <strong>Inventory</strong><br>
+                            <code>useItem()</code>
+                        </td>
+                        <td>
+                            Kích hoạt sử dụng vật phẩm tại slot chỉ định: Gọi đa hình <code>items[index]->use(player)</code>. Nếu là bình thuốc và dùng thành công, tự động xóa bình thuốc khỏi danh sách bằng <code>items.erase()</code>.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>size_t index</code>: Chỉ số ô đồ (0..9), <code>Player* player</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>bool</code>: true nếu sử dụng thành công.</td>
+                    </tr>
+
+                    <!-- ================= MODULE 4: MAP ================= -->
+                    <tr data-module="map">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(63, 185, 80, 0.2); color: var(--accent-green);">Map</span><br>
+                            <strong>Dungeon</strong><br>
+                            <code>generate()</code>
+                        </td>
+                        <td>
+                            Thuật toán kiến tạo bản đồ 2D Side 165 ô ngang gồm 6 khu vực địa hình liên hoàn, tạo mặt đất đáy y=18, 3 đầm lầy lún, các bậc thang đá kết nối tầng cao y=15, 12, 9, 6 và bố trí vị trí các loài quái vật, rương báu, bệ chuyển tầng.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>int floor</code>: Số tầng hầm ngục cần tạo.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>void</code>.</td>
+                    </tr>
+
+                    <tr data-module="map">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(63, 185, 80, 0.2); color: var(--accent-green);">Map</span><br>
+                            <strong>Dungeon</strong><br>
+                            <code>spawnMonster()</code>
+                        </td>
+                        <td>
+                            Sinh quái vật tại vị trí mong muốn kết hợp thuật toán tìm kiếm xoắn ốc (Spiral Search) bán kính $r \in [1, 4]$ nếu ô ban đầu bị cản. Đảm bảo quái bộ phải có sàn đỡ dưới chân và quái bay sinh trên ô không khí, chống lỗi kẹt quái vào tường đá.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>MonsterType type</code> (loại quái), <code>const Position& desiredPos</code> (tọa độ mong muốn).</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>bool</code>: true nếu sinh quái thành công.</td>
+                    </tr>
+
+                    <tr data-module="map">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(63, 185, 80, 0.2); color: var(--accent-green);">Map</span><br>
+                            <code>removeDeadMonsters()</code>
+                        </td>
+                        <td>
+                            Duyệt danh sách quái vật, kiểm tra các cá thể đã tử trận: Chờ cho hoạt ảnh biến mất (Dead / Hit-Vanish) chạy xong hoàn toàn mới tiến hành trao thưởng EXP, Vàng và xóa khỏi vector bằng <code>erase()</code>.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>Player& player</code>: Người chơi nhận phần thưởng.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>void</code>.</td>
+                    </tr>
+
+                    <!-- ================= MODULE 5: SYSTEMS ================= -->
+                    <tr data-module="systems">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(88, 166, 255, 0.2); color: var(--accent-blue);">Systems</span><br>
+                            <strong>CombatSystem</strong><br>
+                            <code>attack()</code>
+                        </td>
+                        <td>
+                            Bộ xử lý chiến đấu trung tâm: Kiểm tra Perfect Parry (0.18s đầu) dội 150% phản phệ sát thương; kiểm tra Block thường giảm 75% dame; tính tỉ lệ bạo kích Crit 15%; trừ giáp; kích hoạt DoT lây độc ong; hiển thị chữ số sát thương nổi và phát âm thanh SFX tương ứng.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>Entity& attacker</code>, <code>Entity& defender</code>, <code>vector&lt;string&gt;& combatLog</code>, <code>GameEngine* engine</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>bool</code>: true nếu đòn đánh diễn ra hợp lệ.</td>
+                    </tr>
+
+                    <tr data-module="systems">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(88, 166, 255, 0.2); color: var(--accent-blue);">Systems</span><br>
+                            <strong>MonsterFactory</strong><br>
+                            <code>create() / createRandom()</code>
+                        </td>
+                        <td>
+                            Hiện thực <strong>Factory Method Pattern</strong>. Khởi tạo tập trung các đối tượng quái vật (Boar, WhiteBoar, SmallBee, QueenBee, Snail, BoarKing) và trả về con trỏ thông minh <code>std::unique_ptr&lt;Monster&gt;</code>.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>MonsterType type</code>, <code>const Position& pos</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>std::unique_ptr&lt;Monster&gt;</code>: Con trỏ đa hình độc quyền quản lý quái vật.</td>
+                    </tr>
+
+                    <tr data-module="systems">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(88, 166, 255, 0.2); color: var(--accent-blue);">Systems</span><br>
+                            <strong>EventDispatcher</strong><br>
+                            <code>notify()</code>
+                        </td>
+                        <td>
+                            Hiện thực <strong>Observer Pattern</strong>. Bộ điều phối trung tâm tiếp nhận sự kiện trò chơi (quái bị diệt, boss bị hạ, nhặt vàng, mở rương) và tự động phát tán thông báo tới toàn bộ các Observer đã đăng ký lắng nghe (AchievementObserver, CombatLogObserver).
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>const GameEvent& event</code>: Gói dữ liệu sự kiện gồm loại sự kiện, thông điệp, giá trị, con trỏ nguồn/đích.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>void</code>.</td>
+                    </tr>
+
+                    <tr data-module="systems">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(88, 166, 255, 0.2); color: var(--accent-blue);">Systems</span><br>
+                            <strong>SaveLoadManager</strong><br>
+                            <code>saveGame() / loadGame()</code>
+                        </td>
+                        <td>
+                            Đọc và ghi tệp dữ liệu trò chơi: Ghi nhận thông số người chơi, số vàng, cấp độ đe rèn, tầng ngục, và toàn bộ vật phẩm trong túi đồ (dùng RTTI <code>dynamic_cast</code> để xác định chính xác kiểu Weapon/Potion) ra file văn bản <code>savegame.txt</code>, và khôi phục khi nhấn F9.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>const std::string& filePath</code>, <code>Player& player</code>, <code>Dungeon& dungeon</code>.</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>bool</code>: true nếu thành công; ném ra ngoại lệ <code>SaveLoadException</code> nếu tệp hỏng.</td>
+                    </tr>
+
+                    <!-- ================= MODULE 6: ENGINE & GRAPHICS ================= -->
+                    <tr data-module="engine">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(255, 166, 87, 0.2); color: var(--accent-orange);">Engine</span><br>
+                            <strong>AudioSystem</strong><br>
+                            <code>generateWavFile()</code>
+                        </td>
+                        <td>
+                            Thuật toán tổng hợp âm thanh thủ tục (DSP procedural sound synthesis). Tạo cấu trúc RIFF/WAVE 44-byte chuẩn PCM 16-bit 44.1kHz, mô phỏng tiếng va chạm kiếm chém (quét tần số), tiếng keng kim loại phản đòn (tổng hợp 4 bồi âm sóng sin 1960Hz - 5250Hz), tiếng độc sủi bọt FM, tiếng chuông tiền vàng 2 nốt.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>const std::string& filepath</code>, <code>int soundType</code> (0..5).</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>void</code> (Tự động sinh file .wav vào thư mục <code>assets/audio/</code>).</td>
+                    </tr>
+
+                    <tr data-module="engine">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(255, 166, 87, 0.2); color: var(--accent-orange);">Engine</span><br>
+                            <strong>GameEngine</strong><br>
+                            <code>run()</code>
+                        </td>
+                        <td>
+                            Vòng lặp chính của toàn bộ trò chơi (Main Game Loop). Nhận sự kiện thời gian thực <code>GetFrameTime()</code>, xử lý phím bấm điều khiển <code>handleInput()</code>, cập nhật logic thế giới <code>update()</code> và vẽ kết xuất khung hình <code>render()</code> lên màn hình.
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br><code>const std::string& autoScreenshot = ""</code>: Tùy chọn chụp ảnh tự động rồi thoát (dành cho kiểm thử).</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>void</code>.</td>
+                    </tr>
+
+                    <tr data-module="engine">
+                        <td>
+                            <span class="module-tag-sm" style="background: rgba(255, 166, 87, 0.2); color: var(--accent-orange);">Engine</span><br>
+                            <strong>GameEngine</strong><br>
+                            <code>runOOPAcademicTests()</code>
+                        </td>
+                        <td>
+                            Hàm kiểm thử học thuật tĩnh độc lập tích hợp sẵn trong engine. Chạy tự động 10 phần kiểm tra bao quát toàn bộ 7 chương OOP của trường UTH (Con trỏ, Deep Copy, Quá tải toán tử, Kế thừa kim cương Virtual Base, Đa hình động, Khuôn mẫu Template, Ngoại lệ và Design Patterns).
+                        </td>
+                        <td><span class="io-tag io-in">Input</span><br>Không có tham số (gọi từ cờ dòng lệnh <code>./bin/aethelgard --test-oop</code>).</td>
+                        <td><span class="io-tag io-out">Output</span><br><code>void</code> (Xuất báo cáo chi tiết 100% PASS ra console).</td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ===================================================================
+             TRANG 3: BỘ CÂU HỎI VẤN ĐÁP CỦA GIẢNG VIÊN (TỪ CƠ BẢN ĐẾN NÂNG CAO)
+             =================================================================== -->
+        <section id="tab-qa" class="tab-pane">
+            <h2 class="section-title"><span>🎓</span> Trang 3: Bộ Câu Hỏi Vấn Đáp Bảo Vệ Của Giảng Viên & Lời Giải</h2>
+            <p class="section-subtitle">Đóng vai trò là Giảng viên phản biện Bài tập lớn môn Lập trình Hướng đối tượng, đưa ra các câu hỏi trọng tâm từ lý thuyết cơ bản đến các tình huống kiểm tra mã nguồn và yêu cầu chỉnh sửa trực tiếp (Live Coding).</p>
+
+            <div class="search-bar-container">
+                <input type="text" id="qa-search" class="search-input" placeholder="🔍 Tìm câu hỏi vấn đáp theo chủ đề (vd: virtual, diamond, vtable, template, dynamic_cast, solid, slicing, live code...)" onkeyup="filterCards('qa-card', this.value)">
+            </div>
+
+            <!-- PHẦN 1: KIẾN THỨC CƠ BẢN -->
+            <h3 style="color: var(--accent-gold); margin: 1.5rem 0 1rem;">NHÓM 1: CÂU HỎI CƠ BẢN VỀ LỚP, ĐỐI TƯỢNG & ĐÓNG GÓI</h3>
+
+            <article class="qa-card">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>1. Trong C++, struct và class khác nhau ở điểm nào? Tại sao em dùng struct cho Position, DamagePopup nhưng lại dùng class cho Player, Dungeon?</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p>Trong C++, điểm khác biệt duy nhất giữa <code>struct</code> và <code>class</code> là <strong>phạm vi truy cập mặc định</strong>: với <code>struct</code>, các thành viên mặc định là <code>public</code>; còn với <code>class</code>, các thành viên mặc định là <code>private</code>.</p>
+                    <div class="key-point">
+                        <strong>Lý do lựa chọn trong dự án:</strong><br>
+                        • <strong>struct</strong> được dùng cho các cấu trúc mang tính chất thuần chứa dữ liệu (Plain Old Data / DTO) như <code>Position (x, y)</code>, <code>DamagePopup</code>, <code>GoldParticle</code> nơi các thuộc tính thường xuyên được truy xuất trực tiếp để tính toán tọa độ đồ họa mà không cần logic bao bọc phức tạp.<br>
+                        • <strong>class</strong> được dùng cho <code>Player</code>, <code>Monster</code>, <code>Dungeon</code>, <code>Inventory</code> để đảm bảo <strong>Tính đóng gói (Encapsulation)</strong> nghiêm ngặt, che giấu máu, giáp, danh sách con trỏ mảng, buộc mọi tương tác phải thông qua các hàm nghiệp vụ có kiểm tra logic hợp lệ.
+                    </div>
+                </div>
+            </article>
+
+            <article class="qa-card">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>2. Constructor sao chép (Copy Constructor) được gọi trong những trường hợp nào? Nếu không tự viết Copy Constructor cho lớp DynamicArray thì điều gì nguy hiểm sẽ xảy ra?</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p><strong>Copy Constructor</strong> được gọi khi:</p>
+                    <ul class="explanation-list">
+                        <li>Khởi tạo một đối tượng mới từ một đối tượng có sẵn: <code class="inline-code">DynamicArray&lt;int&gt; b = a;</code> hoặc <code class="inline-code">DynamicArray&lt;int&gt; b(a);</code></li>
+                        <li>Truyền một đối tượng vào hàm theo hình thức truyền giá trị (Pass-by-value).</li>
+                        <li>Hàm trả về một đối tượng theo giá trị (Return-by-value).</li>
+                    </ul>
+                    <div class="key-point">
+                        <strong>Nguy cơ cực kỳ nghiêm trọng nếu dùng Copy Constructor mặc định:</strong><br>
+                        Constructor mặc định của trình biên dịch chỉ thực hiện sao chép nông (<strong>Shallow Copy</strong>) bit-by-bit. Nó sẽ sao chép nguyên xi con trỏ <code>data</code> từ đối tượng cũ sang đối tượng mới, khiến <strong>cả hai đối tượng cùng trỏ vào một vùng nhớ trên Heap</strong>.<br>
+                        Khi một trong hai đối tượng bị hủy, hàm Destructor gọi <code>delete[] data;</code> giải phóng vùng nhớ đó. Khi đối tượng thứ hai bị hủy sau đó, nó tiếp tục gọi <code>delete[]</code> trên vùng nhớ đã bị giải phóng &rarr; Dẫn đến lỗi sập chương trình nghiêm trọng <strong>Double Free Error / Dangling Pointer</strong> và làm treo game. Do đó, trong <code>DynamicArray</code>, chúng em bắt buộc phải tự viết Copy Constructor để cấp phát một vùng nhớ hoàn toàn mới và sao chép từng giá trị sang (<strong>Deep Copy</strong>).
+                    </div>
+                </div>
+            </article>
+
+            <article class="qa-card">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>3. Từ khóa friend có vi phạm nguyên lý Đóng gói (Encapsulation) không? Tại sao em lại sử dụng friend trong Entity và Position?</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p>Về mặt lý thuyết bề mặt, <code>friend</code> cho phép lớp hoặc hàm bên ngoài truy cập vào các biến <code>private/protected</code> của lớp. Tuy nhiên, <code>friend</code> <strong>không vi phạm</strong> tính đóng gói nếu được sử dụng có chủ đích và kiểm soát chặt chẽ, vì quyền kết bạn do <strong>chính lớp đó tự trao quyền</strong> chứ không bị áp đặt từ bên ngoài.</p>
+                    <div class="key-point">
+                        <strong>Lý do sử dụng trong dự án:</strong><br>
+                        1. Trong <code>Entity</code>, việc cấp quyền <code>friend class CombatSystem;</code> và <code>friend class SaveLoadManager;</code> giúp hai phân hệ chuyên trách tính toán giao tranh và ghi tệp tiến trình truy xuất nhanh chỉ số nội bộ mà không cần phải "mở toang" bằng cách tạo các hàm <code>public setHp()</code> tùy tiện cho các thành phần khác gọi bừa bãi.<br>
+                        2. Trong <code>Position</code>, toán tử xuất nhập stream <code>operator&lt;&lt;</code> và <code>operator&gt;&gt;</code> bắt buộc phải nhận đối số bên trái là <code>std::ostream&</code> (không thể là con trỏ <code>this</code>), do đó bắt buộc phải khai báo là một hàm toàn cục (global function) dạng <code>friend</code> để nó có thể đọc biến <code>pos.x, pos.y</code>.
+                    </div>
+                </div>
+            </article>
+
+            <article class="qa-card">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>4. Toán tử tiền tố (++pos) và hậu tố (pos++) khác nhau thế nào về cú pháp khai báo, cơ chế hoạt động và hiệu năng? Tại sao hàm hậu tố lại nhận thêm tham số int giả?</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p>Trong C++, toán tử tiền tố (Prefix) và hậu tố (Postfix) có sự khác biệt rõ rệt về cú pháp, cơ chế trả về và hiệu năng:</p>
+                    <ul class="explanation-list">
+                        <li><strong>Toán tử tiền tố (<code>++pos</code>):</strong> Khai báo là <code class="inline-code">Position&amp; operator++()</code>. Thực hiện tăng giá trị thuộc tính của đối tượng trước, sau đó trả về <strong>tham chiếu chính đối tượng đó (<code>*this</code>)</strong>. Không tạo bất kỳ bản sao nào trong RAM, đạt hiệu năng tối ưu.</li>
+                        <li><strong>Toán tử hậu tố (<code>pos++</code>):</strong> Khai báo là <code class="inline-code">Position operator++(int)</code>. Bắt buộc phải tạo một biến tạm lưu lại trạng thái cũ: <code>Position temp = *this;</code>, sau đó mới tăng giá trị nội bộ, và cuối cùng trả về biến tạm <code>temp</code> <strong>theo giá trị (Return-by-value)</strong>.</li>
+                    </ul>
+                    <div class="key-point">
+                        <strong>Tại sao hàm hậu tố lại có tham số <code>(int)</code>?</strong><br>
+                        Vì cả hai toán tử đều có cùng tên gọi là <code>operator++</code>. Để trình biên dịch C++ có thể phân biệt chữ ký hàm (Function Signature) khi quá tải, tiêu chuẩn C++ quy ước đưa vào một <strong>tham số giả (dummy parameter) kiểu <code>int</code></strong> không có tên biến trong hàm hậu tố. Trình biên dịch sẽ tự động truyền giá trị <code>0</code> vào tham số này khi gặp cú pháp <code>pos++</code>.
+                    </div>
+                </div>
+            </article>
+
+            <article class="qa-card">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>5. Tại sao các hàm Getter như getHp(), getPosition() lại có từ khóa const ở cuối hàm? Điều gì xảy ra nếu cố tình sửa biến bên trong hàm const? Khi nào ta phải dùng từ khóa mutable?</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p>Từ khóa <code>const</code> đặt ở cuối hàm thành viên (<code class="inline-code">int getHp() const</code>) biến con trỏ ngầm định <code>this</code> thành con trỏ hằng trỏ tới đối tượng hằng (<code>const Entity* const this</code>):</p>
+                    <ul class="explanation-list">
+                        <li><strong>Mục đích:</strong> Cam kết với trình biên dịch rằng phương thức này <strong>chỉ đọc (Read-only)</strong>, tuyệt đối không làm thay đổi bất kỳ thuộc tính dữ liệu nào của đối tượng.</li>
+                        <li><strong>Nếu cố tình sửa biến:</strong> Trình biên dịch sẽ báo lỗi biên dịch ngay lập tức (Compile-time Error: <em>assignment of member in read-only object</em>).</li>
+                        <li><strong>Nguyên tắc const-correctness:</strong> Một đối tượng hằng (hoặc tham chiếu hằng <code class="inline-code">const Entity&amp; e</code>) <strong>CHỈ ĐƯỢC PHÉP</strong> gọi các phương thức có gắn nhãn <code>const</code>. Nếu getter không có <code>const</code>, ta sẽ không thể đọc thông tin của đối tượng hằng khi truyền qua hàm.</li>
+                    </ul>
+                    <div class="key-point">
+                        <strong>Khi nào dùng từ khóa <code>mutable</code>?</strong><br>
+                        Từ khóa <code>mutable</code> được khai báo trước một thuộc tính thành viên để cho phép thuộc tính đó <strong>vẫn có thể bị thay đổi giá trị ngay bên trong các hàm thành viên hằng <code>const</code></strong>. Thường áp dụng cho các biến không ảnh hưởng đến trạng thái nghiệp vụ cốt lõi của đối tượng, ví dụ: biến đếm số lần truy xuất (debug counter), bộ đệm kết quả tính toán (cache), hoặc biến khóa đồng bộ đa luồng <code>mutable std::mutex mtx;</code>.
+                    </div>
+                </div>
+            </article>
+
+            <!-- PHẦN 2: KẾ THỪA & KIM CƯƠNG -->
+            <h3 style="color: var(--accent-gold); margin: 2rem 0 1rem;">NHÓM 2: KẾ THỪA, BÀI TOÁN KIM CƯƠNG & CÁC MỐI QUAN HỆ GIỮA CÁC LỚP</h3>
+
+            <article class="qa-card advanced">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>6. Bài toán kim cương (Diamond Problem) là gì? Trong dự án của em nó xuất hiện ở đâu và em đã dùng cú pháp gì để giải quyết triệt để?</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p><strong>Bài toán kim cương</strong> xảy ra trong mô hình đa kế thừa (Multiple Inheritance) khi một lớp con (D) kế thừa từ hai lớp cha (B và C), mà hai lớp cha này lại cùng kế thừa từ một lớp ông bà gốc (A). Khi đó, lớp D sẽ nhận <strong>hai bản sao riêng biệt</strong> của tất cả các thuộc tính của A, dẫn đến hiện tượng <strong>xung đột lưỡng nghĩa (Ambiguity)</strong> khi truy cập thuộc tính và gây lãng phí bộ nhớ.</p>
+                    <div class="key-point">
+                        <strong>Xuất hiện trong dự án Aethelgard:</strong><br>
+                        • Lớp gốc: <code>IGameObject</code> (chứa mã định danh thực thể <code>instanceId</code>).<br>
+                        • Hai lớp con: <code>IRenderable</code> và <code>IDamageable</code>.<br>
+                        • Lớp đáy: <code>Entity</code> (kế thừa cả hai giao diện trên: vừa vẽ được, vừa chịu sát thương được).<br><br>
+                        <strong>Cú pháp giải quyết:</strong><br>
+                        Sử dụng <strong>Kế thừa ảo (Virtual Inheritance)</strong> bằng từ khóa <code class="inline-code">virtual public IGameObject</code> ở cả <code>IRenderable</code> và <code>IDamageable</code>.<br>
+                        Khi trình biên dịch tạo đối tượng <code>Entity</code>, nó sẽ sử dụng bảng con trỏ ảo (Virtual Base Table Pointer) để chia sẻ chung <strong>DUY NHẤT một bản sao</strong> của <code>IGameObject</code>. Điều này đã được kiểm chứng tuyệt đối trong hàm kiểm thử <code>runOOPAcademicTests()</code>: con trỏ ép kiểu từ Renderable và Damageable đều trỏ về cùng một địa chỉ <code>IGameObject*</code> với cùng một <code>instanceId</code>.
+                    </div>
+                </div>
+            </article>
+
+            <article class="qa-card advanced">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>7. Tại sao hàm hủy của lớp cơ sở Entity bắt buộc phải có từ khóa virtual (~Entity())? Nếu em xóa từ khóa virtual này đi thì hậu quả gì xảy ra?</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p>Trong C++, khi ta quản lý và giải phóng một đối tượng lớp con (như <code>BoarKing</code> hay <code>Player</code>) thông qua con trỏ lớp cơ sở (<code>Entity*</code> hoặc <code>std::unique_ptr&lt;Entity&gt;</code>):</p>
+                    <div class="key-point">
+                        • Nếu hàm hủy <strong>CÓ từ khóa virtual</strong>: Trình biên dịch sẽ tra cứu Bảng phương thức ảo (vtable) lúc chạy để kích hoạt đúng hàm hủy của lớp con trước, sau đó mới gọi ngược lên hàm hủy của lớp cha theo đúng thứ tự phân rã đối tượng.<br>
+                        • Nếu <strong>KHÔNG CÓ virtual</strong> (bị xóa đi): Trình biên dịch sẽ áp dụng liên kết tĩnh (Static Binding) và <strong>chỉ gọi hàm hủy của Entity</strong>. Toàn bộ các thuộc tính riêng, bộ nhớ động, texture, std::map hoạt họa nằm trong các lớp con (như BoarKing, Player) sẽ <strong>hoàn toàn bị bỏ qua, không bao giờ được giải phóng</strong> &rarr; Gây ra lỗi <strong>rò rỉ bộ nhớ nghiêm trọng (Memory Leak)</strong> và là hành vi không xác định (Undefined Behavior) theo tiêu chuẩn C++.
+                    </div>
+                </div>
+            </article>
+
+            <article class="qa-card advanced">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>8. Hãy phân biệt 3 mối quan hệ cơ bản trong OOP: Kế thừa (Inheritance / IS-A), Hợp thành (Composition / HAS-A mạnh) và Kết hợp (Aggregation / HAS-A yếu)? Chỉ rõ trong mã nguồn dự án.</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p>Sự khác biệt bản chất giữa 3 mối quan hệ nằm ở mức độ ràng buộc và vòng đời (Lifecycle) giữa các đối tượng:</p>
+                    <ul class="explanation-list">
+                        <li><strong>1. Kế thừa (Inheritance - quan hệ "IS-A"):</strong> Lớp dẫn xuất là một dạng cụ thể hóa của lớp cơ sở. <br><em>Minh chứng trong dự án:</em> <code class="inline-code">Player IS-A Entity</code>; <code class="inline-code">BoarKing IS-A Monster</code>.</li>
+                        <li><strong>2. Hợp thành (Composition - quan hệ "HAS-A chặt chẽ / Part-of"):</strong> Đối tượng cha sở hữu trọn vẹn đối tượng con. Vòng đời của con <strong>gắn liền tuyệt đối</strong> với cha (cha sinh con sinh, cha chết con chết theo).<br><em>Minh chứng trong dự án:</em> <code class="inline-code">Player</code> sở hữu <code class="inline-code">Inventory</code>; <code class="inline-code">Dungeon</code> sở hữu ma trận <code class="inline-code">Tile mapGrid[15][11]</code>. Khi đối tượng <code>Player</code> hay <code>Dungeon</code> bị hủy thì <code>Inventory</code> và <code>Tile</code> cũng lập tức biến mất khỏi bộ nhớ.</li>
+                        <li><strong>3. Kết hợp (Aggregation - quan hệ "HAS-A lỏng lẻo / Uses-a"):</strong> Đối tượng này chứa hoặc sử dụng đối tượng kia thông qua con trỏ hoặc tham chiếu, nhưng <strong>vòng đời độc lập</strong> với nhau.<br><em>Minh chứng trong dự án:</em> <code class="inline-code">Monster</code> kết hợp với <code class="inline-code">IAIStrategy*</code> (chiến lược AI có thể được hoán đổi hoặc chia sẻ giữa nhiều quái); <code class="inline-code">Inventory</code> chứa danh sách con trỏ <code class="inline-code">Item*</code> (vật phẩm có thể vứt ra sàn Dungeon hoặc chuyển sang rương mà không bị hủy cùng lúc).</li>
+                    </ul>
+                </div>
+            </article>
+
+            <article class="qa-card advanced">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>9. C++ không có từ khóa "interface" như Java hay C#, vậy em tạo ra một Interface trong C++ bằng cách nào? Phân biệt Pure Interface và Abstract Class?</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p>Trong C++, một <strong>Interface</strong> được tạo ra dưới dạng một <strong>Lớp trừu tượng đặc biệt (Pure Abstract Class)</strong> thỏa mãn các tiêu chuẩn nghiêm ngặt sau:</p>
+                    <ol class="explanation-list" style="margin-left: 1.5rem;">
+                        <li>Tất cả các phương thức thành viên đều là <strong>phương thức thuần ảo</strong> (<code class="inline-code">virtual void func() = 0;</code>).</li>
+                        <li><strong>KHÔNG CÓ bất kỳ biến thành viên dữ liệu nào</strong> (No state/data members), chỉ đóng vai trò một bản hợp đồng giao tiếp thuần túy.</li>
+                        <li>Bắt buộc phải có một <strong>Virtual Destructor</strong>: <code class="inline-code">virtual ~Interface() = default;</code>.</li>
+                    </ol>
+                    <div class="key-point">
+                        <strong>Khác biệt với Abstract Class thông thường trong dự án:</strong><br>
+                        • <strong>Pure Interface:</strong> <code>IRenderable</code> và <code>IDamageable</code> chỉ chứa hàm thuần ảo <code>render()</code>, <code>takeDamage()</code>, hoàn toàn không lưu trữ biến.<br>
+                        • <strong>Abstract Class:</strong> <code>Entity</code> và <code>Monster</code> tuy cũng là lớp trừu tượng (không thể tạo đối tượng trực tiếp do có hàm thuần ảo <code>act() = 0</code>), nhưng chúng <strong>có chứa thuộc tính dữ liệu dùng chung</strong> (như <code>hp, maxHp, attack, defense, position</code>) và đã hiện thực sẵn các hàm cơ bản như <code>isAlive()</code>, <code>heal()</code> để các lớp con thừa hưởng mà không phải viết lại.
+                    </div>
+                </div>
+            </article>
+
+            <!-- PHẦN 3: ĐA HÌNH & THIẾT KẾ NÂNG CAO -->
+            <h3 style="color: var(--accent-gold); margin: 2rem 0 1rem;">NHÓM 3: ĐA HÌNH, CON TRỎ VTABLE, TEMPLATES & ÉP KIỂU</h3>
+
+            <article class="qa-card advanced">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>10. Phân biệt Liên kết tĩnh (Early Binding) và Liên kết động (Late Binding)? Trong dự án, vòng lặp cập nhật quái vật dungeon.update() thể hiện tính đa hình như thế nào?</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p><strong>1. Liên kết tĩnh (Early / Static Binding):</strong> Trình biên dịch xác định địa chỉ hàm cần gọi ngay trong quá trình biên dịch (Compile-time). Xảy ra với hàm thông thường, hàm nạp chồng (Overloading), hoặc khi gọi qua đối tượng cụ thể trực tiếp.</p>
+                    <p><strong>2. Liên kết động (Late / Dynamic Binding):</strong> Việc gọi hàm được hoãn lại để quyết định trong thời gian chạy (Runtime) dựa vào con trỏ vtable của đối tượng thực tế. Xảy ra khi gọi phương thức <code>virtual</code> qua con trỏ hoặc tham chiếu lớp cơ sở.</p>
+                    <div class="key-point">
+                        <strong>Minh chứng trong hàm dungeon.update():</strong><br>
+                        Danh sách quái vật được lưu trữ trong một vector đồng nhất: <code>std::vector&lt;std::unique_ptr&lt;Monster&gt;&gt; monsters;</code>.<br>
+                        Khi duyệt vòng lặp <code>for (auto& m : monsters) m-&gt;act(dungeon, player, log);</code>:<br>
+                        Về mặt tĩnh tại thời điểm biên dịch, trình biên dịch chỉ biết <code>m</code> là con trỏ kiểu cha <code>Monster*</code>. Nhưng tại thời điểm chạy (Runtime), chương trình tra cứu vtable và tự động gọi đúng hàm <code>Boar::act()</code> (lợn rừng húc), hoặc <code>SmallBee::act()</code> (ong bay chích độc), hoặc <code>Snail::act()</code> (ốc sên rút vỏ). Đây chính là đỉnh cao của <strong>Tính Đa hình (Polymorphism)</strong>: cùng một lời gọi hàm nhưng sinh ra nhiều hành vi hoàn toàn khác nhau.
+                    </div>
+                </div>
+            </article>
+
+            <article class="qa-card advanced">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>11. Dưới góc độ tổ chức bộ nhớ RAM, cơ chế Đa hình hoạt động ra sao? vtable và vptr được lưu ở đâu? Kích thước sizeof của một đối tượng tăng thêm bao nhiêu khi có hàm virtual?</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p>Dưới tầng sâu kiến trúc máy tính, Đa hình động trong C++ được hiện thực thông qua hai thành phần cốt lõi:</p>
+                    <ul class="explanation-list">
+                        <li><strong>1. Bảng hàm ảo (vtable - Virtual Method Table):</strong> Là một mảng tĩnh chứa các con trỏ hàm trỏ tới địa chỉ của các phương thức <code>virtual</code> tương ứng của từng lớp. Mỗi class có hàm virtual sẽ sở hữu <strong>duy nhất MỘT bảng vtable</strong> được trình biên dịch tạo ra trong vùng nhớ chỉ đọc (Read-only Data / Text Segment).</li>
+                        <li><strong>2. Con trỏ bảng ảo (vptr - Virtual Table Pointer):</strong> Mỗi một đối tượng thực thể (instance) khi được tạo ra trong bộ nhớ (Stack hoặc Heap) sẽ được trình biên dịch tự động chèn thêm một con trỏ ẩn <code>vptr</code> tại ngay đầu vùng nhớ đối tượng, trỏ tới bảng vtable của lớp tương ứng.</li>
+                    </ul>
+                    <div class="key-point">
+                        <strong>Tác động tới kích thước bộ nhớ (<code>sizeof</code>) và chi phí thực thi:</strong><br>
+                        • Do có thêm con trỏ <code>vptr</code>, kích thước <code>sizeof</code> của đối tượng sẽ tăng thêm đúng bằng kích thước của 1 con trỏ hệ thống: <strong>tăng đúng 8 bytes trên hệ điều hành 64-bit</strong> (hoặc 4 bytes trên 32-bit).<br>
+                        • Khi gọi <code>m->act()</code>, CPU thực hiện 3 bước: (1) Đọc con trỏ <code>vptr</code> từ đối tượng <code>m</code> &rarr; (2) Truy xuất địa chỉ hàm tại chỉ số của <code>act()</code> trong vtable &rarr; (3) Nhảy tới địa chỉ hàm thực thi. Quá trình tra cứu gián tiếp này chỉ mất vài chu kỳ CPU nhưng mang lại tính linh hoạt tuyệt đối cho mã nguồn.
+                    </div>
+                </div>
+            </article>
+
+            <article class="qa-card advanced">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>12. Tại sao mã nguồn của Class Template (DynamicArray&lt;T&gt;) và Function Template (clamp&lt;T&gt;) bắt buộc phải viết trong file header (.h) mà không tách ra file .cpp? Cơ chế Template Instantiation diễn ra khi nào?</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p>Khác với các hàm và lớp thông thường, <strong>Template (Khuôn mẫu) không phải là mã máy thực thi (Executable Code)</strong>, mà nó chỉ là một <strong>bản thiết kế mẫu (Blueprint)</strong> để trình biên dịch dựa vào đó sinh mã:</p>
+                    <ul class="explanation-list">
+                        <li><strong>Cơ chế Template Instantiation (Thực thể hóa):</strong> Diễn ra hoàn toàn tại <strong>Thời điểm biên dịch (Compile-time)</strong>. Khi gặp một khai báo cụ thể như <code class="inline-code">DynamicArray&lt;int&gt;</code> hay <code class="inline-code">DynamicArray&lt;Monster*&gt;</code>, trình biên dịch mới lấy kiểu cụ thể đó thay thế vào tham số loại <code>T</code> để sinh ra mã nhị phân thực sự.</li>
+                        <li><strong>Hậu quả nếu tách mã ra file .cpp:</strong> Trình biên dịch C++ biên dịch từng file <code>.cpp</code> độc lập (Translation Unit). Nếu ta viết phần cài đặt template trong <code>DynamicArray.cpp</code>, khi biên dịch file đó, trình biên dịch chưa biết kiểu <code>T</code> nào sẽ được dùng nên <strong>không sinh ra bất kỳ mã máy nào</strong>. Khi các file khác (như <code>main.cpp</code>) gọi <code>DynamicArray&lt;int&gt;</code>, trình liên kết (Linker) sẽ báo lỗi nổi tiếng: <code class="inline-code">undefined reference to DynamicArray&lt;int&gt;::push_back(...)</code>.</li>
+                    </ul>
+                    <div class="key-point">
+                        <strong>Kết luận:</strong> Mã hiện thực của mọi Template trong C++ bắt buộc phải được đặt trọn vẹn trong file header (<code>.h</code> hoặc <code>.hpp</code>) để bất kỳ file mã nguồn nào include cũng có đủ thông tin để tự sinh mã tại chỗ.
+                    </div>
+                </div>
+            </article>
+
+            <article class="qa-card advanced">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>13. Phân biệt static_cast và dynamic_cast trong C++? Điều kiện tiên quyết để dùng được dynamic_cast là gì và điều gì xảy ra nếu ép kiểu thất bại với con trỏ vs tham chiếu?</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p>Sự khác biệt cốt tử giữa <code>static_cast</code> và <code>dynamic_cast</code> nằm ở thời điểm kiểm tra kiểu dữ liệu:</p>
+                    <ul class="explanation-list">
+                        <li><strong>static_cast (Kiểm tra tại Compile-time):</strong> Dùng để chuyển đổi giữa các kiểu dữ liệu có liên quan rõ ràng (như ép kiểu số nguyên sang số thực, ép con trỏ lớp con lên lớp cha - Upcasting). Nếu ép ngược từ lớp cha xuống lớp con (Downcasting) mà đối tượng thực tế không phải kiểu con, <code>static_cast</code> vẫn cho phép ép, dẫn tới con trỏ rác và làm crash game lúc chạy.</li>
+                        <li><strong>dynamic_cast (Kiểm tra tại Runtime bằng RTTI):</strong> Dùng để ép kiểu an toàn từ lớp cơ sở xuống lớp dẫn xuất (Downcasting). Trình biên dịch kiểm tra thông tin kiểu lúc chạy (Run-Time Type Information) xem đối tượng thực sự có phải là kiểu đích hay không.</li>
+                    </ul>
+                    <div class="key-point">
+                        <strong>1. Điều kiện tiên quyết:</strong> Lớp cơ sở bắt buộc phải có <strong>tính đa hình (Polymorphic Class)</strong>, nghĩa là phải chứa ít nhất một phương thức <code>virtual</code> (chẳng hạn như Virtual Destructor) để kích hoạt bảng vtable chứa thông tin RTTI.<br><br>
+                        <strong>2. Hành vi khi ép kiểu thất bại:</strong><br>
+                        • <strong>Với con trỏ (<code>T*</code>):</strong> Trả về con trỏ an toàn là <code class="inline-code">nullptr</code> (Ví dụ: <code>const Weapon* w = dynamic_cast&lt;const Weapon*&gt;(item); if (!w) ...</code>).<br>
+                        • <strong>Với tham chiếu (<code>T&amp;</code>):</strong> Do C++ không có khái niệm "tham chiếu null", nên <code>dynamic_cast</code> sẽ lập tức <strong>ném ra ngoại lệ <code class="inline-code">std::bad_cast</code></strong>, buộc lập trình viên phải bao quanh bằng khối <code>try...catch</code>.
+                    </div>
+                </div>
+            </article>
+
+            <!-- PHẦN 4: BỘ NHỚ, NGOẠI LỆ, FILE I/O & THIẾT KẾ HỆ THỐNG -->
+            <h3 style="color: var(--accent-gold); margin: 2rem 0 1rem;">NHÓM 4: QUẢN LÝ BỘ NHỚ, NGOẠI LỆ, TỆP TIN & THIẾT KẾ SOLID</h3>
+
+            <article class="qa-card advanced">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>14. Tại sao trong dự án em dùng std::unique_ptr mà không dùng con trỏ thô (raw pointer T*) hoặc std::shared_ptr để quản lý Monsters và Items?</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p>Việc lựa chọn <code>std::unique_ptr</code> tuân thủ nghiêm ngặt triết lý thiết kế hướng đối tượng hiện đại và nguyên lý <strong>RAII (Resource Acquisition Is Initialization)</strong>:</p>
+                    <ul class="explanation-list">
+                        <li><strong>So với con trỏ thô (Raw pointer):</strong> Con trỏ thô buộc lập trình viên phải nhớ gọi <code>delete</code> thủ công ở mọi nhánh thoát lỗi. Với <code>std::unique_ptr</code>, khi <code>monsters.clear()</code> hoặc Dungeon bị hủy, toàn bộ quái vật tự động được dọn sạch khỏi RAM 100%.</li>
+                        <li><strong>So với std::shared_ptr:</strong> <code>std::shared_ptr</code> duy trì khối điều khiển bộ đếm tham chiếu trên heap và chi phí đồng bộ luồng. Quan trọng hơn về mặt ngữ nghĩa kiến trúc: Mỗi quái vật hoặc mỗi món đồ trong hầm ngục chỉ thuộc về <strong>DUY NHẤT một chủ sở hữu độc quyền</strong> (Dungeon hoặc Inventory), đó là quan hệ Composition (Hợp thành). Do đó dùng <code>std::unique_ptr</code> là chuẩn xác nhất.</li>
+                    </ul>
+                </div>
+            </article>
+
+            <article class="qa-card advanced">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>15. Trong phân hệ SaveLoadManager, tại sao khi bắt ngoại lệ bắt buộc phải viết catch (const GameException& e) thay vì catch (GameException e)? Giải thích hiện tượng Cắt gọt đối tượng (Object Slicing).</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p>Trong C++, việc bắt ngoại lệ bằng tham chiếu (<code class="inline-code">catch (const GameException&amp; e)</code>) là quy tắc vàng bắt buộc của môn OOP:</p>
+                    <ul class="explanation-list">
+                        <li><strong>Hiện tượng Cắt gọt đối tượng (Object Slicing) nếu bắt bằng giá trị:</strong> Nếu viết <code>catch (GameException e)</code>, khi một lớp con như <code>SaveLoadException</code> hay <code>OutOfBoundsException</code> được ném ra, trình biên dịch sẽ chỉ sao chép phần dữ liệu của lớp cha <code>GameException</code> vào biến <code>e</code>. Toàn bộ các thuộc tính đặc thù và hàm ảo <code>what()</code> của lớp con sẽ <strong>bị cắt gọt vứt bỏ hoàn toàn</strong>. Hơn nữa, nó còn tốn chi phí gọi Copy Constructor vô ích.</li>
+                        <li><strong>Lợi ích khi bắt bằng tham chiếu hằng:</strong> Truyền tham chiếu giúp <strong>bảo toàn tính đa hình (Polymorphic Catching)</strong>. Khi gọi <code>e.what()</code>, chương trình sẽ gọi chính xác hàm <code>what()</code> của lớp ngoại lệ thực tế được ném ra, in ra thông báo lỗi chi tiết chính xác của từng trường hợp tệp hỏng.</li>
+                    </ul>
+                </div>
+            </article>
+
+            <article class="qa-card advanced">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>16. Hệ thống Thành tựu (Achievement System) của em hoạt động như thế nào? Tại sao em dùng Observer Pattern thay vì gọi trực tiếp hàm mở khóa trong CombatSystem?</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p>Hệ thống Thành tựu trong game được thiết kế theo <strong>Mẫu thiết kế Quan sát (Observer Pattern)</strong> gồm 3 thành phần:</p>
+                    <ul class="explanation-list">
+                        <li><strong>Subject (Bộ phát tán):</strong> Lớp Singleton <code>EventDispatcher</code> quản lý danh sách người đăng ký theo từng loại sự kiện.</li>
+                        <li><strong>Observer Interface:</strong> Giao diện thuần ảo <code>IGameObserver</code> với phương thức hợp đồng <code>onNotify(const GameEvent& event) = 0</code>.</li>
+                        <li><strong>Concrete Observer:</strong> <code>AchievementObserver</code> lắng nghe các sự kiện như <code>MONSTER_KILLED</code>, <code>BOSS_DEFEATED</code>, <code>GOLD_GAINED</code>.</li>
+                    </ul>
+                    <div class="key-point">
+                        <strong>Lý do thiết kế tối thượng (Decoupling):</strong><br>
+                        Với Observer Pattern, <code>CombatSystem</code> chỉ việc làm đúng nhiệm vụ chiến đấu và "bắn" ra một thông báo <code>EventDispatcher::getInstance().notify(event)</code> mà không cần quan tâm ai đang nghe. Việc mở khóa danh hiệu, hiện banner hay phát âm thanh do <code>AchievementObserver</code> tự xử lý độc lập. Khi cần thêm thành tựu mới, ta không phải sửa bất kỳ một dòng code nào trong hệ thống chiến đấu.
+                    </div>
+                </div>
+            </article>
+
+            <article class="qa-card advanced">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>17. Tại sao AudioSystem và TextureManager lại được cài đặt theo mẫu thiết kế Singleton? Cách viết Meyers' Singleton trong C++17 có gì vượt trội so với Singleton dùng con trỏ tĩnh truyền thống?</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p><strong>1. Lý do dùng Singleton:</strong> Thiết bị âm thanh phần cứng (Raylib Audio Device) và bộ nhớ GPU VRAM là tài nguyên độc quyền duy nhất của toàn bộ tiến trình game. Nếu tạo nhiều đối tượng AudioSystem hay TextureManager sẽ gây xung đột tài nguyên phần cứng, tải trùng lặp hình ảnh làm tràn VRAM.</p>
+                    <div class="key-point">
+                        <strong>2. Ưu điểm vượt trội của Meyers' Singleton (Local Static):</strong><br>
+                        Cú pháp trong dự án: <code class="inline-code">static AudioSystem&amp; getInstance() { static AudioSystem instance; return instance; }</code><br>
+                        • <strong>An toàn luồng tuyệt đối (Thread-Safe):</strong> Kể từ tiêu chuẩn C++11 trở đi (tính năng "Magic Statics"), việc khởi tạo biến cục bộ tĩnh được đảm bảo an toàn luồng cấp phần cứng bởi trình biên dịch, không cần dùng <code>std::mutex</code> hay kỹ thuật khóa hai lần (Double-Checked Locking) phức tạp.<br>
+                        • <strong>Khởi tạo lười (Lazy Initialization):</strong> Chỉ được cấp phát bộ nhớ trong lần đầu tiên hàm <code>getInstance()</code> được gọi.<br>
+                        • <strong>Tự động dọn rác, chống rò rỉ bộ nhớ (No Memory Leak):</strong> Không sử dụng toán tử <code>new</code> trên heap. Khi chương trình kết thúc, biến tĩnh nằm trên Static Data Segment sẽ tự động gọi Destructor để đóng thiết bị âm thanh và dọn GPU VRAM, loại bỏ triệt để nguy cơ Memory Leak của Singleton dùng con trỏ thô.
+                    </div>
+                </div>
+            </article>
+
+            <article class="qa-card advanced">
+                <div class="qa-question">
+                    <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
+                    <span>18. Em hãy chỉ ra ít nhất 3 nguyên lý trong bộ nguyên lý SOLID mà dự án Aethelgard đã áp dụng thành công?</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
+                    <p>Dự án tuân thủ chặt chẽ các nguyên lý thiết kế hướng đối tượng chuẩn công nghiệp SOLID:</p>
+                    <ul class="explanation-list">
+                        <li><strong>S - Single Responsibility Principle (Đơn trách nhiệm):</strong> Mỗi lớp chỉ giữ một trách nhiệm duy nhất. Lớp <code>Entity</code> chỉ chứa trạng thái sinh mệnh và hiển thị, tuyệt đối không kiêm nhiệm việc tính sát thương hay đọc tệp. Toàn bộ logic giao tranh được giao cho <code>CombatSystem</code>, việc nạp tệp giao cho <code>SaveLoadManager</code>.</li>
+                        <li><strong>O - Open/Closed Principle (Mở để mở rộng, Đóng để sửa đổi):</strong> Hệ thống cho phép bổ sung thêm quái mới (như <code>Goblin</code>), kỹ năng mới (như <code>ThunderSlash</code>) bằng cách tạo lớp kế thừa mới từ <code>Monster</code> và <code>Skill</code> mà <strong>không cần sửa đổi một dòng code nào</strong> trong vòng lặp chính của <code>GameEngine</code> hay <code>Dungeon</code>.</li>
+                        <li><strong>D - Dependency Inversion Principle (Đảo ngược phụ thuộc):</strong> Các module cấp cao (như <code>Monster</code> hay <code>GameEngine</code>) không phụ thuộc trực tiếp vào các module cấp thấp cụ thể, mà phụ thuộc vào các giao diện trừu tượng như <code class="inline-code">IAIStrategy</code> và <code class="inline-code">IGameObserver</code>.</li>
+                    </ul>
+                </div>
+            </article>
+
+            <!-- PHẦN 5: THỬ THÁCH LIVE CODING / BẢO VỆ TẠI CHỖ -->
+            <h3 style="color: var(--accent-gold); margin: 2rem 0 1rem;">NHÓM 5: THỬ THÁCH SỬA CODE TRỰC TIẾP TẠI CHỖ (LIVE CODING) & ĐÁNH GIÁ AI</h3>
+
+            <article class="qa-card live-code">
+                <div class="qa-question">
+                    <span class="qa-role-badge" style="background-color: var(--accent-red); color: #fff;">THỬ THÁCH CODE 1</span>
+                    <span>19. "Bây giờ thầy muốn em thêm một loài quái vật mới là 'Goblin (Yêu tinh xạ thủ)' biết bắn tên từ xa, em sẽ làm những bước nào trong các file mã nguồn?"</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title" style="color: var(--accent-red);">🛠️ Các bước thực hiện chuẩn chỉ theo kiến trúc OOP:</div>
+                    <p>Nhờ kiến trúc mở rộng <strong>Open/Closed Principle</strong> và <strong>Factory Pattern</strong> của dự án, việc thêm quái mới cực kỳ mạch lạc qua 4 bước:</p>
+                    <ol class="explanation-list" style="margin-left: 1.5rem;">
+                        <li><strong>Bước 1 (Khai báo enum):</strong> Mở file <code class="inline-code">include/systems/MonsterFactory.h</code>, thêm giá trị <code class="inline-code">GOBLIN</code> vào <code>enum class MonsterType</code>.</li>
+                        <li><strong>Bước 2 (Tạo lớp Goblin):</strong> Tạo file <code class="inline-code">include/entities/Goblin.h</code> cho lớp <code>Goblin : public GroundMonster</code>, kế thừa từ quái bộ. Khai báo override phương thức thuần ảo <code>act()</code> và <code>onDeath()</code>.</li>
+                        <li><strong>Bước 3 (Hiện thực logic bắn tỉa):</strong> Tạo file <code class="inline-code">src/entities/Goblin.cpp</code>: kiểm tra tầm xa và gọi <code>CombatSystem::attack(*this, p, log)</code>.</li>
+                        <li><strong>Bước 4 (Đăng ký vào Factory):</strong> Mở <code class="inline-code">src/systems/MonsterFactory.cpp</code>, thêm case <code>MonsterType::GOBLIN</code>.</li>
+                    </ol>
+                    <p style="color: var(--accent-green); font-weight: bold; margin-top: 8px;">&rarr; Hoàn toàn không cần chỉnh sửa lớp Dungeon hay GameEngine, quái vật mới lập tức hoạt động hoàn hảo!</p>
+                </div>
+            </article>
+
+            <article class="qa-card live-code">
+                <div class="qa-question">
+                    <span class="qa-role-badge" style="background-color: var(--accent-red); color: #fff;">THỬ THÁCH CODE 2</span>
+                    <span>20. "Thầy muốn vũ khí có độ bền (Durability), khi chém đủ 40 lần thì vũ khí bị gãy và tự biến mất khỏi túi đồ. Em sẽ sửa code như thế nào?"</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title" style="color: var(--accent-red);">🛠️ Các bước thực hiện:</div>
+                    <ol class="explanation-list" style="margin-left: 1.5rem;">
+                        <li><strong>Bước 1:</strong> Trong <code class="inline-code">include/items/Weapon.h</code>, bổ sung thuộc tính <code>durability = 40</code> và hàm <code>reduceDurability()</code>.</li>
+                        <li><strong>Bước 2:</strong> Trong <code class="inline-code">CombatSystem::attack()</code>, khi người chơi vung kiếm tấn công trúng đích, gọi <code>w->reduceDurability()</code>.</li>
+                        <li><strong>Bước 3:</strong> Nếu độ bền về 0, gọi <code>player.getInventory().removeItem(weaponIndex)</code> và gửi thông báo vào nhật ký chiến trận.</li>
+                    </ol>
+                </div>
+            </article>
+
+            <article class="qa-card live-code">
+                <div class="qa-question">
+                    <span class="qa-role-badge" style="background-color: var(--accent-purple); color: #fff;">ĐÁNH GIÁ AI & VIBE CODING</span>
+                    <span>21. "Theo yêu cầu mục 4 & 5 của đề tài 'Vibe Coding với AI', trong quá trình phát triển, AI đã từng mắc lỗi gì về OOP hoặc thuật toán mà em đã phát hiện và tự sửa lại?"</span>
+                </div>
+                <div class="qa-answer">
+                    <div class="qa-answer-title" style="color: var(--accent-purple);">💡 Minh chứng năng lực đánh giá và kiểm chứng (Bám sát file PDF Bài tập lớn):</div>
+                    <p>Trong quá trình đồng hành cùng công cụ AI (Vibe Coding), nhóm sinh viên đã phát hiện và khắc phục các lỗi điển hình sau:</p>
+                    <ul class="explanation-list">
+                        <li><strong>1. Lỗi Kế thừa kim cương không có virtual:</strong> Ban đầu khi yêu cầu AI sinh <code>Entity</code> kế thừa từ <code>IRenderable</code> và <code>IDamageable</code>, AI quên đặt từ khóa <code>virtual public IGameObject</code> ở hai giao diện này. Khi biên dịch xuất hiện lỗi xung đột <code>ambiguous base class 'IGameObject'</code>. Em đã phát hiện và bổ sung từ khóa <code>virtual</code> để tạo Virtual Base Class đúng chuẩn Slide 46 Chương 5 UTH.</li>
+                        <li><strong>2. Lỗi Quên Virtual Destructor:</strong> Ở lớp cơ sở <code>Skill</code> và <code>Item</code>, AI chỉ viết <code>~Skill() {}</code> thông thường. Khi xóa item khỏi <code>Inventory</code> thông qua <code>std::unique_ptr&lt;Item&gt;</code>, trình biên dịch cảnh báo lỗi. Em đã sửa thành <code>virtual ~Skill() = default;</code> để giải phóng vùng nhớ an toàn tuyệt đối.</li>
+                        <li><strong>3. Lỗi Logic Spawn quái chìm dưới lòng đất:</strong> Thuật toán ban đầu của AI sinh ngẫu nhiên tọa độ khiến quái vật sinh lọt thỏm vào trong lòng khối đá (WALL) hoặc rơi xuống vực. Em đã thiết kế lại thuật toán dò xoắn ốc (Spiral Search) bán kính $r \in [1, 4]$ trong hàm <code>Dungeon::spawnMonster()</code>, đồng thời phân tách rõ: quái bay (SmallBee) chỉ sinh trên ô <code>EMPTY</code>, quái bộ (Boar, Snail) bắt buộc phải kiểm tra có sàn đỡ <code>isGrounded()</code> dưới chân.</li>
+                    </ul>
+                </div>
+            </article>
+
+        </section>
+
+        <!-- ===================================================================
+             TRANG 4: PHÂN CHIA NHIỆM VỤ 4 THÀNH VIÊN (DUY - THIỆN - TRUYỀN - VINH)
+             =================================================================== -->
+        <section id="tab-team4" class="tab-pane">
+            <h2 class="section-title"><span>👥</span> Trang 4: Phân Công Nhiệm Vụ 4 Thành Viên & Cẩm Nang Báo Cáo Từng Người</h2>
+            <p class="section-subtitle">Phân bổ khối lượng công việc khoa học, đúng năng lực và quỹ thời gian: <strong>Lê Phúc Duy</strong> (Trưởng nhóm - Toàn diện & Phức tạp nhất), <strong>Nguyễn Văn Thiện</strong> (Thực thể & Cây phả hệ Quái vật), <strong>Truyền</strong> (Vật phẩm, Kinh tế túi đồ & Chiến đấu), <strong>Vinh</strong> (Cốt lõi toán học, Ô địa hình & Ngoại lệ cơ bản). Chọn tên từng người dưới đây để tải nội dung và bộ câu hỏi ôn thi độc quyền.</p>
+
+            <!-- BỘ CHỌN THÀNH VIÊN ĐỘNG (SELECTION CONTROL) -->
+            <div class="member-selector-bar">
+                <div class="member-select-wrapper">
+                    <label for="member-select" style="color: var(--accent-gold); font-weight: bold; white-space: nowrap;">👤 Chọn thành viên báo cáo:</label>
+                    <select id="member-select" class="member-select-dropdown" onchange="selectMember(this.value)">
+                        <option value="duy">👑 Lê Phúc Duy (Trưởng nhóm - Toàn diện & Phức tạp nhất - 40% khối lượng)</option>
+                        <option value="thien">🛡️ Nguyễn Văn Thiện (Thực thể, Boss & Quái vật - 25% khối lượng)</option>
+                        <option value="truyen">⚔️ Truyền (Vật phẩm, Trang bị & Kinh tế túi đồ - 20% khối lượng)</option>
+                        <option value="vinh">📐 Vinh (Cốt lõi toán học, Ô địa hình & Ngoại lệ - 15% khối lượng cơ bản)</option>
+                        <option value="all">🌟 Hiển thị toàn bộ 4 thành viên (Xem tổng thể / Xuất PDF)</option>
+                    </select>
+                </div>
+                <div class="member-pill-nav">
+                    <button class="member-pill-btn active" data-member="duy" onclick="selectMember('duy')">👑 Duy (Trưởng nhóm)</button>
+                    <button class="member-pill-btn" data-member="thien" onclick="selectMember('thien')">🛡️ Thiện (Quái vật)</button>
+                    <button class="member-pill-btn" data-member="truyen" onclick="selectMember('truyen')">⚔️ Truyền (Vật phẩm)</button>
+                    <button class="member-pill-btn" data-member="vinh" onclick="selectMember('vinh')">📐 Vinh (Cốt lõi & Map)</button>
+                    <button class="member-pill-btn" data-member="all" onclick="selectMember('all')">🌟 Xem tất cả 4 người</button>
+                </div>
+            </div>
+
+            <!-- DANH SÁCH 4 PANEL CHI TIẾT TỪNG THÀNH VIÊN -->
+            <div class="member-card-container">
+
+                <!-- 1. LÊ PHÚC DUY -->
+                <div id="panel-duy" class="member-panel duy" style="display: block;">
+                    <div class="member-panel-header">
+                        <div class="member-name-block">
+                            <h3>👑 LÊ PHÚC DUY</h3>
+                            <div class="member-subtitle">Trưởng Nhóm & Kiến Trúc Sư Hệ Thống (Chief Software Architect & Team Lead)</div>
+                        </div>
+                        <div class="member-badges">
+                            <span class="badge-level">Độ phức tạp: ★★★★★ (Cao nhất)</span>
+                            <span class="badge-weight">Tỷ trọng dự án: 40%</span>
+                        </div>
+                    </div>
+
+                    <div class="member-section-box">
+                        <h4>📂 Các File Mã Nguồn Trực Tiếp Đảm Nhận</h4>
+                        <ul class="team-file-list">
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>engine/GameEngine.h & .cpp</code></div>
+                                <div class="file-note">Mẫu Facade điều phối vòng lặp game 60 FPS, HUD, menu Cửa hàng Shop, Bàn rèn Forge và State Machine</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>systems/CombatSystem.h & .cpp</code></div>
+                                <div class="file-note">Luồng giao tranh thời gian thực phức tạp nhất: Parry Window 0.2s, Block, phản đòn 150%, công thức trừ giáp, sát thương độc DoT</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>systems/SaveLoadManager.h & .cpp</code></div>
+                                <div class="file-note">Chức năng đọc ghi tệp fstream (tiêu chí bắt buộc BTL), tuần tự hóa đối tượng, kiểm tra checksum, bẫy ngoại lệ SaveLoadException</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>systems/EventSystem.h & .cpp</code></div>
+                                <div class="file-note">Mẫu Observer Pattern: EventDispatcher phát tán sự kiện chiến đấu và mở khóa danh hiệu AchievementObserver</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>systems/AudioSystem.h & .cpp</code></div>
+                                <div class="file-note">Meyers' Singleton an toàn luồng C++17, thuật toán DSP tự tổng hợp sóng âm WAV trực tiếp trong RAM không cần file ngoài</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>systems/MonsterFactory.h & AIStrategy.h</code></div>
+                                <div class="file-note">Mẫu Factory Method sinh quái đa hình theo khu vực & Strategy Pattern hoán đổi thuật toán AI chiến đấu</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/core/IGameObject.h & DynamicArray.h</code></div>
+                                <div class="file-note">Virtual Base Class gốc kế thừa ảo chống Diamond Problem & Class Template tự co giãn mảng con trỏ Heap</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>engine/GameEngine_Tests.cpp</code></div>
+                                <div class="file-note">Bộ 10 phần kiểm thử học thuật tự động (Academic Test Suite) chứng minh 100% đạt chuẩn yêu cầu OOP UTH</div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="member-section-box">
+                        <h4>🧠 Logic Nghiệp Vụ Cốt Lõi Phụ Trách</h4>
+                        <ul class="member-oop-list">
+                            <li><strong>Điều phối toàn bộ trò chơi (Facade Pattern):</strong> Kết nối các phân hệ của 3 bạn còn lại (Quái của Thiện, Đồ của Truyền, Map của Vinh) vào một vòng lặp nhịp nhàng duy nhất <code>GameEngine::run()</code>.</li>
+                            <li><strong>Chủ trì Luồng giao tranh thời gian thực (Luồng phức tạp nhất dự án):</strong> Bắt nhịp phím [K], mở cửa sổ thời gian vàng 0.2s cho Perfect Parry; nếu trúng kích hoạt âm thanh DSP, rung màn hình LERP, trừ giáp và sinh hạt bụi vàng vật lý.</li>
+                            <li><strong>Bảo đảm an toàn dữ liệu và bộ nhớ:</strong> Quản trị tệp tin bằng <code>std::fstream</code>, thiết kế cơ chế dọn rác RAII với <code>std::unique_ptr</code> và Virtual Destructor để game chạy 60 FPS không bao giờ bị rò rỉ bộ nhớ (Memory Leak).</li>
+                        </ul>
+                    </div>
+
+                    <div class="member-section-box">
+                        <h4>🎓 Kiến Thức OOP Trọng Tâm Cần Báo Cáo</h4>
+                        <ul class="member-oop-list">
+                            <li><strong>Bài toán kim cương & Kế thừa ảo (Virtual Inheritance):</strong> Sử dụng <code>virtual public IGameObject</code> giải quyết xung đột lưỡng nghĩa của <code>Entity</code> khi kế thừa từ <code>IRenderable</code> và <code>IDamageable</code>.</li>
+                            <li><strong>Hệ thống Design Patterns:</strong> Nắm vững 5 mẫu thiết kế trong dự án: <em>Facade</em> (GameEngine), <em>Observer</em> (EventSystem), <em>Strategy</em> (AIStrategy), <em>Factory Method</em> (MonsterFactory), và <em>Meyers' Singleton</em> (AudioSystem).</li>
+                            <li><strong>Xử lý ngoại lệ chuẩn mực:</strong> Hiểu rõ cơ chế <code>try...catch (const GameException& e)</code> bằng tham chiếu hằng để chống hiện tượng Cắt gọt đối tượng (Object Slicing).</li>
+                        </ul>
+                    </div>
+
+                    <div class="member-section-box" style="border-color: rgba(255, 123, 114, 0.3);">
+                        <h4 style="color: #ff7b72;">❓ Câu Hỏi Giảng Viên Dành Riêng Cho Duy & Đáp Án Mẫu</h4>
+
+                        <div class="qa-card" style="margin-bottom: 0.8rem;">
+                            <div class="qa-question">
+                                <span class="qa-role-badge">GIẢNG VIÊN HỎI DUY</span>
+                                <span>1. "Em hãy chỉ ra luồng xử lý phức tạp nhất trong dự án và chứng minh tính đa hình kết hợp mẫu thiết kế trong luồng đó?"</span>
+                            </div>
+                            <div class="qa-answer">
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho Duy:</div>
+                                <p>Dạ thưa thầy, đó là <strong>Luồng Giao tranh thời gian thực kết hợp AI đa hình và bắn sự kiện Observer</strong>. Khi vòng lặp <code>Dungeon::update()</code> chạy, nó duyệt mảng <code>monsters</code> và gọi <code>m->act()</code> (Đa hình Cấp 1). Bên trong <code>act()</code>, quái vật gọi <code>aiStrategy->execute()</code> (Đa hình Cấp 2 theo Strategy Pattern). Khi tấn công, <code>CombatSystem</code> kiểm tra cửa sổ 0.2s Parry Window của người chơi để tính sát thương phản đòn 150%, kích hoạt âm thanh tự sinh bằng DSP từ Meyers' Singleton <code>AudioSystem</code>. Khi quái chết, <code>CombatSystem</code> không gọi trực tiếp thành tựu mà bắn sự kiện qua <code>EventDispatcher::notify()</code> theo Observer Pattern để <code>AchievementObserver</code> tự mở khóa độc lập.</p>
+                            </div>
+                        </div>
+
+                        <div class="qa-card" style="margin-bottom: 0.8rem;">
+                            <div class="qa-question">
+                                <span class="qa-role-badge">GIẢNG VIÊN HỎI DUY</span>
+                                <span>2. "Tại sao em dùng Meyers' Singleton cho AudioSystem? Cách viết này trong C++17 có gì tối ưu hơn Singleton dùng con trỏ tĩnh?"</span>
+                            </div>
+                            <div class="qa-answer">
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho Duy:</div>
+                                <p>Dạ, Meyers' Singleton sử dụng biến cục bộ tĩnh <code>static AudioSystem instance; return instance;</code>. Kể từ chuẩn C++11/C++17 (Magic Statics), biến cục bộ tĩnh được đảm bảo an toàn đa luồng (Thread-safe) ở cấp độ phần cứng mà không cần khóa mutex phức tạp. Đặc biệt, nó không dùng toán tử <code>new</code> trên Heap, nên khi tắt game, hàm Destructor tự động được gọi trên vùng nhớ Static Data để đóng thiết bị âm thanh và dọn GPU VRAM, loại bỏ triệt để nguy cơ Memory Leak của Singleton cổ điển.</p>
+                            </div>
+                        </div>
+
+                        <div class="qa-card">
+                            <div class="qa-question">
+                                <span class="qa-role-badge">GIẢNG VIÊN HỎI DUY</span>
+                                <span>3. "Trong SaveLoadManager, nếu tệp bị hỏng hoặc người chơi sửa bậy file, chương trình của em xử lý thế nào để không bị crash?"</span>
+                            </div>
+                            <div class="qa-answer">
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho Duy:</div>
+                                <p>Dạ, em xây dựng lớp ngoại lệ <code>SaveLoadException</code> kế thừa từ <code>GameException</code> (gốc <code>std::exception</code>). Trước khi nạp dữ liệu, em kiểm tra Header phiên bản <code>[AETHELGARD_SAVE_V1]</code> và đếm đúng số lượng token phân cách. Nếu tệp rỗng, sai định dạng hoặc số liệu bị âm vô lý, hệ thống lập tức <code>throw SaveLoadException(...)</code>. Khối <code>catch (const GameException& e)</code> bên ngoài bắt bằng tham chiếu hằng để giữ nguyên tính đa hình của hàm <code>what()</code>, in thông báo lỗi lên màn hình HUD và tự động khởi tạo lại màn chơi mặc định an toàn chứ tuyệt đối không làm treo game.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. NGUYỄN VĂN THIỆN -->
+                <div id="panel-thien" class="member-panel thien" style="display: none;">
+                    <div class="member-panel-header">
+                        <div class="member-name-block">
+                            <h3>🛡️ NGUYỄN VĂN THIỆN</h3>
+                            <div class="member-subtitle">Phụ Trách Thực Thể Sống & Hệ Sinh Thái Quái Vật Đa Hình (Entities & Monsters Lead)</div>
+                        </div>
+                        <div class="member-badges">
+                            <span class="badge-level" style="color: #58a6ff; border-color: rgba(88,166,255,0.3); background: rgba(88,166,255,0.15);">Độ phức tạp: ★★★☆☆ (Vừa phải)</span>
+                            <span class="badge-weight">Tỷ trọng dự án: 25%</span>
+                        </div>
+                    </div>
+
+                    <div class="member-section-box">
+                        <h4>📂 Các File Mã Nguồn Trực Tiếp Đảm Nhận</h4>
+                        <ul class="team-file-list">
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/entities/Entity.h & src/entities/Entity.cpp</code></div>
+                                <div class="file-note">Lớp cơ sở trừu tượng thực thể sống, LERP nội suy tọa độ mượt mà giữa các ô lưới</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/entities/Player.h & src/entities/Player.cpp</code></div>
+                                <div class="file-note">Nhân vật hiệp sĩ, tính toán EXP lên cấp theo hàm mũ, cơ chế Đỡ đòn (Block) và Phản đòn (Parry)</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/entities/Monster.h & src/entities/Monster.cpp</code></div>
+                                <div class="file-note">Lớp quái vật trừu tượng, khai báo 2 phương thức thuần ảo bắt buộc override: act() và onDeath()</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/entities/GroundMonster.h & FlyingMonster.h</code></div>
+                                <div class="file-note">Phân cấp kế thừa: quái vật đi bộ trên cạn (cần sàn đất) và quái vật bay qua hố vực</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/entities/Boar.h, WhiteBoar.h, BoarKing.h</code></div>
+                                <div class="file-note">Chuỗi kế thừa sâu 5 tầng: IGameObject → Entity → Monster → GroundMonster → Boar → BoarKing (Trùm cuối Đền Thờ)</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/entities/SmallBee.h, QueenBee.h, Snail.h</code></div>
+                                <div class="file-note">Các loài quái có cơ chế đặc thù: bầy ong thợ hỗ trợ ong chúa, ốc sên khi máu dưới 50% rút vào vỏ bất tử</div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="member-section-box">
+                        <h4>🧠 Logic Nghiệp Vụ Cốt Lõi Phụ Trách</h4>
+                        <ul class="member-oop-list">
+                            <li><strong>Hệ thống sinh mệnh thực thể:</strong> Quản lý chỉ số HP, MaxHP, ATK, DEF và vị trí đồ họa mượt mà bằng công thức LERP: <code>visualPos = visualPos + (targetPos - visualPos) * 0.2f</code>.</li>
+                            <li><strong>Phân cấp chuỗi kế thừa 5 tầng:</strong> Thiết kế phân cấp quái vật từ tổng quát đến chuyên biệt. <code>BoarKing</code> kế thừa lại toàn bộ thuộc tính của <code>Boar</code> nhưng nạp chồng thêm lượng máu khổng lồ và kỹ năng húc văng người chơi.</li>
+                            <li><strong>Kỹ năng quái vật đa hình:</strong> Hiện thực hàm <code>act()</code>: Khi người chơi đến gần, <code>Boar</code> sẽ lao tới húc; <code>SmallBee</code> chích độc; <code>Snail</code> khi bị đánh tụt máu sẽ bật cờ <code>isShelled = true</code> để miễn nhiễm sát thương vật lý.</li>
+                        </ul>
+                    </div>
+
+                    <div class="member-section-box">
+                        <h4>🎓 Kiến Thức OOP Trọng Tâm Cần Báo Cáo</h4>
+                        <ul class="member-oop-list">
+                            <li><strong>Kế thừa phân cấp và đa tầng (Hierarchical & Multi-level Inheritance):</strong> Giải thích lưu loát chuỗi kế thừa 5 tầng của lớp <code>BoarKing</code>.</li>
+                            <li><strong>Tính Đa hình động (Runtime Polymorphism / Late Binding):</strong> Giải thích tại sao trong hàm <code>dungeon.update()</code>, chỉ cần một con trỏ lớp cha <code>Monster*</code> là có thể gọi đúng hành vi riêng biệt của từng loài quái vật qua bảng <code>vtable</code>.</li>
+                            <li><strong>Virtual Destructor:</strong> Giải thích tại sao Destructor của <code>Entity</code> và <code>Monster</code> bắt buộc phải có từ khóa <code>virtual</code> để không làm rò rỉ bộ nhớ của lớp con.</li>
+                        </ul>
+                    </div>
+
+                    <div class="member-section-box" style="border-color: rgba(88, 166, 255, 0.3);">
+                        <h4 style="color: #58a6ff;">❓ Câu Hỏi Giảng Viên Dành Riêng Cho Thiện & Đáp Án Mẫu</h4>
+
+                        <div class="qa-card" style="margin-bottom: 0.8rem;">
+                            <div class="qa-question">
+                                <span class="qa-role-badge">GIẢNG VIÊN HỎI THIỆN</span>
+                                <span>1. "Em hãy vẽ sơ đồ kế thừa từ lớp gốc đến quái vật BoarKing và giải thích tại sao BoarKing có tới 5 tầng kế thừa?"</span>
+                            </div>
+                            <div class="qa-answer">
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho Thiện:</div>
+                                <p>Dạ thưa thầy, sơ đồ kế thừa 5 tầng trong dự án là: <code>IGameObject</code> (gốc thực thể) $\rightarrow$ <code>Entity</code> (thực thể có sinh mệnh và hiển thị) $\rightarrow$ <code>Monster</code> (lớp trừu tượng quái vật) $\rightarrow$ <code>GroundMonster</code> (quái vật đi bộ trên mặt đất) $\rightarrow$ <code>Boar</code> (heo rừng thường khu vực Cánh Đồng) $\rightarrow$ <code>BoarKing</code> (Trùm cuối Đền Thờ). Việc chia 5 tầng kế thừa giúp tái sử dụng tối đa mã nguồn: <code>GroundMonster</code> chia sẻ thuật toán bám sàn cho cả Heo rừng và Ốc sên; <code>BoarKing</code> chỉ cần override chỉ số và kỹ năng cuồng nộ mà không phải viết lại logic di chuyển hay vẽ hoạt ảnh.</p>
+                            </div>
+                        </div>
+
+                        <div class="qa-card" style="margin-bottom: 0.8rem;">
+                            <div class="qa-question">
+                                <span class="qa-role-badge">GIẢNG VIÊN HỎI THIỆN</span>
+                                <span>2. "Tại sao phương thức act() trong lớp Monster phải khai báo là thuần ảo (= 0)? Nếu em không override act() ở lớp Boar thì chuyện gì xảy ra?"</span>
+                            </div>
+                            <div class="qa-answer">
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho Thiện:</div>
+                                <p>Dạ, vì <code>Monster</code> là một khái niệm chung chung, ta không thể biết một "con quái trừu tượng" sẽ hành động như thế nào (bay, húc hay phòng thủ), nên <code>act()</code> bắt buộc phải là thuần ảo <code>virtual void act(...) = 0;</code> để biến <code>Monster</code> thành Abstract Class. Nếu lớp con <code>Boar</code> quên không override hàm <code>act()</code>, thì <code>Boar</code> vẫn sẽ bị xem là một lớp trừu tượng và trình biên dịch sẽ báo lỗi ngay lập tức khi ta cố tình tạo đối tượng <code>new Boar(...)</code>.</p>
+                            </div>
+                        </div>
+
+                        <div class="qa-card">
+                            <div class="qa-question">
+                                <span class="qa-role-badge">GIẢNG VIÊN HỎI THIỆN</span>
+                                <span>3. "Cơ chế đa hình giúp ích gì cho em khi thêm một loài quái vật mới vào game?"</span>
+                            </div>
+                            <div class="qa-answer">
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho Thiện:</div>
+                                <p>Dạ, nhờ có đa hình động (Late Binding), khi thêm một quái vật mới (ví dụ lớp <code>Goblin</code> kế thừa <code>GroundMonster</code>), em chỉ cần viết hàm <code>Goblin::act()</code> của riêng nó. Vòng lặp duyệt quái trong <code>Dungeon::update()</code> hoàn toàn không cần phải sửa một dòng code nào hay dùng các lệnh <code>if-else</code> kiểm tra loại quái cồng kềnh, chương trình sẽ tự động tra cứu bảng <code>vtable</code> để gọi đúng hành vi của <code>Goblin</code> lúc chạy.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. TRUYỀN -->
+                <div id="panel-truyen" class="member-panel truyen" style="display: none;">
+                    <div class="member-panel-header">
+                        <div class="member-name-block">
+                            <h3>⚔️ TRUYỀN</h3>
+                            <div class="member-subtitle">Phụ Trách Cây Phả Hệ Vật Phẩm, Kinh Tế Túi Đồ & Kỹ Năng (Items, Inventory & Skills)</div>
+                        </div>
+                        <div class="member-badges">
+                            <span class="badge-level" style="color: #d2a8ff; border-color: rgba(210,168,255,0.3); background: rgba(210,168,255,0.15);">Độ phức tạp: ★★★☆☆ (Vừa phải)</span>
+                            <span class="badge-weight">Tỷ trọng dự án: 20%</span>
+                        </div>
+                    </div>
+
+                    <div class="member-section-box">
+                        <h4>📂 Các File Mã Nguồn Trực Tiếp Đảm Nhận</h4>
+                        <ul class="team-file-list">
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/items/Item.h</code></div>
+                                <div class="file-note">Lớp trừu tượng gốc quản lý ID, tên, giá vàng mua bán, các hàm thuần ảo use(), getBonusAttack(), getBonusDefense()</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/items/Weapon.h & Armor.h</code></div>
+                                <div class="file-note">Các lớp dẫn xuất: Vũ khí gia tăng sức tấn công (ATK), Áo giáp gia tăng chỉ số phòng thủ (DEF)</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/items/Potion.h</code></div>
+                                <div class="file-note">Bình thuốc hồi sinh lực/mana, quá tải toán tử tăng/giảm (++ / --) xếp chồng stack dược phẩm</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/items/Accessory.h</code></div>
+                                <div class="file-note">Trang sức nhẫn ngọc tăng đồng thời nhiều thuộc tính và khuếch đại sát thương bạo kích</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/items/Chest.h</code></div>
+                                <div class="file-note">Rương kho báu hoàng kim, tương tác mở khóa giải phóng trang bị và tiền vàng ngẫu nhiên</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/items/Inventory.h & src/items/Inventory.cpp</code></div>
+                                <div class="file-note">Quản lý túi đồ nhân vật bằng std::vector&lt;Item*&gt;, trang bị vũ khí, tháo giáp và dọn rác bộ nhớ</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/systems/Skill.h & src/systems/Skill.cpp</code></div>
+                                <div class="file-note">Đa hình kỹ năng chủ động: Chém xoáy diện rộng (Slash), Lướt né chiêu (Dash), Hồi phục thần tốc (Heal)</div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="member-section-box">
+                        <h4>🧠 Logic Nghiệp Vụ Cốt Lõi Phụ Trách</h4>
+                        <ul class="member-oop-list">
+                            <li><strong>Cây phân cấp vật phẩm đa dạng:</strong> Mọi trang bị nhặt được trong Dungeon đều xuất phát từ lớp cha <code>Item</code>, có tên gọi, màu sắc phẩm cấp (Trắng, Xanh lá, Tím, Vàng).</li>
+                            <li><strong>Quản lý túi đồ nhân vật (Inventory):</strong> Cài đặt thuật toán thêm vật phẩm vào túi, kiểm tra giới hạn sức chứa, trang bị vũ khí/áo giáp (hoán đổi chỉ số của nhân vật) và giải phóng con trỏ khi vứt đồ.</li>
+                            <li><strong>Cơ chế xếp chồng bình thuốc bằng toán tử:</strong> Khi nhặt thêm bình thuốc cùng loại, thay vì chiếm thêm ô túi đồ mới, ta gọi toán tử <code>++potion</code> để tăng số lượng stack trong bình thuốc có sẵn.</li>
+                        </ul>
+                    </div>
+
+                    <div class="member-section-box">
+                        <h4>🎓 Kiến Thức OOP Trọng Tâm Cần Báo Cáo</h4>
+                        <ul class="member-oop-list">
+                            <li><strong>Lớp trừu tượng (Abstract Class):</strong> Lớp <code>Item</code> chứa các hàm ảo thuần túy <code>virtual void use(Player& player) = 0;</code> nên không thể khởi tạo trực tiếp.</li>
+                            <li><strong>Phân biệt quan hệ Hợp thành & Kết hợp:</strong> <code>Player</code> hợp thành với <code>Inventory</code> (vòng đời gắn liền); <code>Inventory</code> kết hợp với các con trỏ <code>Item*</code> (vật phẩm có thể vứt ra đất mà không bị xóa ngay).</li>
+                            <li><strong>Cơ chế RTTI & dynamic_cast:</strong> Dùng <code>dynamic_cast<const Weapon*>(item)</code> để nhận diện an toàn một món đồ trong túi có phải là Vũ khí hay không trước khi trang bị vào tay nhân vật.</li>
+                        </ul>
+                    </div>
+
+                    <div class="member-section-box" style="border-color: rgba(210, 168, 255, 0.3);">
+                        <h4 style="color: #d2a8ff;">❓ Câu Hỏi Giảng Viên Dành Riêng Cho Truyền & Đáp Án Mẫu</h4>
+
+                        <div class="qa-card" style="margin-bottom: 0.8rem;">
+                            <div class="qa-question">
+                                <span class="qa-role-badge">GIẢNG VIÊN HỎI TRUYỀN</span>
+                                <span>1. "Tại sao lớp Item lại là Abstract Class? Trong Inventory em lưu trữ Item* hay lưu trực tiếp đối tượng Item?"</span>
+                            </div>
+                            <div class="qa-answer">
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho Truyền:</div>
+                                <p>Dạ thưa thầy, <code>Item</code> là Abstract Class vì nó đại diện cho khái niệm vật phẩm trừu tượng, mỗi loại đồ cụ thể (Vũ khí, Bình thuốc, Giáp) có cách sử dụng và chỉ số cộng khác nhau nên hàm <code>use()</code> bắt buộc phải để thuần ảo. Trong <code>Inventory</code>, em bắt buộc phải lưu <strong>danh sách con trỏ <code>std::vector<Item*></code></strong> (hoặc <code>std::unique_ptr<Item></code>) để áp dụng tính đa hình. Nếu lưu trực tiếp đối tượng <code>Item</code> theo giá trị, C++ sẽ gây ra hiện tượng Cắt gọt đối tượng (Object Slicing) làm mất sạch các chỉ số tấn công của Weapon hay phòng thủ của Armor.</p>
+                            </div>
+                        </div>
+
+                        <div class="qa-card" style="margin-bottom: 0.8rem;">
+                            <div class="qa-question">
+                                <span class="qa-role-badge">GIẢNG VIÊN HỎI TRUYỀN</span>
+                                <span>2. "Khi người chơi chọn một món đồ trong túi để trang bị, làm sao em phân biệt được món đó là Vũ khí hay Áo giáp? Tại sao em dùng dynamic_cast?"</span>
+                            </div>
+                            <div class="qa-answer">
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho Truyền:</div>
+                                <p>Dạ, em dùng cơ chế <strong>RTTI (Run-Time Type Information)</strong> thông qua toán tử <code>dynamic_cast</code>: <code>const Weapon* w = dynamic_cast<const Weapon*>(item);</code>. Nếu món đồ thực sự là Vũ khí, con trỏ <code>w</code> sẽ hợp lệ khác null và em gán vào tay nhân vật. Nếu là loại đồ khác, <code>dynamic_cast</code> trả về <code>nullptr</code> an toàn tuyệt đối. Em không dùng <code>static_cast</code> vì <code>static_cast</code> không kiểm tra kiểu lúc chạy, nếu ép nhầm bình thuốc sang vũ khí sẽ dẫn tới con trỏ rác và làm crash game.</p>
+                            </div>
+                        </div>
+
+                        <div class="qa-card">
+                            <div class="qa-question">
+                                <span class="qa-role-badge">GIẢNG VIÊN HỎI TRUYỀN</span>
+                                <span>3. "Toán tử ++ và -- trong lớp Potion được cài đặt như thế nào?"</span>
+                            </div>
+                            <div class="qa-answer">
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho Truyền:</div>
+                                <p>Dạ, trong lớp <code>Potion</code>, em quá tải toán tử 1 ngôi tiền tố <code>Potion& operator++()</code> để tăng biến thành viên <code>stackCount++</code> (số lượng bình dồn trong 1 ô), và <code>Potion& operator--()</code> để giảm số lượng khi người chơi uống thuốc hồi phục. Toán tử trả về tham chiếu <code>*this</code> để tối ưu hiệu năng không tạo bản sao.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. VINH -->
+                <div id="panel-vinh" class="member-panel vinh" style="display: none;">
+                    <div class="member-panel-header">
+                        <div class="member-name-block">
+                            <h3>📐 VINH</h3>
+                            <div class="member-subtitle">Phụ Trách Cốt Lõi Toán Học, Ô Địa Hình & Ngoại Lệ (Core Math, Grid Terrain & Exceptions)</div>
+                        </div>
+                        <div class="member-badges">
+                            <span class="badge-level" style="color: #7ee787; border-color: rgba(126,231,135,0.3); background: rgba(126,231,135,0.15);">Độ phức tạp: ★★☆☆☆ (Cơ bản - Tinh gọn)</span>
+                            <span class="badge-weight">Tỷ trọng dự án: 15%</span>
+                        </div>
+                    </div>
+
+                    <div class="member-section-box">
+                        <h4>📂 Các File Mã Nguồn Trực Tiếp Đảm Nhận</h4>
+                        <ul class="team-file-list">
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/core/Position.h</code></div>
+                                <div class="file-note">Cấu trúc tọa độ lưới 2D (x, y), các toán tử số học +, -, ==, !=, tiền tố ++, và toán tử ép kiểu Vector2 Raylib</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/map/Tile.h & src/map/Tile.cpp</code></div>
+                                <div class="file-note">Lớp ô địa hình đa hình: Đất thường, Đầm lầy (làm chậm 50% tốc độ), Vực thẳm tử thần (gây sát thương tử vong)</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/core/GameException.h</code></div>
+                                <div class="file-note">Cây phả hệ xử lý ngoại lệ: kế thừa std::exception, các lớp OutOfBoundsException, NullPointerException</div>
+                            </li>
+                            <li class="team-file-item">
+                                <div class="file-name">📄 <code>include/core/Templates.h</code></div>
+                                <div class="file-note">Bộ 8 Khuôn mẫu hàm tổng quát: clampValue, swapValues, getMaxValue, getMinValue, isInRange, lerpValue, calculateDistance2D, calculateChebyshevDistance</div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="member-section-box">
+                        <h4>🧠 Logic Nghiệp Vụ Cốt Lõi Phụ Trách</h4>
+                        <ul class="member-oop-list">
+                            <li><strong>Xương sống tọa độ của trò chơi (Position):</strong> Cung cấp kiểu dữ liệu vị trí <code>(x, y)</code> dùng chung cho toàn bộ Player, Monster, Tile, Chest. Quá tải toán tử cộng trừ tọa độ để nhân vật bước đi.</li>
+                            <li><strong>Cầu nối đồ họa Raylib (Operator Vector2):</strong> Viết toán tử ép kiểu <code>operator Vector2() const</code> tự động chuyển tọa độ ô nguyên (Grid) sang tọa độ pixel thực trên màn hình (nhân với 32 pixel).</li>
+                            <li><strong>Cơ chế hiệu ứng địa hình (Tile):</strong> Quản lý các ô bản đồ. Khi nhân vật bước vào ô Đầm lầy, hàm <code>getSpeedModifier()</code> trả về <code>0.5f</code> làm nhân vật di chuyển chậm lại một nửa.</li>
+                            <li><strong>An toàn hệ số với Templates & Ngoại lệ:</strong> Viết bộ 8 hàm mẫu tổng quát trong <code>CoreTemplates</code> giúp toàn bộ game tính khoảng cách, kẹp ngưỡng máu/tọa độ an toàn, và định nghĩa ngoại lệ kiểm tra chỉ số hợp lệ.</li>
+                        </ul>
+                    </div>
+
+                    <div class="member-section-box">
+                        <h4>🎓 Kiến Thức OOP Trọng Tâm Cần Báo Cáo</h4>
+                        <ul class="member-oop-list">
+                            <li><strong>Phân biệt struct và class:</strong> Giải thích tại sao chọn <code>struct</code> cho <code>Position</code> (Plain Old Data, dữ liệu thuần) và <code>class</code> cho <code>Tile</code> (cần đóng gói).</li>
+                            <li><strong>Quá tải toán tử (Operator Overloading):</strong> Nắm chắc toán tử 2 ngôi cộng trừ, toán tử so sánh bằng, và toán tử chuyển đổi kiểu dữ liệu.</li>
+                            <li><strong>Kế thừa ngoại lệ từ C++ Standard Library:</strong> Hiểu rõ cách kế thừa <code>public std::exception</code> và từ khóa <code>noexcept</code> trong phương thức <code>const char* what() const noexcept override</code>.</li>
+                            <li><strong>Lập trình tổng quát với Function Templates (Chương 7 Slide 4-13):</strong> Giải thích cơ chế Template Instantiation và cách viết hàm mẫu đa tham số kiểu dữ liệu như <code>calculateChebyshevDistance&lt;T1, T2&gt;</code>.</li>
+                        </ul>
+                    </div>
+
+                    <div class="member-section-box" style="border-color: rgba(126, 231, 135, 0.3);">
+                        <h4 style="color: #7ee787;">❓ Câu Hỏi Giảng Viên Dành Riêng Cho Vinh & Đáp Án Mẫu</h4>
+
+                        <div class="qa-card" style="margin-bottom: 0.8rem;">
+                            <div class="qa-question">
+                                <span class="qa-role-badge">GIẢNG VIÊN HỎI VINH</span>
+                                <span>1. "Trong C++, struct và class khác nhau như thế nào? Tại sao em dùng struct cho Position nhưng lại dùng class cho Tile?"</span>
+                            </div>
+                            <div class="qa-answer">
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho Vinh:</div>
+                                <p>Dạ thưa thầy, điểm khác biệt duy nhất giữa <code>struct</code> và <code>class</code> trong C++ là phạm vi truy cập mặc định: <code>struct</code> mặc định các thành viên là <code>public</code>, còn <code>class</code> mặc định là <code>private</code>. Em chọn <code>struct</code> cho <code>Position</code> vì nó là một cấu trúc dữ liệu thuần túy (Plain Old Data) gồm 2 biến tọa độ <code>x, y</code> thường xuyên được truy xuất trực tiếp để tính toán vẽ đồ họa. Còn <code>Tile</code> em dùng <code>class</code> vì nó cần tính đóng gói (Encapsulation) để che giấu thuộc tính loại ô và chỉ cung cấp các hàm nghiệp vụ như <code>isSolid()</code> hay <code>getSpeedModifier()</code>.</p>
+                            </div>
+                        </div>
+
+                        <div class="qa-card" style="margin-bottom: 0.8rem;">
+                            <div class="qa-question">
+                                <span class="qa-role-badge">GIẢNG VIÊN HỎI VINH</span>
+                                <span>2. "Toán tử ép kiểu operator Vector2() trong lớp Position hoạt động như thế nào?"</span>
+                            </div>
+                            <div class="qa-answer">
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho Vinh:</div>
+                                <p>Dạ, đây là <strong>Toán tử chuyển đổi kiểu do người dùng tự định nghĩa (User-defined Conversion Operator)</strong>. Trong game, logic nhân vật lưu vị trí theo ô nguyên <code>x, y</code> trên ma trận lưới. Khi truyền vào các hàm vẽ của thư viện Raylib (vốn yêu cầu kiểu tọa độ thực <code>Vector2</code>), toán tử này tự động nhân tọa độ với kích thước 1 ô (32 pixel) và trả về <code>Vector2{x * 32.0f, y * 32.0f}</code> mà ta không cần phải gọi hàm chuyển đổi thủ công.</p>
+                            </div>
+                        </div>
+
+                        <div class="qa-card" style="margin-bottom: 0.8rem;">
+                            <div class="qa-question">
+                                <span class="qa-role-badge">GIẢNG VIÊN HỎI VINH</span>
+                                <span>3. "Lớp GameException của em kế thừa từ đâu? Từ khóa noexcept và override có tác dụng gì?"</span>
+                            </div>
+                            <div class="qa-answer">
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho Vinh:</div>
+                                <p>Dạ, lớp <code>GameException</code> của em kế thừa từ lớp chuẩn <code>std::exception</code> của C++. Phương thức <code>virtual const char* what() const noexcept override</code> ghi đè hàm <code>what()</code> của lớp cha để trả về chuỗi thông báo lỗi. Từ khóa <code>override</code> giúp trình biên dịch kiểm tra chính xác chữ ký hàm, còn <code>noexcept</code> cam kết phương thức này tuyệt đối không phát sinh thêm ngoại lệ nào khác trong quá trình đang báo lỗi.</p>
+                            </div>
+                        </div>
+
+                        <div class="qa-card">
+                            <div class="qa-question">
+                                <span class="qa-role-badge">GIẢNG VIÊN HỎI VINH</span>
+                                <span>4. "Khuôn mẫu hàm (Function Template) trong file Templates.h được nhóm xây dựng như thế nào? Cơ chế Template Instantiation hoạt động ra sao?"</span>
+                            </div>
+                            <div class="qa-answer">
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho Vinh:</div>
+                                <p>Dạ thưa thầy, nhóm em đã xây dựng một namespace chung <code>CoreTemplates</code> gồm 8 khuôn mẫu hàm:</p>
+                                <ul style="margin: 0.4rem 0 0.5rem 1.2rem; font-size: 0.85rem; line-height: 1.5;">
+                                    <li><code>clampValue&lt;T&gt;</code>, <code>swapValues&lt;T&gt;</code>, <code>getMaxValue&lt;T&gt;</code>, <code>getMinValue&lt;T&gt;</code>, <code>isInRange&lt;T&gt;</code>: áp dụng cho các kiểu số nguyên hoặc thực (int, float).</li>
+                                    <li><code>lerpValue&lt;T&gt;</code>: phục vụ nội suy chuyển động mượt mà cho Entity.</li>
+                                    <li>Đặc biệt là <code>calculateChebyshevDistance&lt;T1, T2&gt;(obj1, obj2)</code> sử dụng <strong>2 tham số hình thức kiểu dữ liệu độc lập</strong> (minh họa Slide 11 Chương 7). Hàm này cho phép truyền vào 2 thực thể bất kỳ (ví dụ một con Boss và người chơi Player) để tự động gọi phương thức <code>getPosition()</code> của từng đối tượng và tính cự ly bàn cờ.</li>
+                                </ul>
+                                <p>Khi biên dịch (Compile-time), trình biên dịch thực hiện cơ chế <strong>Template Instantiation (Thực thể hóa khuôn mẫu)</strong>: nó tự động sinh ra mã nhị phân tương ứng với các kiểu cụ thể được gọi (như <code>int</code>, <code>float</code>, <code>Monster</code>, <code>Player</code>) mà lập trình viên không phải viết lại code nhiều lần.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Script điều khiển Tab, Bộ lọc & Tìm kiếm -->
+    <script>
+        function switchTab(tabId, evt) {
+            const panes = document.querySelectorAll('.tab-pane');
+            panes.forEach(pane => pane.classList.remove('active'));
+
+            const buttons = document.querySelectorAll('.nav-tab-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+
+            const activePane = document.getElementById(tabId);
+            if (activePane) {
+                activePane.classList.add('active');
+            }
+
+            if (evt && evt.currentTarget) {
+                evt.currentTarget.classList.add('active');
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function selectMember(memberId) {
+            const panels = document.querySelectorAll('.member-panel');
+            const pills = document.querySelectorAll('.member-pill-btn');
+            const select = document.getElementById('member-select');
+
+            if (select) select.value = memberId;
+
+            pills.forEach(btn => {
+                if (btn.getAttribute('data-member') === memberId) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            panels.forEach(panel => {
+                if (memberId === 'all' || panel.id === 'panel-' + memberId) {
+                    panel.style.display = 'block';
+                } else {
+                    panel.style.display = 'none';
+                }
+            });
+        }
+
+        function filterByModule(moduleName, btn) {
+            const buttons = document.querySelectorAll('.filter-btn');
+            buttons.forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+
+            const rows = document.querySelectorAll('#method-table-body tr');
+            rows.forEach(row => {
+                const rowMod = row.getAttribute('data-module');
+                if (moduleName === 'all' || rowMod === moduleName) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        function filterCards(cardClass, query) {
+            const q = query.toLowerCase().trim();
+            const cards = document.querySelectorAll('.' + cardClass);
+            cards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                if (text.includes(q)) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function filterTable(tableBodyId, query) {
+            const q = query.toLowerCase().trim();
+            const rows = document.querySelectorAll('#' + tableBodyId + ' tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(q)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

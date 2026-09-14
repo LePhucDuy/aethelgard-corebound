@@ -3,6 +3,7 @@
 #include "entities/Player.h"
 #include "map/Dungeon.h"
 #include "systems/CombatSystem.h"
+#include "core/Templates.h"
 #include <iostream>
 #include <cmath>
 #include <algorithm>
@@ -18,7 +19,8 @@ void GroundPatrolStrategy::execute(Monster& monster, Dungeon& dungeon, Player& p
     Position pPos = player.getPosition();
     int dx = pPos.x - pos.x;
     int dy = pPos.y - pos.y;
-    int dist = std::max(std::abs(dx), std::abs(dy));
+    // Sử dụng Function Template tính khoảng cách Chebyshev giữa 2 thực thể
+    int dist = CoreTemplates::calculateChebyshevDistance(monster, player);
 
     // A. Nếu ở cự ly cận chiến cùng tầng -> tấn công
     if (dist <= 1 && dy == 0 && player.isAlive()) {
@@ -62,8 +64,8 @@ void SwarmAerialStrategy::execute(Monster& monster, Dungeon& dungeon, Player& pl
             && c != pPos;
     };
 
-    // A. Cự ly chọc nọc độc trên đỉnh đầu hoặc ngang ngực
-    bool inStrikeRange = (std::abs(dx) <= 1 && dy >= -1 && dy <= 2);
+    // A. Cự ly chọc nọc độc trên đỉnh đầu hoặc ngang ngực (sử dụng isInRange)
+    bool inStrikeRange = (std::abs(dx) <= 1 && CoreTemplates::isInRange(dy, -1, 2));
     if (inStrikeRange && player.isAlive()) {
         monster.faceTowards(pPos);
         monster.setState("attack");
@@ -120,7 +122,8 @@ void BossRageStrategy::execute(Monster& monster, Dungeon& dungeon, Player& playe
     Position pPos = player.getPosition();
     int dx = pPos.x - pos.x;
     int dy = pPos.y - pos.y;
-    int dist = std::max(std::abs(dx), std::abs(dy));
+    // Tính khoảng cách Chebyshev bằng khuôn mẫu hàm
+    int dist = CoreTemplates::calculateChebyshevDistance(monster, player);
 
     monster.faceTowards(pPos);
     monster.setState("run");

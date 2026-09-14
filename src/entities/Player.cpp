@@ -116,8 +116,8 @@ void Player::triggerBlock() {
 }
 
 void Player::applyPoison(float duration, int dmgPerTick) {
-    poisonTimer = std::max(poisonTimer, duration);
-    poisonDmgPerTick = std::max(poisonDmgPerTick, dmgPerTick);
+    poisonTimer = CoreTemplates::getMaxValue(poisonTimer, duration);
+    poisonDmgPerTick = CoreTemplates::getMaxValue(poisonDmgPerTick, dmgPerTick);
     poisonTickTimer = 0.0f;
 }
 
@@ -161,7 +161,7 @@ void Player::setPosition(const Position& newPos, bool snapVisual) {
     // Bất kỳ khi nào người chơi rơi từ trên cao xuống sàn dưới (dy >= 2 ô):
     // Tự động kích hoạt hiệu ứng rơi tự do Jump-End-Sheet với tốc độ chậm chuẩn vật lý
     if (!snapVisual && dy >= 2 && alive) {
-        float airDuration = std::clamp(0.22f * std::sqrt((float)dy), 0.35f, 0.65f);
+        float airDuration = CoreTemplates::clampValue(0.22f * std::sqrt((float)dy), 0.35f, 0.65f);
         float landDuration = 0.22f;
         triggerFall(airDuration, landDuration);
     }

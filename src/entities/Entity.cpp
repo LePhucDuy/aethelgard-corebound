@@ -1,5 +1,6 @@
 #include "entities/Entity.h"
 #include "core/Constants.h"
+#include "core/Templates.h"
 #include <algorithm>
 
 Entity::Entity(const std::string& name, const Position& pos, int hp, int attack, int defense)
@@ -20,7 +21,8 @@ void Entity::setPosition(const Position& newPos, bool snapVisual) {
 
 void Entity::takeDamage(int amount) {
     // Sát thương thực tế = lượng dame trừ đi chỉ số phòng thủ (tối thiểu chịu 1 sát thương)
-    int actualDamage = std::max(1, amount - defense);
+    // Ứng dụng Function Template: CoreTemplates::getMaxValue
+    int actualDamage = CoreTemplates::getMaxValue(1, amount - defense);
     hp -= actualDamage;
 
     if (hp <= 0) {
@@ -31,7 +33,8 @@ void Entity::takeDamage(int amount) {
 
 void Entity::heal(int amount) {
     if (!alive) return;
-    hp = std::min(maxHp, hp + amount);
+    // Ứng dụng Function Template: CoreTemplates::getMinValue
+    hp = CoreTemplates::getMinValue(maxHp, hp + amount);
 }
 
 void Entity::update(float deltaTime) {
@@ -39,12 +42,12 @@ void Entity::update(float deltaTime) {
         currentAnim->update(deltaTime);
     }
 
-    // Nội suy mượt mà tọa độ hiển thị (Visual LERP) theo thời gian thực độc lập với FPS
+    // Nội suy mượt mà tọa độ hiển thị (Visual LERP) sử dụng Function Template: CoreTemplates::lerpValue
     float targetX = (float)(pos.x * Constants::TILE_SIZE);
     float targetY = (float)(pos.y * Constants::TILE_SIZE);
     float t = 1.0f - std::exp(-moveLerpSpeed * deltaTime);
-    visualPos.x += (targetX - visualPos.x) * t;
-    visualPos.y += (targetY - visualPos.y) * t;
+    visualPos.x = CoreTemplates::lerpValue(visualPos.x, targetX, t);
+    visualPos.y = CoreTemplates::lerpValue(visualPos.y, targetY, t);
 
     if (std::abs(visualPos.x - targetX) < 0.25f) visualPos.x = targetX;
     if (std::abs(visualPos.y - targetY) < 0.25f) visualPos.y = targetY;

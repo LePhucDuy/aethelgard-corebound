@@ -3,6 +3,7 @@
 #include "systems/CombatSystem.h"
 #include "map/Dungeon.h"
 #include "core/Constants.h"
+#include "core/Templates.h"
 #include <iostream>
 #include <cstdlib>
 #include <algorithm>
@@ -33,25 +34,29 @@ void SmallBee::takeDamage(int amount) {
     }
 
     // 2. KHI BỊ ĐÁNH TRÚNG: Kích hoạt trạng thái phản công (Revenge Aggro)
+    // Ong lập tức thù địch, chuyển AI sang truy sát người chơi đến cùng
     isAggro = true;
     isAlerted = true;
     aiState = MonsterAIState::CHASE;
     std::cout << "[ONG PHAN KICH] " << name << " tai " << pos
               << " bi danh trung! Noi gian kich hoat phan cong!" << std::endl;
 
-    // Monster::takeDamage tự động trừ HP, chuyển state "hit", và gọi kill() nếu HP <= 0
-    Monster::takeDamage(amount);
+    FlyingMonster::takeDamage(amount);
 }
 
 void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& combatLog) {
-    if (dying || !alive) return;
+    if (!alive) return;
 
-    // A. Nếu đang phát hoạt ảnh bị đánh (hit) thì giữ nguyên cho animation chạy trọn vẹn
-    if (animState == "hit" && currentAnim && !currentAnim->hasFinished()) {
+    if (actionTimer > 0.0f) {
+        actionTimer -= 0.016f;
         return;
     }
 
-    // B. Nếu đang phát hoạt ảnh tấn công (attack) thì chờ chạy hết đòn chích
+    if (attackCooldown > 0.0f) {
+        attackCooldown -= 0.016f;
+    }
+
+    // Nếu đang trong hoạt ảnh tấn công (chích), đợi hoạt ảnh chạy xong mới di chuyển tiếp
     if (animState == "attack" && currentAnim && !currentAnim->hasFinished()) {
         return;
     }
@@ -62,7 +67,7 @@ void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
 
     // Quái ong bay trên không, người chơi cao 2.5 ô (chân ở y, thân ở y-1, đầu ở y-2)
     // Cự ly chích nọc độc: khi ong ở ngang đầu, ngang ngực hoặc chân người chơi (dy từ -1 đến 2, |dx| <= 1)
-    bool inStrikeRange = (std::abs(dx) <= 1 && dy >= -1 && dy <= 2);
+    bool inStrikeRange = (std::abs(dx) <= 1 && CoreTemplates::isInRange(dy, -1, 2));
 
     auto canFlyTo = [&](const Position& c) {
         return dungeon.isValidPos(c)
@@ -136,7 +141,7 @@ void SmallBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
     }
 
     // 2.2. Nếu người chơi chạy quá xa -> bỏ truy đuổi, quay về vị trí ban đầu
-    int cheb = std::max(std::abs(dx), std::abs(dy));
+    int cheb = CoreTemplates::calculateChebyshevDistance(*this, player);
     if (cheb > aggroRange + 8) {
         aiState = MonsterAIState::RETURNING;
         isAlerted = false;

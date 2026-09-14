@@ -48,8 +48,43 @@ namespace CoreTemplates {
     }
 
     /**
+     * @brief Khuôn mẫu hàm tìm giá trị nhỏ hơn giữa 2 phần tử
+     */
+    template <typename T>
+    T getMinValue(T a, T b) {
+        return (a < b) ? a : b;
+    }
+
+    /**
+     * @brief Khuôn mẫu hàm kiểm tra giá trị có nằm trong khoảng [minVal, maxVal] hay không
+     */
+    template <typename T>
+    bool isInRange(T val, T minVal, T maxVal) {
+        return (val >= minVal && val <= maxVal);
+    }
+
+    /**
+     * @brief Khuôn mẫu hàm nội suy tuyến tính (Linear Interpolation - LERP)
+     * Dùng cho đồ họa mượt mà chuyển động giữa các khung hình
+     */
+    template <typename T>
+    T lerpValue(T start, T end, float t) {
+        return static_cast<T>(start + (end - start) * t);
+    }
+
+    /**
+     * @brief Khuôn mẫu hàm tính khoảng cách Chebyshev giữa 2 tọa độ bất kỳ có thuộc tính .x, .y
+     */
+    template <typename PosA, typename PosB>
+    int calculateDistance2D(const PosA& a, const PosB& b) {
+        int dx = std::abs(a.x - b.x);
+        int dy = std::abs(a.y - b.y);
+        return (dx > dy) ? dx : dy;
+    }
+
+    /**
      * @brief Khuôn mẫu hàm với nhiều tham số kiểu dữ liệu khác nhau (Slide 11 Chương 7)
-     * Tính khoảng cách Chebyshev giữa 2 đối tượng bất kỳ có phương thức getPosition()
+     * Tính khoảng cách Chebyshev giữa 2 thực thể bất kỳ có phương thức getPosition()
      */
     template <typename T1, typename T2>
     int calculateChebyshevDistance(const T1& obj1, const T2& obj2) {

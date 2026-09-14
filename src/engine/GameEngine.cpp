@@ -580,7 +580,7 @@ void GameEngine::handleInput() {
         // chỉ bị chặn bởi khối WALL đặc. Ô đáp (landing) thì vẫn phải trống quái
         // (kiểm tra riêng trong canLand) để không đáp đè lên đầu quái.
         auto pathFlyable = [&](const Position& from, const Position& to) {
-            int steps = std::max(std::abs(to.x - from.x), std::abs(to.y - from.y));
+            int steps = CoreTemplates::calculateDistance2D(to, from);
             for (int i = 1; i < steps; ++i) {
                 float t = (float)i / (float)steps;
                 Position mid(from.x + (int)std::round((to.x - from.x) * t),
@@ -1463,8 +1463,7 @@ void GameEngine::renderHUD() const {
 
         Monster* qBee = dungeon.getQueenBeeMonster();
         if (qBee && qBee->isAlive()) {
-            Position qPos = qBee->getPosition();
-            int distQ = std::max(std::abs(pPos.x - qPos.x), std::abs(pPos.y - qPos.y));
+            int distQ = CoreTemplates::calculateChebyshevDistance(player, *qBee);
             if (distQ <= 12) {
                 activeBoss = qBee;
                 bossTitle = "[!] QUEEN BEE - HOANG HAU ONG CHUA [!]";
@@ -1477,8 +1476,7 @@ void GameEngine::renderHUD() const {
         if (!activeBoss) {
             Monster* bKing = dungeon.getBossMonster();
             if (bKing && bKing->isAlive()) {
-                Position bPos = bKing->getPosition();
-                int distB = std::max(std::abs(pPos.x - bPos.x), std::abs(pPos.y - bPos.y));
+                int distB = CoreTemplates::calculateChebyshevDistance(player, *bKing);
                 if (bossCinematicTriggered || distB <= 14) {
                     activeBoss = bKing;
                     bossTitle = "[!] BOAR KING - CHUA HEO RUNG [!]";
