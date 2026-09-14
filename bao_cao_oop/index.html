@@ -1365,7 +1365,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                     <p><strong>Copy Constructor</strong> được gọi khi:</p>
                     <ul class="explanation-list">
                         <li>Khởi tạo một đối tượng mới từ một đối tượng có sẵn: <code class="inline-code">DynamicArray&lt;int&gt; b = a;</code> hoặc <code class="inline-code">DynamicArray&lt;int&gt; b(a);</code></li>
-                        <li>Truyền một đối tượng vào hàm theo hình thức truyền giá trị (Pass-by-value).</li>
+                        <li> một đối tượng vào hàm theo hình thức  giá trị (Pass-by-value).</li>
                         <li>Hàm trả về một đối tượng theo giá trị (Return-by-value).</li>
                     </ul>
                     <div class="key-point">
@@ -1406,7 +1406,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                     </ul>
                     <div class="key-point">
                         <strong>Tại sao hàm hậu tố lại có tham số <code>(int)</code>?</strong><br>
-                        Vì cả hai toán tử đều có cùng tên gọi là <code>operator++</code>. Để trình biên dịch C++ có thể phân biệt chữ ký hàm (Function Signature) khi quá tải, tiêu chuẩn C++ quy ước đưa vào một <strong>tham số giả (dummy parameter) kiểu <code>int</code></strong> không có tên biến trong hàm hậu tố. Trình biên dịch sẽ tự động truyền giá trị <code>0</code> vào tham số này khi gặp cú pháp <code>pos++</code>.
+                        Vì cả hai toán tử đều có cùng tên gọi là <code>operator++</code>. Để trình biên dịch C++ có thể phân biệt chữ ký hàm (Function Signature) khi quá tải, tiêu chuẩn C++ quy ước đưa vào một <strong>tham số giả (dummy parameter) kiểu <code>int</code></strong> không có tên biến trong hàm hậu tố. Trình biên dịch sẽ tự động  giá trị <code>0</code> vào tham số này khi gặp cú pháp <code>pos++</code>.
                     </div>
                 </div>
             </article>
@@ -1422,7 +1422,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                     <ul class="explanation-list">
                         <li><strong>Mục đích:</strong> Cam kết với trình biên dịch rằng phương thức này <strong>chỉ đọc (Read-only)</strong>, tuyệt đối không làm thay đổi bất kỳ thuộc tính dữ liệu nào của đối tượng.</li>
                         <li><strong>Nếu cố tình sửa biến:</strong> Trình biên dịch sẽ báo lỗi biên dịch ngay lập tức (Compile-time Error: <em>assignment of member in read-only object</em>).</li>
-                        <li><strong>Nguyên tắc const-correctness:</strong> Một đối tượng hằng (hoặc tham chiếu hằng <code class="inline-code">const Entity&amp; e</code>) <strong>CHỈ ĐƯỢC PHÉP</strong> gọi các phương thức có gắn nhãn <code>const</code>. Nếu getter không có <code>const</code>, ta sẽ không thể đọc thông tin của đối tượng hằng khi truyền qua hàm.</li>
+                        <li><strong>Nguyên tắc const-correctness:</strong> Một đối tượng hằng (hoặc tham chiếu hằng <code class="inline-code">const Entity&amp; e</code>) <strong>CHỈ ĐƯỢC PHÉP</strong> gọi các phương thức có gắn nhãn <code>const</code>. Nếu getter không có <code>const</code>, ta sẽ không thể đọc thông tin của đối tượng hằng khi  qua hàm.</li>
                     </ul>
                     <div class="key-point">
                         <strong>Khi nào dùng từ khóa <code>mutable</code>?</strong><br>
@@ -1614,7 +1614,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                     <p>Trong C++, việc bắt ngoại lệ bằng tham chiếu (<code class="inline-code">catch (const GameException&amp; e)</code>) là quy tắc vàng bắt buộc của môn OOP:</p>
                     <ul class="explanation-list">
                         <li><strong>Hiện tượng Cắt gọt đối tượng (Object Slicing) nếu bắt bằng giá trị:</strong> Nếu viết <code>catch (GameException e)</code>, khi một lớp con như <code>SaveLoadException</code> hay <code>OutOfBoundsException</code> được ném ra, trình biên dịch sẽ chỉ sao chép phần dữ liệu của lớp cha <code>GameException</code> vào biến <code>e</code>. Toàn bộ các thuộc tính đặc thù và hàm ảo <code>what()</code> của lớp con sẽ <strong>bị cắt gọt vứt bỏ hoàn toàn</strong>. Hơn nữa, nó còn tốn chi phí gọi Copy Constructor vô ích.</li>
-                        <li><strong>Lợi ích khi bắt bằng tham chiếu hằng:</strong> Truyền tham chiếu giúp <strong>bảo toàn tính đa hình (Polymorphic Catching)</strong>. Khi gọi <code>e.what()</code>, chương trình sẽ gọi chính xác hàm <code>what()</code> của lớp ngoại lệ thực tế được ném ra, in ra thông báo lỗi chi tiết chính xác của từng trường hợp tệp hỏng.</li>
+                        <li><strong>Lợi ích khi bắt bằng tham chiếu hằng:</strong>  tham chiếu giúp <strong>bảo toàn tính đa hình (Polymorphic Catching)</strong>. Khi gọi <code>e.what()</code>, chương trình sẽ gọi chính xác hàm <code>what()</code> của lớp ngoại lệ thực tế được ném ra, in ra thông báo lỗi chi tiết chính xác của từng trường hợp tệp hỏng.</li>
                     </ul>
                 </div>
             </article>
@@ -1642,7 +1642,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
             <article class="qa-card advanced">
                 <div class="qa-question">
                     <span class="qa-role-badge">GIẢNG VIÊN HỎI</span>
-                    <span>17. Tại sao AudioSystem và TextureManager lại được cài đặt theo mẫu thiết kế Singleton? Cách viết Meyers' Singleton trong C++17 có gì vượt trội so với Singleton dùng con trỏ tĩnh truyền thống?</span>
+                    <span>17. Tại sao AudioSystem và TextureManager lại được cài đặt theo mẫu thiết kế Singleton? Cách viết Meyers' Singleton trong C++17 có gì vượt trội so với Singleton dùng con trỏ tĩnh  thống?</span>
                 </div>
                 <div class="qa-answer">
                     <div class="qa-answer-title">💡 Câu trả lời chuẩn xác:</div>
@@ -1728,7 +1728,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
         </section>
 
         <!-- ===================================================================
-             TRANG 4: PHÂN CHIA NHIỆM VỤ 4 THÀNH VIÊN (DUY - THIỆN - TRUYỀN - VINH)
+             TRANG 4: PHÂN CHIA NHIỆM VỤ 4 THÀNH VIÊN (DUY - THIỆN -  - VINH)
              =================================================================== -->
         <section id="tab-team4" class="tab-pane">
             <h2 class="section-title"><span>👥</span> Trang 4: Phân Công Nhiệm Vụ 4 Thành Viên & Cẩm Nang Báo Cáo Từng Người</h2>
@@ -1739,9 +1739,9 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                 <div class="member-select-wrapper">
                     <label for="member-select" style="color: var(--accent-gold); font-weight: bold; white-space: nowrap;">Chọn thành viên:</label>
                     <select id="member-select" class="member-select-dropdown" onchange="selectMember(this.value)">
-                        <option value="duy">Lê Phúc Duy (GameEngine, Player, Kỹ năng Skill, Combat &amp; Observer)</option>
-                        <option value="thien">Nguyễn Đức Thiện (Thực thể sống, Quái vật, Boss AI &amp; Lưu/Tải SaveLoad)</option>
-                        <option value="truyen">Đỗ Hữu Truyền (Vật phẩm, Túi đồ &amp; Âm thanh AudioSystem)</option>
+                        <option value="duy">Duy (GameEngine, Player, Kỹ năng Skill, Combat &amp; Observer)</option>
+                        <option value="thien">Thiện (Thực thể sống, Quái vật, Boss AI &amp; Lưu/Tải SaveLoad)</option>
+                        <option value="truyen">Truyền  (Vật phẩm, Túi đồ &amp; Âm thanh AudioSystem)</option>
                         <option value="vinh">Vinh (Tọa độ, Ô địa hình, Khuôn mẫu &amp; Ngoại lệ)</option>
                         <option value="all">Hiển thị toàn bộ 4 thành viên</option>
                     </select>
@@ -1749,7 +1749,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                 <div class="member-pill-nav">
                     <button class="member-pill-btn active" data-member="duy" onclick="selectMember('duy')">Duy (Player, Skill &amp; Combat)</button>
                     <button class="member-pill-btn" data-member="thien" onclick="selectMember('thien')">Thiện (Quái vật &amp; SaveLoad)</button>
-                    <button class="member-pill-btn" data-member="truyen" onclick="selectMember('truyen')">Truyền (Vật phẩm &amp; Âm thanh)</button>
+                    <button class="member-pill-btn" data-member="truyen" onclick="selectMember('truyen')"> Truyền (Vật phẩm &amp; Âm thanh)</button>
                     <button class="member-pill-btn" data-member="vinh" onclick="selectMember('vinh')">Vinh (Tọa độ &amp; Khuôn mẫu)</button>
                     <button class="member-pill-btn" data-member="all" onclick="selectMember('all')">Xem tất cả 4 người</button>
                 </div>
@@ -1758,11 +1758,11 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
             <!-- DANH SÁCH 4 PANEL CHI TIẾT TỪNG THÀNH VIÊN -->
             <div class="member-card-container">
 
-                <!-- 1. LÊ PHÚC DUY -->
+                <!-- 1. Duy -->
                 <div id="panel-duy" class="member-panel duy" style="display: block;">
                     <div class="member-panel-header">
                         <div class="member-name-block">
-                            <h3>LÊ PHÚC DUY</h3>
+                            <h3>Duy</h3>
                             <div class="member-subtitle"><strong style="color: var(--accent-gold);">Cơ chế đảm nhận:</strong> Vòng lặp điều phối GameEngine (Facade), Cơ chế Người chơi (Player), Hệ thống Kỹ năng chủ động (Skill - Slash, Dash, Heal), Chiến đấu thời gian thực (CombatSystem) &amp; Sự kiện (Observer)</div>
                         </div>
                     </div>
@@ -1810,7 +1810,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                         <ul class="member-oop-list">
                             <li><strong>Kiến trúc Người chơi toàn diện (Player Mechanics):</strong> Quản lý đối tượng trung tâm Hiệp sĩ (<code>Player</code>): lưu trữ tọa độ lưới <code>Position</code>, nội suy mượt mà <code>visualPos</code>, cơ chế nhảy qua đầu quái theo quỹ đạo Parabol nâng hạ trực quan (<code>jumpLift</code>), hiệu ứng rơi tự do khi trượt chân xuống vực (<code>triggerFall</code>), công thức lên cấp tăng tiến hàm mũ <code>expToNextLevel = level * 50</code>, thăng cấp tăng chỉ số MaxHP/ATK/DEF, đồng thời làm cầu nối sở hữu túi đồ <code>Inventory</code> và mảng kỹ năng <code>Skill</code>.</li>
                             <li><strong>Kiến trúc Kỹ năng Người chơi (Player Skill System):</strong> Lớp <code>Player</code> quản lý trực tiếp mảng kỹ năng <code>Skill</code>: Chém kiếm quét (Slash) gây sát thương lan diện rộng hình quạt, Lướt né chiêu (Dash) lướt nhanh 3 ô vượt chướng ngại và bất tử tạm thời 0.2s, Hồi phục (Heal) chuyển hóa Mana thành HP. Kiểm tra điều kiện năng lượng <code>currentMana &gt;= skill.getManaCost()</code>, khấu trừ Mana và quản lý bộ đếm hồi chiêu <code>cooldownTimer</code> độc lập theo thời gian thực (deltaTime).</li>
-                            <li><strong>Điều phối toàn bộ trò chơi (Facade Pattern & State Machine):</strong> Kết nối các phân hệ của 3 bạn còn lại (Quái của Thiện, Đồ của Truyền, Map & Math của Vinh) vào một vòng lặp nhịp nhàng duy nhất <code>GameEngine::run()</code> với 6 trạng thái màn hình (Title, Playing, Inventory, Shop, Forge, Victory, GameOver).</li>
+                            <li><strong>Điều phối toàn bộ trò chơi (Facade Pattern & State Machine):</strong> Kết nối các phân hệ của 3 bạn còn lại (Quái của Thiện, Đồ của , Map & Math của Vinh) vào một vòng lặp nhịp nhàng duy nhất <code>GameEngine::run()</code> với 6 trạng thái màn hình (Title, Playing, Inventory, Shop, Forge, Victory, GameOver).</li>
                             <li><strong>Chủ trì Luồng giao tranh thời gian thực (Luồng phức tạp nhất dự án):</strong> Bắt nhịp phím [K], mở cửa sổ thời gian vàng 0.18s cho Perfect Parry; nếu trúng kích hoạt âm thanh kim loại, rung màn hình LERP, trừ giáp và sinh hạt bụi vàng vật lý.</li>
                         </ul>
                     </div>
@@ -1941,7 +1941,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                 <div id="panel-thien" class="member-panel thien" style="display: none;">
                     <div class="member-panel-header">
                         <div class="member-name-block">
-                            <h3>NGUYỄN ĐỨC THIỆN</h3>
+                            <h3>Thiện</h3>
                             <div class="member-subtitle"><strong style="color: var(--accent-gold);">Cơ chế đảm nhận:</strong> Cây phả hệ thực thể sống (Entity, Monster), Quái vật mặt đất &amp; Quái vật bay, Máy trạng thái Boss (BoarKing, QueenBee), Đa hình hành vi AI &amp; Hệ thống Lưu/Tải dữ liệu tệp (SaveLoadManager)</div>
                         </div>
                     </div>
@@ -2123,11 +2123,11 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                     </div>
                 </div>
 
-                <!-- 3. TRUYỀN -->
+                <!-- 3.  -->
                 <div id="panel-truyen" class="member-panel truyen" style="display: none;">
                     <div class="member-panel-header">
                         <div class="member-name-block">
-                            <h3>ĐỖ HỮU TRUYỀN</h3>
+                            <h3>TRUYỀN </h3>
                             <div class="member-subtitle"><strong style="color: var(--accent-gold);">Cơ chế đảm nhận:</strong> Cây phả hệ vật phẩm (Item, Weapon, Armor, Potion), Quản lý bộ nhớ túi đồ (Inventory) &amp; Hệ thống âm thanh thủ tục (AudioSystem - DSP &amp; Meyers' Singleton)</div>
                         </div>
                     </div>
@@ -2187,7 +2187,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                     </div>
 
                     <div class="member-section-box" style="border-color: rgba(210, 168, 255, 0.3);">
-                        <h4 style="color: #d2a8ff;">❓ Bộ Câu Hỏi Vấn Đáp Giảng Viên Dành Riêng Cho Truyền & Đáp Án Mẫu</h4>
+                        <h4 style="color: #d2a8ff;">❓ Bộ Câu Hỏi Vấn Đáp Giảng Viên Dành Riêng Cho  & Đáp Án Mẫu</h4>
 
                         <div style="font-weight: bold; color: var(--accent-gold); margin: 0.8rem 0 0.5rem 0; font-size: 0.95rem;">📌 NHÓM 1: CÂU HỎI KIẾN THỨC CƠ BẢN OOP</div>
 
@@ -2197,7 +2197,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                                 <span>1. "Tại sao lớp Item lại là Abstract Class? Trong Inventory em lưu trữ Item* hay lưu trực tiếp đối tượng Item? Hiện tượng Object Slicing là gì?"</span>
                             </div>
                             <div class="qa-answer">
-                                <div class="qa-answer-title">💡 Đáp án mẫu cho Truyền:</div>
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho :</div>
                                 <p>Dạ thưa thầy, <code>Item</code> là Abstract Class vì nó đại diện cho khái niệm vật phẩm trừu tượng, mỗi loại đồ cụ thể (Vũ khí, Bình thuốc, Giáp) có cách sử dụng và chỉ số cộng khác nhau nên hàm <code>use()</code> bắt buộc phải để thuần ảo. Trong <code>Inventory</code>, em bắt buộc phải lưu <strong>danh sách con trỏ <code>std::vector&lt;Item*&gt;</code></strong> (hoặc <code>std::unique_ptr&lt;Item&gt;</code>) để áp dụng tính đa hình. Nếu lưu trực tiếp đối tượng <code>Item</code> theo giá trị, C++ sẽ gây ra hiện tượng <strong>Cắt gọt đối tượng (Object Slicing)</strong>: trình biên dịch chỉ sao chép phần dữ liệu của lớp cha <code>Item</code> và cắt bỏ toàn bộ phần biến mở rộng của lớp con (làm mất sạch chỉ số tấn công của Weapon hay phòng thủ của Armor).</p>
                             </div>
                         </div>
@@ -2208,7 +2208,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                                 <span>2. "Phân biệt sự khác nhau giữa quan hệ Hợp thành (Composition) và Kết hợp (Aggregation) trong hệ thống túi đồ?"</span>
                             </div>
                             <div class="qa-answer">
-                                <div class="qa-answer-title">💡 Đáp án mẫu cho Truyền:</div>
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho :</div>
                                 <p>Dạ, đây là hai mức độ của quan hệ <em>'HAS-A' (Sở hữu)</em>:
                                 <br>- <strong>Quan hệ Hợp thành (Composition):</strong> Vòng đời của thành phần phụ thuộc hoàn toàn vào đối tượng chứa. Ví dụ: <code>Player</code> sở hữu <code>Inventory</code>. Khi người chơi bị hủy, túi đồ cũng bị tiêu hủy theo.
                                 <br>- <strong>Quan hệ Kết hợp (Aggregation):</strong> Vòng đời của thành phần độc lập với đối tượng chứa. Ví dụ: <code>Inventory</code> chứa các con trỏ <code>Item*</code>. Khi một món đồ bị vứt ra ngoài thế giới (Drop Item) hoặc lấy ra khỏi túi để chuyển vào Rương <code>Chest</code>, món đồ đó vẫn tiếp tục tồn tại trên mặt đất chứ không bị giải phóng bộ nhớ ngay lập tức.</p>
@@ -2221,7 +2221,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                                 <span>3. "Toán tử dynamic_cast dùng để làm gì? Điều kiện tiên quyết để một lớp sử dụng được dynamic_cast là gì?"</span>
                             </div>
                             <div class="qa-answer">
-                                <div class="qa-answer-title">💡 Đáp án mẫu cho Truyền:</div>
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho :</div>
                                 <p>Dạ, <code>dynamic_cast</code> là toán tử ép kiểu an toàn thời gian chạy (RTTI - Run-Time Type Information) trong C++. Em sử dụng để ép kiểu con trỏ lớp cha <code>Item*</code> xuống lớp con cụ thể: <code>const Weapon* w = dynamic_cast&lt;const Weapon*&gt;(item);</code>. Nếu con trỏ trỏ đúng đến một đối tượng <code>Weapon</code>, phép ép kiểu thành công và trả về con trỏ hợp lệ; nếu trỏ đến <code>Potion</code> hay <code>Armor</code>, nó trả về <code>nullptr</code> an toàn.
                                 <br><strong>Điều kiện tiên quyết:</strong> Lớp cha (ở đây là <code>Item</code>) bắt buộc phải là <em>Polymorphic Class (Lớp đa hình)</em>, tức phải có ít nhất một phương thức ảo (thường là <code>virtual ~Item() = default;</code>) để trình biên dịch tạo bảng <code>vtable</code> lưu thông tin RTTI.</p>
                             </div>
@@ -2233,7 +2233,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                                 <span>4. "Toán tử ++ và -- trong lớp Potion được cài đặt như thế nào? Cú pháp tiền tố và hậu tố khác nhau ở điểm nào?"</span>
                             </div>
                             <div class="qa-answer">
-                                <div class="qa-answer-title">💡 Đáp án mẫu cho Truyền:</div>
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho :</div>
                                 <p>Dạ, trong lớp <code>Potion</code>, em quá tải toán tử 1 ngôi tiền tố:
                                 <br><code>Potion& operator++() { ++stackCount; return *this; }</code>
                                 <br>Toán tử này tăng số lượng bình thuốc dồn trong 1 ô túi đồ lên 1 và trả về tham chiếu <code>*this</code> để tiếp tục thao tác.
@@ -2249,7 +2249,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                                 <span>5. "Khi người chơi nhặt một bình máu mới trong khi túi đồ đã đầy 12 ô, hệ thống của em xử lý thế nào?"</span>
                             </div>
                             <div class="qa-answer">
-                                <div class="qa-answer-title">💡 Đáp án mẫu cho Truyền:</div>
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho :</div>
                                 <p>Dạ thưa thầy, hàm <code>Inventory::addItem(Item* item)</code> xử lý tình huống này rất thông minh theo 2 bước:
                                 <br>1. <strong>Kiểm tra khả năng xếp chồng (Stacking Check):</strong> Nếu món đồ nhặt là một <code>Potion</code>, hệ thống sẽ duyệt qua 12 ô túi đồ hiện có xem đã có bình thuốc cùng ID hay chưa. Nếu đã có và chưa đạt giới hạn stack (ví dụ tối đa 10 bình), hàm sẽ gọi <code>++(*existingPotion)</code> để tăng số lượng lên mà <strong>không chiếm thêm ô trống nào</strong>!
                                 <br>2. <strong>Nếu là trang bị mới (Weapon/Armor) hoặc bình thuốc đã đầy stack:</strong> Lúc này hệ thống kiểm tra <code>items.size() >= maxSlots (12)</code>. Hàm trả về <code>false</code>, in thông báo <em>'[TUI DO DAY!] Khong the nhat them vat pham!'</em> và món đồ vẫn nằm an toàn trên mặt đất để người chơi dọn túi rồi nhặt lại.</p>
@@ -2262,7 +2262,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                                 <span>6. "Tại sao em dùng dynamic_cast mà không dùng static_cast khi ép kiểu từ Item* sang Weapon*?"</span>
                             </div>
                             <div class="qa-answer">
-                                <div class="qa-answer-title">💡 Đáp án mẫu cho Truyền:</div>
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho :</div>
                                 <p>Dạ, vì trong túi đồ chứa lẫn lộn nhiều loại con trỏ: Vũ khí (<code>Weapon</code>), Áo giáp (<code>Armor</code>), Bình thuốc (<code>Potion</code>).
                                 <br>- <code>static_cast&lt;Weapon*&gt;(item)</code> chỉ kiểm tra kiểu tại thời điểm biên dịch dựa trên quan hệ kế thừa. Lúc chạy game, nếu người chơi bấm trang bị một bình thuốc mà dùng <code>static_cast</code> ép sang <code>Weapon*</code>, trình biên dịch vẫn cho phép! Nhưng con trỏ kết quả sẽ truy cập sai vùng nhớ của <code>Potion</code> coi như chỉ số tấn công, dẫn tới chỉ số rác hoặc làm chương trình bị Segmentation Fault (Crash game).
                                 <br>- Trong khi đó, <code>dynamic_cast</code> kiểm tra kiểu thực tế của đối tượng tại Runtime. Nếu ép nhầm <code>Potion</code> sang <code>Weapon</code>, nó trả về <code>nullptr</code>, giúp em kiểm tra <code>if (w != nullptr)</code> an toàn tuyệt đối 100%.</p>
@@ -2275,7 +2275,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                                 <span>7. "Khi nhân vật đang cầm vũ khí A (+15 ATK) mà trang bị vũ khí B (+25 ATK), việc cập nhật chỉ số ATK của Player diễn ra theo trình tự nào để không bị lỗi cộng dồn vĩnh viễn?"</span>
                             </div>
                             <div class="qa-answer">
-                                <div class="qa-answer-title">💡 Đáp án mẫu cho Truyền:</div>
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho :</div>
                                 <p>Dạ, trong <code>Inventory::equipWeapon(Player& player, int slot)</code>, em thực hiện chuẩn theo 3 bước an toàn:
                                 <br>1. <strong>Tháo gỡ vũ khí cũ:</strong> Nếu người chơi đang cầm vũ khí A (ví dụ biến <code>equippedWeapon != nullptr</code>), em trừ đi lượng bonus cũ của A: <code>player.setAttack(player.getAttack() - equippedWeapon->getBonusAttack())</code>.
                                 <br>2. <strong>Gán vũ khí mới:</strong> Cập nhật con trỏ <code>equippedWeapon = newWeapon</code>.
@@ -2290,7 +2290,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                                 <span>8. "Khi người chơi vứt một món đồ khỏi túi (Drop item) hoặc khi tắt game, việc giải phóng vùng nhớ con trỏ Item* được đảm bảo ra sao để không bị Memory Leak?"</span>
                             </div>
                             <div class="qa-answer">
-                                <div class="qa-answer-title">💡 Đáp án mẫu cho Truyền:</div>
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho :</div>
                                 <p>Dạ, trong <code>Inventory::~Inventory()</code>, hàm Destructor duyệt qua mảng <code>items</code> và gọi <code>delete item;</code> cho từng phần tử rồi <code>items.clear();</code>.
                                 <br>Điểm then chốt là trong lớp cơ sở <code>Item</code>, em đã khai báo **Virtual Destructor: <code>virtual ~Item() = default;</code>**. Nhờ có hàm hủy ảo, khi ta gọi <code>delete item</code> qua con trỏ lớp cha <code>Item*</code>, C++ sẽ kích hoạt Destructor của lớp con cụ thể (như <code>~Weapon()</code>, <code>~Armor()</code>) trước, sau đó mới giải phóng lớp cha <code>Item</code>, đảm bảo toàn bộ tài nguyên động của lớp con được dọn dẹp sạch sẽ 100%.</p>
                             </div>
@@ -2302,7 +2302,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                                 <span>9. "Tại sao em áp dụng mẫu thiết kế Meyers' Singleton cho AudioSystem? Thuật toán DSP tự sinh âm thanh trong RAM hoạt động ra sao mà không cần file MP3/WAV ngoài?"</span>
                             </div>
                             <div class="qa-answer">
-                                <div class="qa-answer-title">💡 Đáp án mẫu cho Truyền:</div>
+                                <div class="qa-answer-title">💡 Đáp án mẫu cho :</div>
                                 <p>Dạ thưa thầy, em chọn <strong>Meyers' Singleton</strong> cho <code>AudioSystem</code> vì:
                                 <br>1. <strong>Tính duy nhất và an toàn luồng:</strong> Toàn bộ trò chơi chỉ được phép có duy nhất 1 thiết bị âm thanh giao tiếp với Raylib. Trong <code>AudioSystem::getInstance()</code>, em dùng biến cục bộ tĩnh <code>static AudioSystem instance; return instance;</code>. Theo chuẩn C++11/C++17 (Magic Statics), biến tĩnh cục bộ được khởi tạo an toàn luồng (Thread-safe) mà không cần dùng Mutex. Khi tắt game, Destructor tự động dọn dẹp bộ nhớ RAM.
                                 <br>2. <strong>Tổng hợp âm thanh thủ tục (Procedural Audio DSP):</strong> Thay vì phải nạp các file âm thanh ngoài nặng nề, em dùng thuật toán toán học tạo mảng byte sóng âm trực tiếp trong RAM: dùng hàm điều chế tần số (Frequency Sweep) cho tiếng 'keng' kim loại khi đeo kiếm và nhiễu trắng (White Noise) cho tiếng uống thuốc, giúp game độc lập và không bao giờ bị lỗi thiếu file âm thanh.</p>
@@ -2391,7 +2391,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                                 <div class="qa-answer-title">💡 Đáp án mẫu cho Vinh:</div>
                                 <p>Dạ, đây là <strong>Toán tử chuyển đổi kiểu do người dùng tự định nghĩa (User-defined Conversion Operator)</strong>.
                                 <br>- Cú pháp: <code>operator Vector2() const { return Vector2{ (float)(x * 32), (float)(y * 32) }; }</code>
-                                <br>- Ý nghĩa: Trong game, logic nhân vật lưu vị trí theo ô nguyên <code>x, y</code> trên bàn cờ. Nhưng thư viện đồ họa Raylib lại yêu cầu kiểu tọa độ pixel thực <code>Vector2</code> để vẽ lên màn hình. Nhờ có toán tử này, bất cứ khi nào em truyền một đối tượng <code>Position</code> vào hàm vẽ của Raylib, trình biên dịch C++ sẽ **tự động ép kiểu ngầm định sang Vector2** và nhân với 32 pixel mà không cần phải gọi hàm chuyển đổi thủ công, giúp code cực kỳ trực quan và trong sáng.</p>
+                                <br>- Ý nghĩa: Trong game, logic nhân vật lưu vị trí theo ô nguyên <code>x, y</code> trên bàn cờ. Nhưng thư viện đồ họa Raylib lại yêu cầu kiểu tọa độ pixel thực <code>Vector2</code> để vẽ lên màn hình. Nhờ có toán tử này, bất cứ khi nào em  một đối tượng <code>Position</code> vào hàm vẽ của Raylib, trình biên dịch C++ sẽ **tự động ép kiểu ngầm định sang Vector2** và nhân với 32 pixel mà không cần phải gọi hàm chuyển đổi thủ công, giúp code cực kỳ trực quan và trong sáng.</p>
                             </div>
                         </div>
 
@@ -2431,7 +2431,7 @@ player.setHp(<span class="code-num">80</span>).setAttack(<span class="code-num">
                                 <p>Dạ, đây là khuôn mẫu hàm nâng cao với **nhiều tham số kiểu dữ liệu độc lập** (minh họa Slide 11 Chương 7):
                                 <br><code>template &lt;typename T1, typename T2&gt;</code>
                                 <br><code>int calculateChebyshevDistance(const T1& obj1, const T2& obj2) { ... }</code>
-                                <br>Hàm này không quan tâm <code>obj1</code> và <code>obj2</code> là lớp gì, miễn là cả hai đối tượng đều có phương thức <code>.getPosition()</code>. Khi tính toán, em có thể truyền <code>obj1</code> là một con Boss (lớp <code>BoarKing</code>) và <code>obj2</code> là người chơi (lớp <code>Player</code>). Trình biên dịch sẽ tự động gán <code>T1 = BoarKing</code> và <code>T2 = Player</code>, lấy tọa độ của hai thực thể và tính khoảng cách bàn cờ cực kỳ linh hoạt mà không cần ép kiểu con trỏ.</p>
+                                <br>Hàm này không quan tâm <code>obj1</code> và <code>obj2</code> là lớp gì, miễn là cả hai đối tượng đều có phương thức <code>.getPosition()</code>. Khi tính toán, em có thể  <code>obj1</code> là một con Boss (lớp <code>BoarKing</code>) và <code>obj2</code> là người chơi (lớp <code>Player</code>). Trình biên dịch sẽ tự động gán <code>T1 = BoarKing</code> và <code>T2 = Player</code>, lấy tọa độ của hai thực thể và tính khoảng cách bàn cờ cực kỳ linh hoạt mà không cần ép kiểu con trỏ.</p>
                             </div>
                         </div>
 
