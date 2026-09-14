@@ -132,6 +132,7 @@ do_raylib() {
     mkdir -p "${LIB_DIR}/include"
     cp -f libraylib.a "${LIB_DIR}/"
     cp -f raylib.h "${LIB_DIR}/include/"
+    [ -f rlgl.h ] && cp -f rlgl.h "${LIB_DIR}/include/" || true
     log "raylib build xong -> lib/libraylib.a + lib/include/raylib.h"
 }
 
