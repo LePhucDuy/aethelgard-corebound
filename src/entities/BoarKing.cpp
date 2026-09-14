@@ -3,6 +3,7 @@
 #include "systems/CombatSystem.h"
 #include "map/Dungeon.h"
 #include "core/Constants.h"
+#include "core/Templates.h"
 #include <iostream>
 #include <cstdlib>
 #include <cmath>
@@ -124,11 +125,11 @@ void BoarKing::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
             // TÔNG TRÚNG!
             faceTowards(pPos);
             int chargeDmg = attack * 18 / 10;
-            int actualDmg = std::max(1, chargeDmg - player.getDefense());
+            int actualDmg = CoreTemplates::getMaxValue(1, chargeDmg - player.getDefense());
             player.takeDamage(chargeDmg);
 
-            // Đẩy lùi (Knockback) người chơi 2 ô
-            int knockX = std::clamp(pPos.x + chargeDir * 2, 131, 163);
+            // Đẩy lùi (Knockback) người chơi 2 ô (dùng CoreTemplates::clampValue)
+            int knockX = CoreTemplates::clampValue(pPos.x + chargeDir * 2, 131, 163);
             Position knockPos(knockX, pos.y);
             if (dungeon.isWalkable(knockPos)) {
                 player.setPosition(knockPos);
@@ -151,8 +152,8 @@ void BoarKing::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
         bool reachedTarget = (nextX == chargeTargetX);
 
         if (hitWall || reachedTarget) {
-            // HÚC TRƯỢT -> BỊ CHOÁNG 1.2 GIÂY!
-            pos.x = std::clamp(nextX, 131, 163);
+            // HÚC TRƯỢT -> BỊ CHOÁNG 1.2 GIÂY! (dùng CoreTemplates::clampValue)
+            pos.x = CoreTemplates::clampValue(nextX, 131, 163);
             bossState = BoarKingState::STUNNED;
             stunTimer = 1.2f;
             requestedScreenShake = true;
@@ -181,12 +182,12 @@ void BoarKing::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
         if (stompCooldown <= 0.0f) {
             setState("run");
             int stompDmg = attack * 12 / 10;
-            int actualDmg = std::max(1, stompDmg - player.getDefense());
+            int actualDmg = CoreTemplates::getMaxValue(1, stompDmg - player.getDefense());
             player.takeDamage(stompDmg);
 
-            // Hất lùi người chơi 2 ô ra xa
+            // Hất lùi người chơi 2 ô ra xa (dùng CoreTemplates::clampValue)
             int pushDir = (dx >= 0) ? 1 : -1;
-            int pushX = std::clamp(pPos.x + pushDir * 2, 131, 163);
+            int pushX = CoreTemplates::clampValue(pPos.x + pushDir * 2, 131, 163);
             Position pushPos(pushX, pos.y);
             if (dungeon.isWalkable(pushPos)) {
                 player.setPosition(pushPos);
@@ -213,11 +214,11 @@ void BoarKing::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
     // =========================================================================
     // 3. KHOẢNG CÁCH TẦM TRUNG / XA (3 - 9 ô trên sàn đất y = 18): KÍCH HOẠT LÃO HÚC
     // =========================================================================
-    if (std::abs(dx) >= 3 && std::abs(dx) <= 9 && dy == 0 && chargeCooldown <= 0.0f) {
+    if (CoreTemplates::isInRange(std::abs(dx), 3, 9) && dy == 0 && chargeCooldown <= 0.0f) {
         bossState = BoarKingState::CHARGE_WINDUP;
         windupTimer = enraged ? 0.35f : 0.50f;
         chargeDir = (dx > 0) ? 1 : -1;
-        chargeTargetX = (chargeDir > 0) ? std::min(163, pos.x + 8) : std::max(131, pos.x - 8);
+        chargeTargetX = (chargeDir > 0) ? CoreTemplates::getMinValue(163, pos.x + 8) : CoreTemplates::getMaxValue(131, pos.x - 8);
         faceTowards(pPos);
         setState("idle");
         chargeCooldown = enraged ? 4.0f : 6.0f;
@@ -274,7 +275,7 @@ void BoarKing::render(float scale, Vector2 offset) const {
     if (bossState == BoarKingState::CHARGE_WINDUP) {
         float startX = visualPos.x + (float)Constants::TILE_SIZE / 2.0f + offset.x;
         float endX = (float)(chargeTargetX * Constants::TILE_SIZE) + (float)Constants::TILE_SIZE / 2.0f + offset.x;
-        float minX = std::min(startX, endX);
+        float minX = CoreTemplates::getMinValue(startX, endX);
         float lineW = std::abs(endX - startX);
         float groundY = visualPos.y + (float)Constants::TILE_SIZE - 4.0f + offset.y;
 

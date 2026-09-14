@@ -17,7 +17,14 @@
 #include "systems/EventSystem.h"
 #include "systems/AIStrategy.h"
 #include "core/Constants.h"
-#include <rlgl.h>
+// Forward declaration cho ham xa batch do hoa Raylib truoc khi chup anh
+#if defined(__cplusplus)
+extern "C" {
+#endif
+void rlDrawRenderBatchActive(void);
+#if defined(__cplusplus)
+}
+#endif
 #include <iostream>
 #include <cmath>
 #include <algorithm>
@@ -580,7 +587,7 @@ void GameEngine::handleInput() {
         // chỉ bị chặn bởi khối WALL đặc. Ô đáp (landing) thì vẫn phải trống quái
         // (kiểm tra riêng trong canLand) để không đáp đè lên đầu quái.
         auto pathFlyable = [&](const Position& from, const Position& to) {
-            int steps = std::max(std::abs(to.x - from.x), std::abs(to.y - from.y));
+            int steps = CoreTemplates::calculateDistance2D(to, from);
             for (int i = 1; i < steps; ++i) {
                 float t = (float)i / (float)steps;
                 Position mid(from.x + (int)std::round((to.x - from.x) * t),
@@ -1454,7 +1461,6 @@ void GameEngine::renderHUD() const {
     // 2. THANH MÁU TRÙM HOÀNG GIA (ROYAL BOSS HEALTH BAR)
     // =========================================================================
     if (state == GameState::RUNNING) {
-        Position pPos = player.getPosition();
         Monster* activeBoss = nullptr;
         std::string bossTitle = "";
         Color bossBorderColor = Color{ 200, 140, 45, 255 };
@@ -1463,8 +1469,7 @@ void GameEngine::renderHUD() const {
 
         Monster* qBee = dungeon.getQueenBeeMonster();
         if (qBee && qBee->isAlive()) {
-            Position qPos = qBee->getPosition();
-            int distQ = std::max(std::abs(pPos.x - qPos.x), std::abs(pPos.y - qPos.y));
+            int distQ = CoreTemplates::calculateChebyshevDistance(player, *qBee);
             if (distQ <= 12) {
                 activeBoss = qBee;
                 bossTitle = "[!] QUEEN BEE - HOANG HAU ONG CHUA [!]";
@@ -1477,8 +1482,7 @@ void GameEngine::renderHUD() const {
         if (!activeBoss) {
             Monster* bKing = dungeon.getBossMonster();
             if (bKing && bKing->isAlive()) {
-                Position bPos = bKing->getPosition();
-                int distB = std::max(std::abs(pPos.x - bPos.x), std::abs(pPos.y - bPos.y));
+                int distB = CoreTemplates::calculateChebyshevDistance(player, *bKing);
                 if (bossCinematicTriggered || distB <= 14) {
                     activeBoss = bKing;
                     bossTitle = "[!] BOAR KING - CHUA HEO RUNG [!]";
@@ -2091,7 +2095,7 @@ void GameEngine::renderGoldParticles(Vector2 offset) const {
         float drawY = p.pos.y + offset.y;
 
         // Quầng sáng vàng lấp lánh xung quanh đồng xu
-        DrawCircleGradient(Vector2{ drawX, drawY }, 12.0f, ColorAlpha(GOLD, 0.5f), ColorAlpha(YELLOW, 0.0f));
+        DrawCircleGradient((int)drawX, (int)drawY, 12.0f, ColorAlpha(GOLD, 0.5f), ColorAlpha(YELLOW, 0.0f));
 
         if (coinTex) {
             Rectangle srcRec = { 0, 0, (float)coinTex->width, (float)coinTex->height };

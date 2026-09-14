@@ -5,6 +5,11 @@
 #include <cmath>
 #include "raylib.h"
 
+// Tiện ích C++ nạp chồng cho hàm DrawCircleGradient nhận Vector2 thay vì 2 biến int
+inline void DrawCircleGradient(Vector2 center, float radius, Color inner, Color outer) {
+    DrawCircleGradient(static_cast<int>(center.x), static_cast<int>(center.y), radius, inner, outer);
+}
+
 /**
  * @brief Struct Position biểu diễn tọa độ ô lưới (Grid Coordinate) trong hầm ngục.
  * 

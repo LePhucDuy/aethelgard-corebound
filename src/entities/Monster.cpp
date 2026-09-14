@@ -2,6 +2,7 @@
 #include "entities/Player.h"
 #include "map/Dungeon.h"
 #include "systems/AIStrategy.h"
+#include "core/Templates.h"
 #include <cstdlib>
 
 // Khởi tạo các thành viên tĩnh (Static Members - Slide 36-39 Chương 3)
@@ -165,7 +166,7 @@ bool Monster::isGrounded(Dungeon& dungeon, const Position& p) const {
 bool Monster::hasLineOfSight(Dungeon& dungeon, const Position& target) const {
     int dx = target.x - pos.x;
     int dy = target.y - pos.y;
-    int steps = std::max(std::abs(dx), std::abs(dy));
+    int steps = CoreTemplates::calculateDistance2D(target, pos);
     if (steps == 0) return true;
 
     float xStep = (float)dx / (float)steps;

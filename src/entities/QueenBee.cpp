@@ -5,6 +5,7 @@
 #include "systems/CombatSystem.h"
 #include "map/Dungeon.h"
 #include "core/Constants.h"
+#include "core/Templates.h"
 #include <iostream>
 #include <cstdlib>
 #include <cmath>
@@ -94,7 +95,7 @@ void QueenBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
     Position pPos = player.getPosition();
     int dx = pPos.x - pos.x;
     int dy = pPos.y - pos.y;
-    int cheb = std::max(std::abs(dx), std::abs(dy));
+    int cheb = CoreTemplates::calculateChebyshevDistance(*this, player);
 
     auto canFlyTo = [&](const Position& c) {
         return dungeon.isValidPos(c)
@@ -124,7 +125,7 @@ void QueenBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
             if (m && m.get() != this) {
                 SmallBee* sb = dynamic_cast<SmallBee*>(m.get());
                 if (sb && sb->isAlive()) {
-                    int dist = std::max(std::abs(sb->getPosition().x - pos.x), std::abs(sb->getPosition().y - pos.y));
+                    int dist = CoreTemplates::calculateChebyshevDistance(*sb, *this);
                     if (dist <= 25) {
                         sb->setAggro(true);
                         sb->setAIState(MonsterAIState::CHASE);
@@ -142,7 +143,7 @@ void QueenBee::act(Dungeon& dungeon, Player& player, std::vector<std::string>& c
     // =========================================================================
     // KỸ NĂNG 2: ĐÒN CHÍCH NỌC ĐỘC HOÀNG KIM (Cận chiến hoặc ngay trên đầu)
     // =========================================================================
-    bool inQueenStingRange = (cheb <= 1 || (std::abs(dx) <= 1 && dy >= -1 && dy <= 2));
+    bool inQueenStingRange = (cheb <= 1 || (std::abs(dx) <= 1 && CoreTemplates::isInRange(dy, -1, 2)));
     if (inQueenStingRange && player.isAlive()) {
         faceTowards(pPos);
         if (stingCooldown <= 0.0f) {
